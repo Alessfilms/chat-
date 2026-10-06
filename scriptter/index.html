@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scriptter Motion</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-feather" viewBox="0 0 24 24"><path fill="currentColor" d="M21.5 2.2c-5.6.6-10.6 4.2-13.3 9.4-.9 1.8-1.5 3.7-1.9 5.6L4.4 21c-.1.3.2.6.5.4l1.2-.8c.4-1.6 1.1-3.3 2-4.8 1-1.6 2.2-3 3.6-4.2-1.2 1.4-2.2 2.9-2.9 4.6 2.6-.2 5-1.4 6.6-3.4-.9.1-1.9 0-2.8-.3 1.2-.2 2.4-.6 3.4-1.3 2.9-2.2 4.8-5.3 5.5-9z"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 12H4m7-7-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-5 3 3 5-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h11v8H8l-4 3zM15 9h5v8l-3-2h-6v-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M15.5 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.8 3 2.6 3.5 5.2"/></g></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></g></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="8" cy="6" r="2"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/><circle cx="16" cy="18" r="2"/></g></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></g></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></g></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path fill="currentColor" d="M10.6 3.6a2 2 0 0 1 2.8 0l7 6.4c.4.4.6.9.6 1.5V19a2 2 0 0 1-2 2h-4v-5h-6v5H5a2 2 0 0 1-2-2v-7.5c0-.6.2-1.1.6-1.5z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c.8-4.2 4-6.5 8-6.5s7.2 2.3 8 6.5" stroke-linecap="round"/></g></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><path d="m15.5 8.5-2 5-5 2 2-5z" fill="currentColor" stroke-linejoin="round"/></g></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></g></symbol>
+  <symbol id="i-script" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="6" y="3" width="13" height="16" rx="2"/><path d="M3 7v12a2 2 0 0 0 2 2h11M9.5 7h6v3h-6zM9.5 13h6M9.5 16h4"/></g></symbol>
+  <symbol id="i-tele" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 5v-1M20 5v-1M8 21h8"/></g></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m3 17 5-4 4 3 3-2 6 4"/></g></symbol>
+  <symbol id="i-sparkfeather" viewBox="0 0 24 24"><use href="#i-feather" transform="translate(2 2) scale(.9)"/><path fill="currentColor" d="M5 2l.7 1.8L7.5 4.5l-1.8.7L5 7l-.7-1.8L2.5 4.5l1.8-.7zM9 7.5l.4 1 1 .4-1 .4-.4 1-.4-1-1-.4 1-.4z"/></symbol>
+  <symbol id="i-clapper" viewBox="0 0 24 24"><g fill="currentColor"><path d="M3 10h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3.2 8.6 2.7 6.6a2 2 0 0 1 1.4-2.4l12.6-3.4a2 2 0 0 1 2.4 1.4l.5 2z" opacity=".9"/></g></symbol>
+  <symbol id="i-run" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="15" cy="4" r="2.2"/><path d="M11 7.3 14.6 7c.7 0 1.3.3 1.6.9l1.6 3 3 .8-.5 1.9-3.8-1-1.1-1.9-1.6 3.6 2.7 2.6V22h-2v-4.2l-3.3-2.9-1.4 3.4L3.5 18l.5-2 4.5.8 2.6-6-2 .7-1.8 3.2-1.8-.9 2.2-4z"/></g></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="7" r="4"/><path d="M4 21c.6-4.5 3.8-7.5 8-7.5s7.4 3 8 7.5z"/></g></symbol>
+  <symbol id="i-bubble" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-paren" viewBox="0 0 24 24"><path d="M9 3C6 6 6 18 9 21M15 3c3 3 3 15 0 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-dual" viewBox="0 0 24 24"><g fill="currentColor"><path d="M3 3h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8l-4 3v-3a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2z"/><path d="M18 8h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2v3l-4-3h-5a2 2 0 0 1-2-2v-1h5a4 4 0 0 0 4-4z"/></g></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M12 10v6M9 13h6" stroke-linecap="round"/></g></symbol>
+  <symbol id="i-scissors" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.2 8.2 20 20M8.2 15.8 20 4"/></g></symbol>
+  <symbol id="i-quote" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M4 5h6v6c0 4-2 7-5 8M14 5h6v6c0 4-2 7-5 8M4 5v6h6M14 5v6h6"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></g></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></g></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v11l-5 5H5zM14 20v-5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="harness">
+  <aside class="panel" aria-label="Controles do protótipo">
+    <div class="panel-brand"><svg class="ico"><use href="#i-feather"/></svg><b>Scriptter</b><span>Motion System</span></div>
+    <p class="panel-lead">Protótipo interativo das animações sobre a interface atual. Toque nas telas como no iPhone.</p>
+
+    <h3>Ir para a tela</h3>
+    <div class="jump" id="jump">
+      <button data-jump="home">Home</button>
+      <button data-jump="radial">Menu +</button>
+      <button data-jump="editor">Editor</button>
+      <button data-jump="analysis">Análise</button>
+      <button data-jump="ai">Scriptter AI</button>
+      <button data-jump="storyboard">Storyboard</button>
+      <button data-jump="timeline">Timeline</button>
+    </div>
+
+    <h3>Acessibilidade</h3>
+    <label class="switch" for="reduceToggle"><input type="checkbox" id="reduceToggle"><span class="track"><span class="thumb"></span></span>Reduzir movimento</label>
+
+    <h3>Haptics</h3>
+    <ol class="hlog" id="hlog"><li class="empty">Os toques com vibração aparecem aqui.</li></ol>
+
+    <h3>Tokens</h3>
+    <div class="tokens" id="tokens"></div>
+  </aside>
+
+  <div class="device">
+    <div class="phone" id="phone">
+      <div class="statusbar" id="statusbar">
+        <span class="sb-time">21:01</span>
+        <span class="sb-right">
+          <svg width="20" height="13" viewBox="0 0 20 13"><g fill="currentColor"><rect x="0" y="8" width="3.5" height="5" rx="1"/><rect x="5.5" y="5.5" width="3.5" height="7.5" rx="1"/><rect x="11" y="3" width="3.5" height="10" rx="1"/><rect x="16.5" y="0" width="3.5" height="13" rx="1" opacity=".35"/></g></svg>
+          <b>5G</b>
+          <span class="batt"><span>34</span></span>
+        </span>
+      </div>
+
+      <!-- ================= HOME ================= -->
+      <section class="screen is-active" id="home" data-screen="home">
+        <div class="home-top">
+          <button class="icon-btn" data-press=".9" aria-label="Explorar"><svg class="ico i26"><use href="#i-compass"/></svg></button>
+          <button class="icon-btn bell" data-press=".9" aria-label="Notificações"><svg class="ico i26"><use href="#i-bell"/></svg><span class="badge">4</span></button>
+        </div>
+        <div class="hero" id="hero">
+          <img src="assets/hero-1.jpg" alt="Mão desenhando um storyboard em um caderno">
+          <img src="assets/hero-2.jpg" alt="" class="alt">
+        </div>
+        <div class="recent-head" id="recentHead">
+          <span>Roteiros recentes</span>
+          <button class="see-all" data-press=".95">Ver todos <svg class="ico i16"><use href="#i-chev-r"/></svg></button>
+        </div>
+        <div class="docs" id="docs"></div>
+        <div class="ai-panel" id="homePanel">
+          <div class="ai-panel-top"><span class="ph">Roteiros com Scriptter AI</span><svg class="ico i20 muted"><use href="#i-chev"/></svg></div>
+          <div class="ai-panel-row">
+            <button class="round" data-press=".9" aria-label="Adicionar"><svg class="ico i20"><use href="#i-plus"/></svg></button>
+            <button class="pill" data-press=".95"><svg class="ico i18"><use href="#i-pencil"/></svg>Scriptter Write<svg class="ico i14 muted"><use href="#i-chev"/></svg></button>
+            <button class="pill dim" data-press=".95"><svg class="ico i18"><use href="#i-clock"/></svg>Auto</button>
+            <button class="mic" data-press=".9" aria-label="Falar"><svg class="ico i20 mic-ico"><use href="#i-mic"/></svg><span class="wave"><i></i><i></i><i></i><i></i><i></i></span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PERFIL ================= -->
+      <section class="screen" id="profile" data-screen="profile">
+        <div class="profile">
+          <div class="avatar"><svg class="ico i36"><use href="#i-user"/></svg></div>
+          <b>Seu perfil</b>
+          <span>5 roteiros · 1 série em andamento</span>
+        </div>
+      </section>
+
+      <!-- ================= EDITOR ================= -->
+      <section class="screen" id="editor" data-screen="editor">
+        <div class="ed-top">
+          <button class="icon-btn" data-press=".88" data-back aria-label="Voltar"><svg class="ico i24"><use href="#i-back"/></svg></button>
+          <div class="seg" id="edSeg">
+            <span class="seg-ind" id="segInd"></span>
+            <button class="seg-btn" data-mode="analysis" data-press=".95"><svg class="ico i20"><use href="#i-chart"/></svg>Análise</button>
+            <button class="seg-btn" data-mode="chat" data-press=".95"><svg class="ico i20"><use href="#i-chat"/></svg>Modo chat</button>
+          </div>
+          <button class="icon-btn" data-press=".88" aria-label="Colaboração"><svg class="ico i24"><use href="#i-people"/></svg></button>
+          <button class="icon-btn" data-press=".88" aria-label="Menu"><svg class="ico i22"><use href="#i-dots"/></svg></button>
+        </div>
+        <div class="sheet-paper">
+          <div class="script" id="script" contenteditable="true" spellcheck="false" aria-label="Roteiro"></div>
+        </div>
+        <div class="side-fabs">
+          <button class="side-fab" data-press=".9" aria-label="Reordenar"><svg class="ico i20"><use href="#i-grip"/></svg></button>
+          <div class="fab-wrap">
+            <div class="fab-menu" id="fabMenu">
+              <button data-press=".95"><svg class="ico i16"><use href="#i-clapper"/></svg>Nova cena</button>
+              <button data-press=".95"><svg class="ico i16"><use href="#i-person"/></svg>Personagem</button>
+              <button data-press=".95"><svg class="ico i16"><use href="#i-note"/></svg>Nota</button>
+              <button data-press=".95" class="ai"><svg class="ico i16"><use href="#i-feather"/></svg>Continuar com IA</button>
+            </div>
+            <button class="side-fab" id="sideFab" aria-label="Ações rápidas" aria-expanded="false"><svg class="ico i22"><use href="#i-plus"/></svg></button>
+          </div>
+        </div>
+        <div class="tool-label" id="toolLabel"><span>Diálogo</span></div>
+        <div class="toolbar" id="toolbar">
+          <span class="tool-ind" id="toolInd"></span>
+          <button data-tool="Cena" aria-label="Cena"><svg class="ico i24"><use href="#i-clapper"/></svg></button>
+          <button data-tool="Ação" aria-label="Ação"><svg class="ico i24"><use href="#i-run"/></svg></button>
+          <button data-tool="Personagem" aria-label="Personagem"><svg class="ico i24"><use href="#i-person"/></svg></button>
+          <button data-tool="Diálogo" aria-label="Diálogo"><svg class="ico i24"><use href="#i-bubble"/></svg></button>
+          <button data-tool="Parentético" aria-label="Parentético"><svg class="ico i24"><use href="#i-paren"/></svg></button>
+          <button data-tool="Transição" aria-label="Transição"><svg class="ico i24"><use href="#i-arrow"/></svg></button>
+          <button data-tool="Diálogo duplo" aria-label="Diálogo duplo"><svg class="ico i24"><use href="#i-dual"/></svg></button>
+        </div>
+      </section>
+
+      <!-- ================= SCRIPTTER AI ================= -->
+      <section class="screen" id="ai" data-screen="ai">
+        <div class="ai-top">
+          <button class="icon-btn" data-press=".88" data-back aria-label="Voltar"><svg class="ico i24"><use href="#i-back"/></svg></button>
+          <h1>Scriptter AI</h1>
+          <button class="timeline-btn" id="toTimeline" data-press=".95"><svg class="ico i20"><use href="#i-chart"/></svg>Timeline</button>
+        </div>
+        <div class="ai-scroll">
+          <div class="ai-card" id="aiCard">
+            <div class="ai-card-head"><svg class="ico i22 feather-mark"><use href="#i-feather"/></svg><b>Scriptter <em>AI</em></b></div>
+            <button class="ai-excerpt" id="aiExcerpt" aria-label="Abrir e editar o trecho">
+              <div class="excerpt-body" id="excerpt"></div>
+              <span class="tap-hint"><svg class="ico i16"><use href="#i-pencil"/></svg>Toque para abrir e editar</span>
+            </button>
+          </div>
+          <div class="ai-loader" id="aiLoader" aria-live="polite">
+            <span class="quill"><svg class="ico i20"><use href="#i-feather"/></svg><i class="ink"></i></span>
+            <span class="msgs"><span class="msg is-on">Analisando roteiro…</span><span class="msg">Construindo cenas…</span><span class="msg">Fortalecendo o gancho…</span></span>
+          </div>
+          <p class="ai-summary" id="aiSummary"><svg class="ico i20"><use href="#i-feather"/></svg><span>Reduzida a sequência central de ameaça, confronto e revelação em 30 segundos.</span></p>
+          <div class="ai-row">
+            <button class="btn-outline" id="newEp" data-press=".95"><svg class="ico i20"><use href="#i-folder"/></svg>Novo episódio</button>
+            <button class="btn-white" id="toBoard" data-press=".95"><svg class="ico i20"><use href="#i-clapper"/></svg>Ver em quadros <span class="free">3 grátis</span></button>
+          </div>
+          <div class="actions" id="actions">
+            <button class="act blue" data-act="hook" data-press=".95"><span class="act-ico"><svg class="ico i18"><use href="#i-clapper"/></svg></span><span class="act-txt">Fortalecer o gancho inicial</span></button>
+            <button class="act orange" data-act="threat" data-press=".95"><span class="act-ico"><svg class="ico i18"><use href="#i-quote"/></svg></span><span class="act-txt">Encurtar a ameaça</span></button>
+            <button class="act green" data-act="clash" data-press=".95"><span class="act-ico"><svg class="ico i18"><use href="#i-scissors"/></svg></span><span class="act-txt">Acelerar o confronto</span></button>
+            <button class="act red" data-act="reveal" data-press=".95"><span class="act-ico"><svg class="ico i18"><use href="#i-target"/></svg></span><span class="act-txt">Destacar a revelação</span></button>
+          </div>
+        </div>
+        <div class="ai-panel docked" id="aiPanel">
+          <div class="ai-panel-top"><span class="ph">Roteiros com Scriptter AI</span><svg class="ico i20 muted"><use href="#i-chev"/></svg></div>
+          <div class="ai-panel-row">
+            <button class="round" data-press=".9" aria-label="Adicionar"><svg class="ico i20"><use href="#i-plus"/></svg></button>
+            <button class="pill" data-press=".95"><svg class="ico i18"><use href="#i-pencil"/></svg>Scriptter Write<svg class="ico i14 muted"><use href="#i-chev"/></svg></button>
+            <button class="pill dim" data-press=".95"><svg class="ico i18"><use href="#i-clock"/></svg>Auto</button>
+            <button class="mic" data-press=".9" aria-label="Falar"><svg class="ico i20 mic-ico"><use href="#i-mic"/></svg><span class="wave"><i></i><i></i><i></i><i></i><i></i></span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= STORYBOARD ================= -->
+      <section class="screen" id="storyboard" data-screen="storyboard">
+        <div class="sb-top">
+          <button class="icon-btn" data-press=".88" data-back aria-label="Voltar"><svg class="ico i24"><use href="#i-back"/></svg></button>
+          <button class="icon-btn" data-press=".88" aria-label="Menu"><svg class="ico i22"><use href="#i-dots"/></svg></button>
+        </div>
+        <div class="sb-list" id="sbList"></div>
+      </section>
+
+      <!-- ================= TIMELINE ================= -->
+      <section class="screen" id="timeline" data-screen="timeline">
+        <div class="ai-top">
+          <button class="icon-btn" data-press=".88" data-back aria-label="Voltar"><svg class="ico i24"><use href="#i-back"/></svg></button>
+          <h1>Timeline</h1>
+          <span class="tl-total" id="tlTotal">3min55</span>
+        </div>
+        <div class="tl-ruler" id="tlRuler"></div>
+        <div class="tl-scroll">
+          <div class="tl-ep" id="tlEp1"><span class="tl-ep-title">Episódio 1 · A Noiva da Herança</span></div>
+          <ol class="tl-list" id="tlList"></ol>
+          <div id="tlExtra"></div>
+          <p class="tl-hint">Segure uma cena para reordenar</p>
+        </div>
+      </section>
+
+      <!-- ================= CAMADAS GLOBAIS ================= -->
+      <nav class="tabbar" id="tabbar" aria-label="Navegação principal">
+        <span class="tab-cap" id="tabCap"></span>
+        <button class="tab is-on" data-tab="home" aria-label="Início"><svg class="ico i26"><use href="#i-home"/></svg></button>
+        <button class="tab plus" id="plusBtn" aria-label="Criar" aria-expanded="false"><svg class="ico i26 plus-ico"><use href="#i-plus"/></svg></button>
+        <button class="tab" data-tab="profile" aria-label="Perfil"><svg class="ico i26"><use href="#i-user"/></svg></button>
+      </nav>
+
+      <div class="radial-scrim" id="radialScrim"></div>
+      <div class="radial" id="radial" aria-hidden="true">
+        <div class="arc" id="arc"><svg class="ticks" id="ticks" viewBox="0 0 594 594"></svg></div>
+        <button class="r-item" style="--x:195px;--y:618px" data-order="0" data-go="editor"><span class="r-circ"><svg class="ico i28"><use href="#i-script"/></svg></span><span class="r-lbl">Roteiro</span></button>
+        <button class="r-item" style="--x:103px;--y:648px" data-order="1" data-go="camera"><span class="r-circ"><svg class="ico i26"><use href="#i-camera"/></svg></span><span class="r-lbl">Câmera</span><span class="r-badge">Novo</span></button>
+        <button class="r-item" style="--x:287px;--y:648px" data-order="1" data-go="ai"><span class="r-circ"><svg class="ico i28"><use href="#i-sparkfeather"/></svg></span><span class="r-lbl">Scriptter Ai</span><span class="r-badge">Novo</span></button>
+        <button class="r-item faint" style="--x:43px;--y:722px" data-order="2" data-go="tele"><span class="r-circ sm"><svg class="ico i24"><use href="#i-tele"/></svg></span><span class="r-lbl">Teleprompter</span></button>
+        <button class="r-item faint" style="--x:347px;--y:722px" data-order="2" data-go="storyboard"><span class="r-circ sm"><svg class="ico i24"><use href="#i-image"/></svg></span><span class="r-lbl">Storyboard</span><span class="r-badge pro">PRO</span></button>
+      </div>
+
+      <div class="dim" id="sheetDim"></div>
+      <div class="sheet" id="sheet" role="dialog" aria-label="Análise do roteiro">
+        <div class="grab" id="sheetGrab"><span></span></div>
+        <div class="sheet-head" id="sheetHead">
+          <h2>A Noiva da Herança</h2>
+          <span class="dur-pill"><svg class="ico i18"><use href="#i-clock"/></svg>16min24</span>
+          <button class="x-btn" id="sheetClose" data-press=".88" aria-label="Fechar"><svg class="ico i20"><use href="#i-close"/></svg></button>
+        </div>
+        <div class="scores" id="scores">
+          <span class="score"><b>Hook</b><span class="num">+<i data-to="29">0</i></span><span class="tag">Bom</span></span>
+          <span class="score"><b>Meio</b><span class="num">+<i data-to="39">0</i></span><span class="tag">Bom</span></span>
+          <span class="score lime"><b>Final</b><span class="num">+<i data-to="15">0</i></span><span class="tag">Bom</span></span>
+        </div>
+        <div class="chart" id="chart">
+          <svg viewBox="0 0 820 300" preserveAspectRatio="none">
+            <defs><linearGradient id="cg" x1="0" x2="1"><stop offset="0" stop-color="#66d64b"/><stop offset=".5" stop-color="#3fca58"/><stop offset="1" stop-color="#b6d22b"/></linearGradient></defs>
+            <g class="grid" stroke="currentColor" stroke-width="1">
+              <path d="M0 60H820M0 120H820M0 180H820M0 240H820"/>
+              <path d="M68 0V300M205 0V300M342 0V300M478 0V300M615 0V300M752 0V300"/>
+            </g>
+            <path class="area" id="chartArea" d="M0,300 C25,150 50,40 138,30 C200,25 250,55 270,53 C320,50 350,12 403,15 C460,18 520,72 568,70 C610,68 650,45 683,50 C740,58 760,120 820,300 Z" fill="url(#cg)"/>
+          </svg>
+          <span class="scan" id="chartScan"></span>
+        </div>
+      </div>
+
+      <div class="layer" id="layer"></div>
+      <div class="toast" id="toast"><svg class="ico i18"><use href="#i-check"/></svg><span></span></div>
+    </div>
+  </div>
+</div>
+
+<script src="motion.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
