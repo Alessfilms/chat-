@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Eryon — Episódio 1</title>
+<style>
+@font-face{font-family:Cinzel;src:url(node_modules/@fontsource/cinzel/files/cinzel-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:Cinzel;src:url(node_modules/@fontsource/cinzel/files/cinzel-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:Cormorant;src:url(node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-italic.woff2) format('woff2');font-style:italic}
+html,body{margin:0;background:#000;overflow:hidden}
+#stage{position:relative;width:1080px;height:1920px;transform-origin:0 0}
+canvas{position:absolute;inset:0;width:1080px!important;height:1920px!important;display:block}
+.ov{position:absolute;left:0;right:0;text-align:center;color:#f4f1ea;pointer-events:none;opacity:0;text-shadow:0 0 30px rgba(20,30,50,.35),0 2px 6px rgba(20,30,50,.35)}
+#title{top:640px;font-family:Cinzel;font-weight:500;font-size:150px;letter-spacing:.32em;padding-left:.32em}
+#subtitle{top:830px;font-family:Cormorant;font-style:italic;font-size:44px;letter-spacing:.06em;color:#eef0f4}
+#counter{top:300px;font-family:Cinzel;font-weight:400;font-size:34px;letter-spacing:.4em;padding-left:.4em}
+#counter b{display:block;font-weight:500;font-size:120px;letter-spacing:.08em;padding:0;margin-top:6px}
+</style></head><body>
+<div id="stage">
+  <div id="title" class="ov">ERYON</div>
+  <div id="subtitle" class="ov">onde ninguém jamais chegou</div>
+  <div id="counter" class="ov">MORADORES<b>2</b></div>
+</div>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js"}}</script>
+<script type="module" src="src/main.js"></script>
+</body></html>
