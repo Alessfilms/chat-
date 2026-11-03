@@ -4,36 +4,32 @@
 <meta charset="utf-8">
 <title>Eryon</title>
 <style>
-@font-face{font-family:Deco;src:url(vendor/fonts/cinzel-decorative-latin-700-normal.woff2)}
-@font-face{font-family:Cinzel;src:url(vendor/fonts/cinzel-latin-600-normal.woff2)}
-@font-face{font-family:Corm;font-weight:600;src:url(vendor/fonts/cormorant-garamond-latin-600-normal.woff2)}
-@font-face{font-family:Corm;font-weight:700;src:url(vendor/fonts/cormorant-garamond-latin-700-normal.woff2)}
+@font-face{font-family:Pix;src:url(vendor/fonts/pixelify-sans-latin-700-normal.woff2)}
+@font-face{font-family:P2P;src:url(vendor/fonts/press-start-2p-latin-400-normal.woff2)}
 html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#000}
 #stage{position:absolute;inset:0;width:1080px;height:1920px}
 canvas{position:absolute;inset:0;width:1080px!important;height:1920px!important;image-rendering:pixelated}
 .ov{position:absolute;pointer-events:none}
-#capbg{left:0;right:0;top:1180px;height:560px;background:radial-gradient(ellipse 70% 45% at 50% 50%,rgba(10,14,8,.42),rgba(10,14,8,0) 100%)}
-#caption{left:70px;right:70px;top:1330px;text-align:center;font:700 64px/1.16 Corm,serif;color:#fffbea;
-  text-shadow:0 3px 0 rgba(20,26,14,.7),0 0 24px rgba(0,0,0,.7),0 0 6px rgba(0,0,0,.75);letter-spacing:.3px}
-#caption span{display:inline-block;white-space:pre;will-change:transform,opacity,filter}
-#caption span.k{color:#ffd77a}
-#title{left:0;right:0;top:300px;text-align:center;font:700 170px/1 Deco,serif;color:#fff3cf;letter-spacing:14px;
-  text-shadow:0 0 30px rgba(255,214,120,.75),0 0 80px rgba(255,190,90,.45),0 6px 0 rgba(60,40,20,.45)}
-#title small{display:block;font:600 34px/1 Cinzel,serif;letter-spacing:16px;margin-top:22px;color:#fff6dd;
-  text-shadow:0 0 14px rgba(0,0,0,.6)}
-#title b{display:inline-block;font-weight:700}
-#counter{left:50%;top:150px;transform:translateX(-50%);padding:18px 40px 18px 30px;border-radius:60px;
-  background:linear-gradient(180deg,rgba(40,36,30,.72),rgba(20,18,14,.72));border:2px solid rgba(255,220,150,.55);
-  box-shadow:0 0 30px rgba(255,200,120,.25),inset 0 0 18px rgba(255,220,150,.12);
-  font:600 44px/1 Cinzel,serif;color:#fff2d2;white-space:nowrap;display:flex;align-items:center;gap:18px}
-#counter .ic{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#fff 0 22%,#ffe3a0 23% 30%,transparent 31%),
-  radial-gradient(ellipse at 50% 100%,#ffe3a0 0 45%,transparent 46%);box-shadow:0 0 16px #ffcf70;border:2px solid #ffdc8a}
-#counter .num{color:#ffd77a;min-width:30px;text-align:center;display:inline-block}
-.label{transform:translate(-50%,-100%);font:600 34px/1 Cinzel,serif;color:#fff6dc;padding:10px 20px;border-radius:30px;
-  background:rgba(25,22,18,.62);border:1.5px solid rgba(255,220,150,.6);white-space:nowrap;
-  text-shadow:0 0 8px rgba(0,0,0,.5);box-shadow:0 0 18px rgba(255,210,130,.25)}
-.label:after{content:"";position:absolute;left:50%;bottom:-11px;margin-left:-9px;border:9px solid transparent;border-top-color:rgba(255,220,150,.6);border-bottom:0}
-#q{transform:translate(-50%,-50%);font:700 150px/1 Deco,serif;color:#fff;text-shadow:0 0 30px #ffe6a0,0 0 70px #ffc860}
+#caption{left:40px;right:40px;top:1240px;text-align:center;font:700 124px/1.05 Pix,monospace;color:#ffd84a;text-transform:uppercase;
+  text-shadow:-7px -7px 0 #1a1208,-7px 0px 0 #1a1208,-7px 7px 0 #1a1208,0px -7px 0 #1a1208,0px 7px 0 #1a1208,7px -7px 0 #1a1208,7px 0px 0 #1a1208,7px 7px 0 #1a1208,0px 14px 0 #1a1208,7px 14px 0 #1a1208,-7px 14px 0 #1a1208;letter-spacing:4px}
+#caption span{display:inline-block;white-space:pre}
+#caption span.k{color:#9ff3ff}
+#title{left:0;right:0;top:330px;text-align:center;font:400 128px/1 P2P,monospace;color:#ffd84a;letter-spacing:6px;
+  text-shadow:-8px -8px 0 #1a1208,-8px 0px 0 #1a1208,-8px 8px 0 #1a1208,0px -8px 0 #1a1208,0px 8px 0 #1a1208,8px -8px 0 #1a1208,8px 0px 0 #1a1208,8px 8px 0 #1a1208,0px 16px 0 #1a1208,8px 16px 0 #1a1208,-8px 16px 0 #1a1208}
+#title small{display:block;font:700 44px/1 Pix,monospace;letter-spacing:6px;margin-top:40px;color:#fff3b0;
+  text-shadow:-4px -4px 0 #1a1208,-4px 0px 0 #1a1208,-4px 4px 0 #1a1208,0px -4px 0 #1a1208,0px 4px 0 #1a1208,4px -4px 0 #1a1208,4px 0px 0 #1a1208,4px 4px 0 #1a1208,0px 8px 0 #1a1208,4px 8px 0 #1a1208,-4px 8px 0 #1a1208}
+#title b{display:inline-block;font-weight:400}
+#counter{left:50%;top:140px;transform:translateX(-50%);padding:16px 30px 14px 22px;
+  background:#1c2a22;border:6px solid #0c1410;box-shadow:inset 0 0 0 5px #c9a46a,0 8px 0 rgba(0,0,0,.45);
+  font:700 52px/1 Pix,monospace;color:#fff3b0;white-space:nowrap;display:flex;align-items:center;gap:16px;text-transform:uppercase}
+#counter .ic{width:40px;height:44px;background:
+  linear-gradient(#ffd84a,#ffd84a) 12px 0/16px 18px no-repeat,
+  linear-gradient(#ffd84a,#ffd84a) 4px 22px/32px 22px no-repeat}
+#counter .num{font:400 40px/1 P2P,monospace;color:#ffd84a;min-width:30px;text-align:center;display:inline-block}
+.label{transform:translate(-50%,-100%);font:700 38px/1 Pix,monospace;color:#fff3b0;padding:10px 16px 8px;
+  background:#1c2a22;border:5px solid #0c1410;box-shadow:inset 0 0 0 4px #c9a46a;white-space:nowrap;text-transform:uppercase}
+.label:after{content:"";position:absolute;left:50%;bottom:-17px;margin-left:-10px;width:20px;height:12px;background:#0c1410}
+#q{transform:translate(-50%,-50%);font:400 130px/1 P2P,monospace;color:#ffd84a;text-shadow:-8px -8px 0 #1a1208,-8px 0px 0 #1a1208,-8px 8px 0 #1a1208,0px -8px 0 #1a1208,0px 8px 0 #1a1208,8px -8px 0 #1a1208,8px 0px 0 #1a1208,8px 8px 0 #1a1208,0px 16px 0 #1a1208,8px 16px 0 #1a1208,-8px 16px 0 #1a1208}
 </style>
 </head>
 <body>
@@ -44,7 +40,6 @@ canvas{position:absolute;inset:0;width:1080px!important;height:1920px!important;
   <div id="labB" class="ov label">Morador 2</div>
   <div id="labC" class="ov label">Morador 3</div>
   <div id="q" class="ov">?</div>
-  <div id="capbg" class="ov"></div>
   <div id="caption" class="ov"></div>
 </div>
 <script type="module">
@@ -55,7 +50,7 @@ const OFFSET = 0;            // segundos de abertura antes da narração
 const END = 53.4;              // tempo de cena final
 window.DURATION = OFFSET + END;
 window.OFFSET = OFFSET;
-const W = 1080, H = 1920, RS = 0.5;  // render a meia resolução e amplia em pixel art
+const W = 1080, H = 1920, RS = 0.25;  // pixel art: 270x480 ampliado 4x
 const RW = W * RS, RH = H * RS;
 
 const CUES = [
@@ -128,7 +123,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuff
 renderer.setPixelRatio(1);
 renderer.setSize(RW, RH, false);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('stage').prepend(renderer.domElement);
 
@@ -137,8 +132,8 @@ scene.fog = new THREE.Fog(0xcfe6d8, 40, 200);
 const camera = new THREE.PerspectiveCamera(30, RW / RH, 0.3, 600);
 
 // SSAA leve: renderiza a cena em 2x e reduz no pós
-const rtBig = new THREE.WebGLRenderTarget(RW * 2, RH * 2, { type: THREE.HalfFloatType });
-rtBig.depthTexture = new THREE.DepthTexture(RW * 2, RH * 2);
+const rtBig = new THREE.WebGLRenderTarget(RW, RH, { type: THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+rtBig.depthTexture = new THREE.DepthTexture(RW, RH);
 rtBig.depthTexture.type = THREE.UnsignedIntType;
 
 // toon gradient
@@ -176,7 +171,7 @@ const amb = new THREE.AmbientLight(0x9fb7d8, .25); scene.add(amb);
 {
   const g = new THREE.PlaneGeometry(420, 420, 210, 210); g.rotateX(-Math.PI / 2);
   const p = g.attributes.position, col = [];
-  const c1 = new THREE.Color(0xb7d867), c2 = new THREE.Color(0x92c255), c3 = new THREE.Color(0x7fb04c), sand = new THREE.Color(0xd9cf98), dirt = new THREE.Color(0xd8d199), tmp = new THREE.Color();
+  const c1 = new THREE.Color(0x8fb35c), c2 = new THREE.Color(0x76a052), c3 = new THREE.Color(0x557e4a), sand = new THREE.Color(0xd9cf98), dirt = new THREE.Color(0xd8d199), tmp = new THREE.Color();
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), z = p.getZ(i), h = heightAt(x, z); p.setY(i, h);
     const n = fbm(x * .09 + 3, z * .09);
@@ -275,7 +270,7 @@ const treeParts = [];
   const cone3 = new THREE.ConeGeometry(.6, 1.2, 6); cone3.translate(0, 3.25, 0);
   const trunkM = toon(0x8a6a4e), crownM = swayMat(toon(0xffffff)), pineM = swayMat(toon(0xffffff), .035);
   const defs = [[trunkG, trunkM, 'all'], [crownG, crownM, 0], [crown2G, crownM, 0], [cone1, pineM, 1], [cone2, pineM, 1], [cone3, pineM, 1]];
-  const greens = [0x5fae48, 0x6dbb4f, 0x4f9f41, 0x7cc257, 0x58a24c, 0x8cc65a], pines = [0x3e8a4f, 0x47965a, 0x367d4a, 0x2f7047];
+  const greens = [0x3f7a45, 0x4c8a4a, 0x5a9650, 0x356d42, 0x6a9f55, 0x48804a, 0x7a8f45], pines = [0x2a5a40, 0x31644a, 0x244f3a, 0x1f4535];
   const dummy = new THREE.Object3D(), col = new THREE.Color();
   for (const [g, m, ty] of defs) {
     const list = treeList.filter(t => ty === 'all' || t.type === ty);
@@ -436,7 +431,7 @@ function particleField(n, opts) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
   const m = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: opts.blending ?? THREE.AdditiveBlending,
-    uniforms: { uTime: timeU, uOpacity: { value: 1 }, uColor: { value: new THREE.Color(opts.color) }, uSize: { value: opts.size }, uTex: { value: glowTex }, uScale: { value: RH } },
+    uniforms: { uTime: timeU, uOpacity: { value: 1 }, uColor: { value: new THREE.Color(opts.color) }, uSize: { value: opts.size }, uTex: { value: glowTex }, uScale: { value: RH / 2 } },
     vertexShader: `attribute float seed; uniform float uTime, uSize, uScale; varying float vA;
       void main(){ vec3 p=position; float t=uTime*${(opts.speed ?? 1).toFixed(2)};
         ${opts.motion}
@@ -474,7 +469,7 @@ function burst(t0, pos, color, n = 60, speed = 3, life = 1.4, size = .18, gravit
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(dirs, 3)); g.setAttribute('seed', new THREE.BufferAttribute(seed, 1));
   const m = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending,
-    uniforms: { uAge: { value: -1 }, uO: { value: pos.clone() }, uColor: { value: new THREE.Color(color) }, uTex: { value: glowTex }, uScale: { value: RH } },
+    uniforms: { uAge: { value: -1 }, uO: { value: pos.clone() }, uColor: { value: new THREE.Color(color) }, uTex: { value: glowTex }, uScale: { value: RH / 2 } },
     vertexShader: `attribute float seed; uniform float uAge, uScale; uniform vec3 uO; varying float vA;
       void main(){ float a=max(uAge,0.); float k=1.-exp(-a*2.2); vec3 p=uO+position*${speed.toFixed(2)}*k; p.y+=${gravity.toFixed(2)}*a*a*.5;
       vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; float life=${life.toFixed(2)}*(.6+.4*seed);
@@ -702,45 +697,35 @@ const rayMat = new THREE.ShaderMaterial({
 const rays = new THREE.Mesh(new THREE.CylinderGeometry(5, 8, 72, 32, 1, true), rayMat); scene.add(rays);
 
 // ============================================================ post-processing
+const PAL = '0c2120 142c29 1c3831 263c35 2a4a3d 3c5d4a 4e6c4a 667c4d 7c9b5b 9cbf62 c4d97a e6efa0 2e1d16 4a2f22 6b4630 8b5e3c a3794b c9a46a e4d0a0 2b3138 4a535c 6e7a84 98a4ac c4ccd0 eef0ea ffffff 0a0f0e 1d3550 2c4f7a 3f7ab0 6fb0d8 bfe6f5 3fd0e0 9ff3ff 1a2433 3a4a5e 5a2418 8a3a1c a83a32 d0622a f2a33a ffd84a fff3b0 e8b48c 3c5f9a 6e4a8a b06a9a f6b6d8'.split(' ').map(h => new THREE.Vector3(parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255));
 const post = new THREE.ShaderMaterial({
   uniforms: {
-    tCol: { value: rtBig.texture }, tDep: { value: rtBig.depthTexture }, uNear: { value: .3 }, uFar: { value: 600 }, uFocus: { value: 20 }, uAp: { value: 0 }, uMaxR: { value: 7 },
-    uRes: { value: new THREE.Vector2(RW, RH) }, uFade: { value: 0 }, uMist: { value: 0 }, uMistC: { value: new THREE.Color(0xffffff) }, uTime: { value: 0 },
-    uSat: { value: 1.1 }, uTint: { value: new THREE.Color(1, 1, 1) }, uVig: { value: .35 }, uBloomC: { value: new THREE.Color(1, .95, .8) }
+    tCol: { value: rtBig.texture }, tDep: { value: rtBig.depthTexture }, uNear: { value: .3 }, uFar: { value: 600 }, uPal: { value: PAL },
+    uRes: { value: new THREE.Vector2(RW, RH) }, uFade: { value: 0 }, uTime: { value: 0 }, uLine: { value: 1 },
+    uSat: { value: 1.1 }, uTint: { value: new THREE.Color(1, 1, 1) }, uVig: { value: .35 }, uDith: { value: .035 }
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.);} `,
   fragmentShader: `
-  uniform sampler2D tCol, tDep; uniform float uNear,uFar,uFocus,uAp,uMaxR,uFade,uMist,uTime,uSat,uVig; uniform vec2 uRes; uniform vec3 uMistC,uTint; varying vec2 vUv;
+  uniform sampler2D tCol, tDep; uniform float uNear,uFar,uFade,uTime,uSat,uVig,uLine,uDith; uniform vec2 uRes; uniform vec3 uTint; uniform vec3 uPal[48]; varying vec2 vUv;
   float lin(float d){ return uNear*uFar/(uFar-d*(uFar-uNear)); }
-  float coc(vec2 uv){ float z=lin(texture2D(tDep,uv).r); return clamp(uAp*abs(z-uFocus)/z, 0., uMaxR); }
-  float hash(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+  float D(vec2 o){ return lin(texture2D(tDep,vUv+o/uRes).r); }
+  float b2(vec2 p){ return mod(2.*p.x+3.*p.y,4.); }
+  float bayer(vec2 p){ p=floor(p); return (4.*b2(mod(p,2.))+b2(mod(floor(p/2.),2.)))/16.; }
   void main(){
-    float c0 = coc(vUv);
-    vec3 acc = texture2D(tCol,vUv).rgb; float wsum=1.;
-    if(c0>.35){
-      for(int i=0;i<28;i++){
-        float fi=float(i); float r=sqrt((fi+.5)/28.)*c0; float a=fi*2.39996;
-        vec2 o=vec2(cos(a),sin(a))*r/uRes;
-        float cs=coc(vUv+o); float w=smoothstep(r-1.,r+.5,cs+.5);
-        acc+=texture2D(tCol,vUv+o).rgb*w; wsum+=w;
-      }
-    }
-    vec3 col=acc/wsum;
-    // glow suave (bloom barato)
-    vec3 b=vec3(0.);
-    for(int i=0;i<12;i++){ float a=float(i)*2.39996; vec2 o=vec2(cos(a),sin(a))*(3.+float(i)*1.3)/uRes; vec3 s=texture2D(tCol,vUv+o).rgb; b+=max(s-.78,0.); }
-    col+=b*.16;
+    vec3 col=texture2D(tCol,vUv).rgb;
     col=pow(max(col,0.),vec3(1./2.2));
     float l=dot(col,vec3(.299,.587,.114)); col=mix(vec3(l),col,uSat);
     col*=uTint;
-    col=mix(col,uMistC,uMist);
-    vec2 q=vUv-.5; q.x*=.75; col*=1.-uVig*smoothstep(.25,.85,length(q)*1.35);
-    // pontilhado (ordered dither) estilo pixel
-    float bay = hash(floor(gl_FragCoord.xy)) - .5;
-    col += bay/48.;
-    col = floor(col*40.+.5)/40.;
+    vec2 q=vUv-.5; q.x*=.75; col*=1.-uVig*smoothstep(.3,.9,length(q)*1.35);
+    // contorno: pixel bem mais perto que algum vizinho
+    float d=D(vec2(0.)); float dn=max(max(D(vec2(1.,0.)),D(vec2(-1.,0.))),max(D(vec2(0.,1.)),D(vec2(0.,-1.))));
+    float edge=step(.07*d+.12,dn-d)*step(d,uFar*.5);
+    col=mix(col,col*.42,edge*uLine);
     col*=1.-uFade;
-    gl_FragColor=vec4(col,1.);
+    col+= (bayer(gl_FragCoord.xy)-.47)*uDith;
+    vec3 best=uPal[0]; float bd=1e9;
+    for(int i=0;i<48;i++){ vec3 e=uPal[i]-col; float dd=dot(e*e,vec3(2.,4.,3.)); if(dd<bd){bd=dd;best=uPal[i];} }
+    gl_FragColor=vec4(best,1.);
   }`,
   depthTest: false, depthWrite: false
 });
@@ -795,28 +780,30 @@ const numEl = counterEl.querySelector('.num'), wordEl = counterEl.querySelector(
 const labA = document.getElementById('labA'), labB = document.getElementById('labB'), labC = document.getElementById('labC'), qEl = document.getElementById('q');
 titleEl.innerHTML = 'ERYON'.split('').map(c => `<b>${c}</b>`).join('') + '<small>A CIDADE DOS SEGUIDORES</small>';
 const titleLetters = [...titleEl.querySelectorAll('b')], titleSmall = titleEl.querySelector('small');
-// preparar legendas
+// legendas: grupos curtos de palavras, uma por vez (estilo jogo pixel)
+const SMALL = /^(e|a|o|as|os|de|da|do|um|uma|em|no|na|é|que|se|mas|há|não|por|tem|nem|mais|quem|será|isso|cada|um)$/i;
+const strip = w => w.replace(/[.,?!…]/g, '');
+const syl = w => Math.max(1, (strip(w).match(/[aeiouáéíóúâêôãõày]+/gi) || []).length) + (/[.,?!…]$/.test(w) ? .8 : 0);
 const capData = CUES.map(([a, b, txt], ci) => {
-  const words = txt.split(' '); const lens = words.map(w => w.length + 2); const tot = lens.reduce((x, y) => x + y, 0);
-  let acc = 0; const times = words.map((w, i) => { const s = a + (b - a) * acc / tot; acc += lens[i]; return s; });
+  const words = txt.split(' '), wts = words.map(syl), tot = wts.reduce((x, y) => x + y, 0);
+  let acc = 0; const wt = words.map((w, i) => { const s0 = a + (b - a) * acc / tot; acc += wts[i]; return s0; });
+  const groups = []; let cur = [];
+  words.forEach((w, i) => { cur.push(i); const len = cur.map(j => words[j]).join(' ').length; const nxt = words[i + 1];
+    if (nxt && SMALL.test(strip(w)) && !/[.,?!…]$/.test(w) && len + nxt.length < 13) return; groups.push(cur); cur = []; });
+  if (cur.length) groups.push(cur);
   const next = CUES[ci + 1] ? CUES[ci + 1][0] : b + 2.5;
-  return { a, b, words, times, hide: Math.min(b + .9, next - .08) };
+  return { a, b, groups: groups.map(g => ({ html: g.map(j => `<span class="${KEYWORDS.test(strip(words[j])) ? 'k' : ''}">${words[j]}</span>`).join(' '), t: wt[g[0]] })), hide: Math.min(b + .45, next - .05) };
 });
-let capIdx = -2;
+let capKey = '';
 function updateCaption(t) {
-  let idx = -1; for (let i = 0; i < capData.length; i++) if (t >= capData[i].a - .12 && t < capData[i].hide) idx = i;
-  if (idx !== capIdx) {
-    capIdx = idx; capEl.innerHTML = idx < 0 ? '' : capData[idx].words.map(w => `<span class="${KEYWORDS.test(w.replace(/[.,?!…]/g, '')) ? 'k' : ''}">${w}</span>`).join(' ');
-  }
-  if (idx < 0) return;
-  const d = capData[idx], spans = capEl.children;
-  const out = 1 - sstep(d.hide - .22, d.hide, t);
-  for (let i = 0; i < spans.length; i++) {
-    const k = sstep(d.times[i] - .1, d.times[i] + .22, t);
-    spans[i].style.opacity = (k * out).toFixed(3);
-    spans[i].style.transform = `translateY(${((1 - k) * 18).toFixed(1)}px)`;
-    spans[i].style.filter = `blur(${((1 - k) * 5 + (1 - out) * 4).toFixed(1)}px)`;
-  }
+  let g = null;
+  for (const d of capData) if (t >= d.a - .04 && t < d.hide) for (const gr of d.groups) if (t >= gr.t - .04) g = gr;
+  const key = g ? g.html : '';
+  if (key !== capKey) { capKey = key; capEl.innerHTML = key; }
+  if (!g) return;
+  const age = t - (g.t - .04);
+  const sc = age < .034 ? 1.3 : age < .07 ? 1.12 : 1;
+  capEl.style.transform = `scale(${sc})`;
 }
 const pv = new THREE.Vector3();
 function placeLabel(el, p, op) {
@@ -965,13 +952,7 @@ function renderFrame(T) {
   // ---------- render
   renderer.setRenderTarget(rtBig); renderer.render(scene, camera);
   post.uniforms.uNear.value = camera.near; post.uniforms.uFar.value = camera.far; post.uniforms.uTime.value = t;
-  const rack = (t > 17.8 && t < 19.4) ? lerp(2.2, 1, eInOut(seg(t, 18.2, 19.0))) : 1;
-  post.uniforms.uFocus.value = camDist * rack;
-  post.uniforms.uAp.value = numKeys([[-2, 2], [2, 7], [6, 10], [9, 9], [13.5, 7], [17, 10], [19, 15], [23, 11], [25.5, 14], [29, 9], [33.5, 7], [36, 9], [38, 7], [40.7, 10], [43.3, 13], [43.6, 11], [47, 12], [53, 9]], t) * 2;
-  post.uniforms.uMaxR.value = 14;
-  post.uniforms.uRes.value.set(RW * 2, RH * 2);
   const mist = pulse(t, 43.3, CUT, 43.85);
-  post.uniforms.uMist.value = 0; post.uniforms.uMistC.value.setHex(0xf4f0e6);
   post.uniforms.uFade.value = Math.max(sstep(52.4, 53.4, t), mist);
   post.uniforms.uSat.value = 1.12 - grove * .2;
   post.uniforms.uTint.value.set(1, 1, 1);
@@ -991,15 +972,15 @@ function renderFrame(T) {
   if (inB) { n = 2; word = 'moradores'; if (t > 48.3) { n = '3º'; word = 'morador?'; } }
   numEl.textContent = n; wordEl.textContent = word;
   const pop = Math.max(pulse(t, 5.6, 5.75, 6.1), inB ? pulse(t, 48.2, 48.35, 48.8) : 0);
-  counterEl.style.transform = `translateX(-50%) scale(${1 + pop * .08})`;
+  counterEl.style.transform = `translateX(-50%) scale(${pop > .3 ? 1.1 : 1})`;
   // título
   const tA = (!inB && t > 7.6 && t < 13) || (inB && t > 49.0);
   const t0 = inB ? 49.05 : 8.05;
   const tOut = inB ? 1 : 1 - sstep(11.6, 12.6, t);
   titleEl.style.display = tA ? 'block' : 'none';
-  titleLetters.forEach((el, i) => { const k = sstep(t0 + i * .09, t0 + i * .09 + .55, t); el.style.opacity = (k * tOut).toFixed(3); el.style.transform = `translateY(${((1 - eOutCubic(k)) * 40).toFixed(1)}px) scale(${(1.3 - .3 * eOutCubic(k)).toFixed(3)})`; el.style.filter = `blur(${((1 - k) * 12 + (1 - tOut) * 8).toFixed(1)}px)`; });
-  const sk = sstep(t0 + .7, t0 + 1.4, t) * tOut; titleSmall.style.opacity = sk.toFixed(3); titleSmall.style.letterSpacing = (16 + (1 - sk) * 14).toFixed(1) + 'px';
-  titleEl.style.top = (inB ? 250 : 300) + 'px';
+  titleLetters.forEach((el, i) => { const k = seg(t, t0 + i * .1, t0 + i * .1 + .3); const y = Math.round((1 - eOutBack(k)) * -14) * 8; el.style.opacity = (k > 0 && tOut > .5) ? 1 : 0; el.style.transform = `translateY(${y}px)`; });
+  const sk = (t > t0 + .8 && tOut > .5 && !inB) ? 1 : 0; titleSmall.style.opacity = sk;
+  titleEl.style.top = (inB ? 300 : 330) + 'px';
   // ponto de interrogação e label do terceiro
   const qk = inB ? sstep(48.6, 49.3, t) : 0;
   placeLabel(qEl, tmpV.set(POS_C.x, 2.3 + Math.sin(t * 2) * .06, POS_C.z), qk);
@@ -1010,7 +991,7 @@ function renderFrame(T) {
   document.querySelectorAll('.label').forEach(el => { el.style.opacity = (parseFloat(el.style.opacity || 0) * fadeAll).toFixed(3); });
 }
 window.render = renderFrame;
-await document.fonts.load('700 60px Corm'); await document.fonts.load('700 100px Deco'); await document.fonts.load('600 40px Cinzel');
+await document.fonts.load('700 60px Pix'); await document.fonts.load('400 60px P2P');
 renderFrame(OFFSET + 3);
 window.ready = true;
 </script>
