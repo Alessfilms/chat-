@@ -9,12 +9,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "@fontsource/cinzel": "^5.3.0",
-    "@fontsource/cinzel-decorative": "^5.3.0",
-    "@fontsource/cormorant-garamond": "^5.3.0",
-    "@fontsource/pixelify-sans": "^5.3.0",
-    "@fontsource/press-start-2p": "^5.3.0",
-    "three": "^0.160.0"
-  }
+  "dependencies": {}
 }

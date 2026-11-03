@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Renderiza "O nascimento de Eryon" (1080x1920, 30 fps) sincronizado com a narração.
+# Renderiza "O nascimento de Eryon" (pixel art 2D, 1080x1920, 30 fps) sincronizado com a narração.
 # Uso: ./build.sh caminho/da/narracao.mp3 [saida.mp4]
 set -euo pipefail
 cd "$(dirname "$0")"
 NARR="$1"; OUT="${2:-eryon.mp4}"
 FPS=30; W=3
 TMP=$(mktemp -d)
-npm install --silent three@0.160.0 >/dev/null 2>&1 || true
 N=$(node -e "console.log(Math.ceil((53.4)*$FPS))")
 S=$(( (N + W - 1) / W ))
 for i in $(seq 0 $((W-1))); do
