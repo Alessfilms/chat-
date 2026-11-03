@@ -1,0 +1,25 @@
+{
+  "episode": "ep05",
+  "audio": "narration.mp3",
+  "duration": 46,
+  "events": [
+    { "time": 0, "action": "mark", "note": "Demonstração da evolução do mundo: 200 → 500 (casas) → 1000 (vila)." },
+    { "time": 0, "action": "igniteFire", "params": { "duration": 0 } },
+    { "time": 0, "action": "showCharacters", "params": { "duration": 0 } },
+    { "time": 0, "action": "cameraJump", "params": { "to": "fire", "zoom": 1 } },
+    { "time": 0, "action": "counter", "params": { "visible": true } },
+    { "time": 0, "action": "episodeTag", "params": { "visible": true } },
+    { "time": 0, "action": "fade", "params": { "to": 0, "duration": 2 } },
+    { "time": 0.5, "action": "titleCard", "params": { "title": "EP05", "subtitle": "OS HISTORIADORES", "duration": 3.5 } },
+    { "time": 5, "action": "caption", "params": { "text": "Cada seguidor que chega\nacende mais uma luz.", "duration": 5, "position": "top" } },
+    { "time": 8, "action": "historians", "params": { "count": 500, "duration": 7 } },
+    { "time": 16, "action": "caption", "params": { "text": "A clareira virou\num acampamento.", "duration": 4, "position": "top" } },
+    { "time": 21, "action": "historians", "params": { "count": 1000, "duration": 7 } },
+    { "time": 29, "action": "celebrate", "params": { "target": "all" } },
+    { "time": 30, "action": "caption", "params": { "text": "Próxima meta:\numa cidade.", "duration": 5, "position": "top" } },
+    { "time": 34, "action": "syncApi" },
+    { "time": 36, "action": "printStory", "params": { "title": "CARTA AOS HISTORIADORES", "text": "Cada comentário é uma página. Cada seguidor, uma voz. Juntos, vamos surpreender o Rei." } },
+    { "time": 44, "action": "hideScroll" },
+    { "time": 44, "action": "endCard", "params": { "text": "CONSTRUA O REINO", "cta": "SIGA · COMENTE · COMPARTILHE" } }
+  ]
+}

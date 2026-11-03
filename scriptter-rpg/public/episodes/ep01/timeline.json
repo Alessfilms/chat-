@@ -1,0 +1,445 @@
+{
+ "episode": "ep01",
+ "audio": "narration.mp3",
+ "duration": 98.4,
+ "events": [
+  {
+   "time": "00:00.0",
+   "action": "mark",
+   "note": "fala 1 (0.0–4.9s): câmera entra na floresta"
+  },
+  {
+   "time": "00:00.0",
+   "action": "cameraJump",
+   "params": {
+    "to": "forestSouth",
+    "zoom": 3
+   }
+  },
+  {
+   "time": "00:00.0",
+   "action": "letterbox",
+   "params": {
+    "on": true,
+    "duration": 0
+   }
+  },
+  {
+   "time": "00:00.0",
+   "action": "ambient",
+   "params": {
+    "leaves": 380,
+    "foreground": 1,
+    "fog": 1.3,
+    "duration": 0
+   }
+  },
+  {
+   "time": "00:00.0",
+   "action": "fade",
+   "params": {
+    "to": 0,
+    "duration": 2.5
+   }
+  },
+  {
+   "time": "00:00.2",
+   "action": "camera",
+   "params": {
+    "to": "forestEdge",
+    "zoom": 3,
+    "duration": 8.5,
+    "ease": "Sine.easeInOut"
+   }
+  },
+  {
+   "time": "00:03.0",
+   "action": "igniteFire",
+   "params": {
+    "duration": 2.5
+   },
+   "note": "aparece a fogueira"
+  },
+  {
+   "time": "00:05.4",
+   "action": "mark",
+   "note": "fala 2 (5.4–9.7s): a câmera encontra a clareira"
+  },
+  {
+   "time": "00:05.4",
+   "action": "ambient",
+   "params": {
+    "leaves": 0,
+    "foreground": 0,
+    "fog": 0.9,
+    "duration": 3
+   }
+  },
+  {
+   "time": "00:06.0",
+   "action": "showCharacters",
+   "params": {
+    "ids": [
+     "A",
+     "B"
+    ],
+    "duration": 1.2,
+    "stagger": 0.6
+   },
+   "note": "aparecem os dois historiadores"
+  },
+  {
+   "time": "00:08.6",
+   "action": "camera",
+   "params": {
+    "to": "fire",
+    "dy": -8,
+    "zoom": 2,
+    "duration": 3.5,
+    "ease": "Sine.easeOut"
+   }
+  },
+  {
+   "time": "00:10.3",
+   "action": "mark",
+   "note": "fala 3 (10.3–18.2s)"
+  },
+  {
+   "time": "00:10.3",
+   "action": "caption",
+   "params": {
+    "text": "Quando tudo começou...\néramos apenas dois.",
+    "duration": 7.6,
+    "position": "top"
+   }
+  },
+  {
+   "time": "00:12.0",
+   "action": "cameraBreathe",
+   "params": {
+    "amount": 1
+   }
+  },
+  {
+   "time": "00:13.5",
+   "action": "anim",
+   "params": {
+    "target": "B",
+    "anim": "interact",
+    "dir": "left"
+   }
+  },
+  {
+   "time": "00:15.0",
+   "action": "anim",
+   "params": {
+    "target": "A",
+    "anim": "interact",
+    "dir": "right"
+   }
+  },
+  {
+   "time": "00:17.5",
+   "action": "anim",
+   "params": {
+    "target": "all",
+    "anim": "idle",
+    "dir": "down"
+   }
+  },
+  {
+   "time": "00:18.9",
+   "action": "mark",
+   "note": "fala 4 (18.9–21.5s)"
+  },
+  {
+   "time": "00:18.9",
+   "action": "caption",
+   "params": {
+    "text": "Mas uma história\nnunca cresce sozinha.",
+    "duration": 3.4,
+    "position": "top"
+   }
+  },
+  {
+   "time": "00:19.5",
+   "action": "fireBurst",
+   "params": {
+    "count": 24
+   }
+  },
+  {
+   "time": "00:22.0",
+   "action": "mark",
+   "note": "fala 5 (22.0–29.4s): câmera começa a se afastar"
+  },
+  {
+   "time": "00:22.0",
+   "action": "letterbox",
+   "params": {
+    "on": false,
+    "duration": 1.2
+   }
+  },
+  {
+   "time": "00:22.0",
+   "action": "episodeTag",
+   "params": {
+    "visible": true
+   }
+  },
+  {
+   "time": "00:22.0",
+   "action": "counter",
+   "params": {
+    "visible": true
+   }
+  },
+  {
+   "time": "00:22.0",
+   "action": "historians",
+   "params": {
+    "count": 2,
+    "duration": 0
+   }
+  },
+  {
+   "time": "00:22.4",
+   "action": "cameraFit",
+   "params": {
+    "count": 10,
+    "zoom": 2,
+    "duration": 4
+   }
+  },
+  {
+   "time": "00:23.0",
+   "action": "historians",
+   "params": {
+    "count": 10,
+    "duration": 6
+   },
+   "note": "novos historiadores começam a chegar"
+  },
+  {
+   "time": "00:30.1",
+   "action": "mark",
+   "note": "fala 6 (30.1–33.4s)"
+  },
+  {
+   "time": "00:30.1",
+   "action": "cameraFit",
+   "params": {
+    "count": 50,
+    "zoom": 2,
+    "duration": 4
+   }
+  },
+  {
+   "time": "00:30.6",
+   "action": "historians",
+   "params": {
+    "count": 50,
+    "duration": 8
+   }
+  },
+  {
+   "time": "00:39.3",
+   "action": "mark",
+   "note": "fala 8 (39.3–43.1s)"
+  },
+  {
+   "time": "00:38.6",
+   "action": "cameraFit",
+   "params": {
+    "count": 200,
+    "zoom": 1,
+    "duration": 6
+   }
+  },
+  {
+   "time": "00:39.3",
+   "action": "historians",
+   "params": {
+    "count": 100,
+    "duration": 6
+   }
+  },
+  {
+   "time": "00:48.0",
+   "action": "mark",
+   "note": "fala 10 (48.0–50.0s)"
+  },
+  {
+   "time": "00:46.0",
+   "action": "historians",
+   "params": {
+    "count": 200,
+    "duration": 8
+   }
+  },
+  {
+   "time": "00:54.6",
+   "action": "mark",
+   "note": "fala 12 (54.6–57.8s): comemoração"
+  },
+  {
+   "time": "00:54.6",
+   "action": "celebrate",
+   "params": {
+    "target": "all",
+    "duration": 2.6
+   }
+  },
+  {
+   "time": "00:54.6",
+   "action": "fireBurst",
+   "params": {
+    "count": 40
+   }
+  },
+  {
+   "time": "00:54.8",
+   "action": "cameraShake",
+   "params": {
+    "intensity": 0.002,
+    "duration": 0.4
+   }
+  },
+  {
+   "time": "00:56.0",
+   "action": "toast",
+   "params": {
+    "text": "200 HISTORIADORES REUNIDOS",
+    "icon": "icon-quill"
+   }
+  },
+  {
+   "time": "01:00.9",
+   "action": "mark",
+   "note": "fala 14 (60.9–71.0s): a máquina SCRIPTTER aparece"
+  },
+  {
+   "time": "01:00.9",
+   "action": "camera",
+   "params": {
+    "to": "machine",
+    "dy": -14,
+    "zoom": 3,
+    "duration": 4.5
+   }
+  },
+  {
+   "time": "01:02.5",
+   "action": "revealMachine"
+  },
+  {
+   "time": "01:03.0",
+   "action": "letterbox",
+   "params": {
+    "on": true,
+    "duration": 1
+   }
+  },
+  {
+   "time": "01:06.5",
+   "action": "activateMachine"
+  },
+  {
+   "time": "01:07.0",
+   "action": "cameraShake",
+   "params": {
+    "intensity": 0.0025,
+    "duration": 0.5
+   }
+  },
+  {
+   "time": "01:11.6",
+   "action": "mark",
+   "note": "fala 15 (71.6–82.5s): o primeiro pergaminho"
+  },
+  {
+   "time": "01:11.6",
+   "action": "printStory",
+   "params": {
+    "title": "A PRIMEIRA HISTÓRIA",
+    "text": "Num reino onde contar histórias era proibido, dois jovens criaram uma máquina que transforma ideias em histórias."
+   }
+  },
+  {
+   "time": "01:22.4",
+   "action": "hideScroll"
+  },
+  {
+   "time": "01:23.0",
+   "action": "mark",
+   "note": "fala 16 (83.0–92.3s): todos juntos"
+  },
+  {
+   "time": "01:23.0",
+   "action": "letterbox",
+   "params": {
+    "on": false,
+    "duration": 1
+   }
+  },
+  {
+   "time": "01:23.0",
+   "action": "cameraFit",
+   "params": {
+    "count": 200,
+    "zoom": 1,
+    "duration": 5
+   }
+  },
+  {
+   "time": "01:23.0",
+   "action": "syncApi",
+   "note": "a partir daqui, o contador pode seguir os seguidores reais (?live=1)"
+  },
+  {
+   "time": "01:25.5",
+   "action": "celebrate",
+   "params": {
+    "target": "crowd",
+    "duration": 2
+   }
+  },
+  {
+   "time": "01:26.0",
+   "action": "caption",
+   "params": {
+    "text": "Cada seguidor é\num novo historiador.",
+    "duration": 5.5,
+    "position": "top"
+   }
+  },
+  {
+   "time": "01:32.7",
+   "action": "mark",
+   "note": "fala 17 (92.7–98.4s): encerramento"
+  },
+  {
+   "time": "01:32.7",
+   "action": "endCard",
+   "params": {
+    "text": "A HISTÓRIA SÓ COMEÇOU",
+    "cta": "SIGA E TORNE-SE UM HISTORIADOR"
+   }
+  },
+  {
+   "time": "01:00.9",
+   "action": "showNames",
+   "params": {
+    "visible": false
+   }
+  },
+  {
+   "time": "01:23.0",
+   "action": "showNames",
+   "params": {
+    "visible": true
+   }
+  }
+ ]
+}

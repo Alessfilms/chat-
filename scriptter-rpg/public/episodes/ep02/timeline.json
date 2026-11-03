@@ -1,0 +1,32 @@
+{
+  "episode": "ep02",
+  "audio": "narration.mp3",
+  "duration": 44,
+  "events": [
+    { "time": 0, "action": "mark", "note": "Sem narration.mp3 nesta pasta o episódio roda no relógio interno." },
+    { "time": 0, "action": "igniteFire", "params": { "duration": 0 } },
+    { "time": 0, "action": "showCharacters", "params": { "duration": 0 } },
+    { "time": 0, "action": "cameraJump", "params": { "to": "fire", "zoom": 2 } },
+    { "time": 0, "action": "letterbox", "params": { "on": true, "duration": 0 } },
+    { "time": 0, "action": "fade", "params": { "to": 0, "duration": 2 } },
+    { "time": 0.5, "action": "titleCard", "params": { "title": "EP02", "subtitle": "A MÁQUINA", "duration": 3.5 } },
+    { "time": 4.5, "action": "camera", "params": { "to": "fire", "dy": -10, "zoom": 3, "duration": 3 } },
+    { "time": 5, "action": "dialogue", "params": { "line": "talk", "index": 0, "duration": 3.4, "who": "B" } },
+    { "time": 8.6, "action": "dialogue", "params": { "line": "talk", "index": 1, "duration": 3.4, "who": "A" } },
+    { "time": 12.2, "action": "dialogue", "params": { "line": "talk", "index": 2, "duration": 3.6, "who": "B" } },
+    { "time": 16, "action": "hideDialogue" },
+    { "time": 16, "action": "camera", "params": { "to": "machine", "dy": -14, "zoom": 3, "duration": 2.5 } },
+    { "time": 17, "action": "revealMachine" },
+    { "time": 19.5, "action": "activateMachine" },
+    { "time": 20, "action": "caption", "params": { "text": "Engrenagens giram.\nO núcleo acorda.", "duration": 3.5, "position": "top" } },
+    { "time": 24, "action": "printStory", "params": { "title": "COMENTÁRIO → HISTÓRIA", "text": "Cada comentário entregue à Scriptter vira um pergaminho como este.", "user": "voce" } },
+    { "time": 32, "action": "hideScroll" },
+    { "time": 32.5, "action": "letterbox", "params": { "on": false, "duration": 1 } },
+    { "time": 32.5, "action": "counter", "params": { "visible": true } },
+    { "time": 32.5, "action": "episodeTag", "params": { "visible": true } },
+    { "time": 33, "action": "cameraFit", "params": { "count": 200, "zoom": 1, "duration": 4 } },
+    { "time": 34, "action": "celebrate", "params": { "target": "all" } },
+    { "time": 37, "action": "caption", "params": { "text": "Comente uma ideia.\nA Scriptter escreve.", "duration": 5, "position": "top" } },
+    { "time": 41, "action": "endCard", "params": { "text": "DEIXE SUA IDEIA", "cta": "COMENTE E VIRE UM PERGAMINHO" } }
+  ]
+}

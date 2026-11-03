@@ -1,0 +1,25 @@
+{
+  "episode": "ep04",
+  "audio": "narration.mp3",
+  "duration": 32,
+  "events": [
+    { "time": 0, "action": "igniteFire", "params": { "duration": 0 } },
+    { "time": 0, "action": "showCharacters", "params": { "duration": 0 } },
+    { "time": 0, "action": "activateMachine" },
+    { "time": 0, "action": "cameraJump", "params": { "to": "machine", "dy": -10, "zoom": 3 } },
+    { "time": 0, "action": "letterbox", "params": { "on": true, "duration": 0 } },
+    { "time": 0, "action": "fade", "params": { "to": 0, "duration": 2 } },
+    { "time": 0.5, "action": "titleCard", "params": { "title": "EP04", "subtitle": "O DESAFIO", "duration": 3.5 } },
+    { "time": 5, "action": "caption", "params": { "text": "\"Contem-me uma história capaz\nde me surpreender...\"", "duration": 5, "position": "top" } },
+    { "time": 10.5, "action": "caption", "params": { "text": "\"...e libertarei o povo.\"", "duration": 4, "position": "top" } },
+    { "time": 11, "action": "cameraShake", "params": { "intensity": 0.003, "duration": 0.5 } },
+    { "time": 15, "action": "camera", "params": { "to": "fire", "zoom": 2, "duration": 3 } },
+    { "time": 16, "action": "dialogue", "params": { "line": "talk", "index": 0, "duration": 4, "who": "A" } },
+    { "time": 20.5, "action": "dialogue", "params": { "line": "talk", "index": 1, "duration": 4, "who": "B" } },
+    { "time": 25, "action": "hideDialogue" },
+    { "time": 25, "action": "letterbox", "params": { "on": false, "duration": 1 } },
+    { "time": 25, "action": "counter", "params": { "visible": true } },
+    { "time": 25.5, "action": "cameraFit", "params": { "count": 200, "zoom": 1, "duration": 3 } },
+    { "time": 28, "action": "endCard", "params": { "text": "PRECISAMOS DE VOCÊ", "cta": "PRÓXIMO: OS HISTORIADORES" } }
+  ]
+}

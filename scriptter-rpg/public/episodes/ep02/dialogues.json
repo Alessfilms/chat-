@@ -1,0 +1,12 @@
+{
+  "talk": [
+    { "speaker": "HISTORIADOR 002", "text": "Está pronta. Só falta uma ideia para alimentar o núcleo." },
+    { "speaker": "HISTORIADOR 001", "text": "E se o Rei descobrir?" },
+    { "speaker": "HISTORIADOR 002", "text": "Então ele vai descobrir que histórias não podem ser proibidas." }
+  ],
+  "explore_B": [{ "speaker": "HISTORIADOR 002", "text": "Toque na máquina. Ela imprime uma história a cada ideia." }],
+  "explore_fire": [{ "speaker": "", "text": "A fogueira ilumina as engrenagens da Scriptter." }],
+  "explore_sign": [{ "speaker": "", "text": "CLAREIRA DOS HISTORIADORES." }],
+  "explore_crowd": [{ "speaker": "", "text": "Comentei uma ideia e ela virou pergaminho!" }],
+  "stories": [{ "speaker": "", "text": "Uma lanterna que só acendia quando alguém contava a verdade." }]
+}

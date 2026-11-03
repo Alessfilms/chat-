@@ -1,0 +1,25 @@
+{
+  "explore_B": [
+    { "speaker": "HISTORIADOR 002", "text": "Shh... estou anotando tudo. Um dia alguém vai querer ler esta noite." },
+    { "speaker": "HISTORIADOR 002", "text": "A Scriptter só precisa de uma ideia. O resto ela tece sozinha." },
+    { "speaker": "HISTORIADOR 002", "text": "O Rei proibiu as histórias. Mas não proibiu fogueiras." }
+  ],
+  "explore_fire": [
+    { "speaker": "", "text": "O fogo estala. Cada faísca parece uma palavra querendo sair." },
+    { "speaker": "", "text": "Foi aqui que tudo começou. Só dois. E uma fogueira." }
+  ],
+  "explore_sign": [
+    { "speaker": "", "text": "CLAREIRA DOS HISTORIADORES. Entrada proibida por ordem do Rei." }
+  ],
+  "explore_crowd": [
+    { "speaker": "", "text": "Vi a luz da fogueira lá da estrada e vim correndo!" },
+    { "speaker": "", "text": "Trouxe uma ideia. Será que a máquina aceita?" },
+    { "speaker": "", "text": "Dizem que o Rei nunca se surpreendeu com nada." },
+    { "speaker": "", "text": "Quanto mais formos, mais longe a história vai." }
+  ],
+  "stories": [
+    { "speaker": "", "text": "Um mapa que se desenhava sozinho levou uma menina até o fim do mundo — e o fim do mundo era só o começo." },
+    { "speaker": "", "text": "O dragão não queria ouro. Queria alguém que lesse para ele antes de dormir." },
+    { "speaker": "", "text": "Na torre mais alta, um relógio parou. E com ele, o medo de todo o reino." }
+  ]
+}

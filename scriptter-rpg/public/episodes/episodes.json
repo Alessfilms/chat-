@@ -1,0 +1,62 @@
+{
+  "episodes": [
+    {
+      "id": "ep01",
+      "number": 1,
+      "title": "A CLAREIRA",
+      "subtitle": "QUANDO TUDO COMEÇOU",
+      "map": "clearing",
+      "timeline": "timeline.json",
+      "dialogues": "dialogues.json",
+      "audio": "narration.mp3",
+      "startHistorians": 0
+    },
+    {
+      "id": "ep02",
+      "number": 2,
+      "title": "A MÁQUINA",
+      "subtitle": "IDEIAS QUE VIRAM HISTÓRIAS",
+      "map": "clearing",
+      "timeline": "timeline.json",
+      "dialogues": "dialogues.json",
+      "audio": "narration.mp3",
+      "startHistorians": 200
+    },
+    {
+      "id": "ep03",
+      "number": 3,
+      "title": "O REI",
+      "subtitle": "O DECRETO DO SILÊNCIO",
+      "map": "clearing",
+      "timeline": "timeline.json",
+      "dialogues": "dialogues.json",
+      "audio": "narration.mp3",
+      "startHistorians": 200,
+      "machine": true
+    },
+    {
+      "id": "ep04",
+      "number": 4,
+      "title": "O DESAFIO",
+      "subtitle": "SURPREENDA O REI",
+      "map": "clearing",
+      "timeline": "timeline.json",
+      "dialogues": "dialogues.json",
+      "audio": "narration.mp3",
+      "startHistorians": 200,
+      "machine": true
+    },
+    {
+      "id": "ep05",
+      "number": 5,
+      "title": "OS HISTORIADORES",
+      "subtitle": "CADA SEGUIDOR, UMA VOZ",
+      "map": "clearing",
+      "timeline": "timeline.json",
+      "dialogues": "dialogues.json",
+      "audio": "narration.mp3",
+      "startHistorians": 200,
+      "machine": true
+    }
+  ]
+}

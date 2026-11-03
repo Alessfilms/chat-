@@ -1,0 +1,10 @@
+{
+  "explore_B": [{ "speaker": "HISTORIADOR 002", "text": "Olha quantos somos! Lembra quando éramos só dois?" }],
+  "explore_fire": [{ "speaker": "", "text": "A mesma fogueira. Agora no centro de uma vila." }],
+  "explore_sign": [{ "speaker": "", "text": "VILA DOS HISTORIADORES · POPULAÇÃO: CRESCENDO" }],
+  "explore_crowd": [
+    { "speaker": "", "text": "Construí minha casa ao lado do poço!" },
+    { "speaker": "", "text": "Com 5.000 de nós, isto vira uma cidade." }
+  ],
+  "stories": [{ "speaker": "", "text": "Uma vila nasceu em volta de uma fogueira, porque ninguém quis ir embora." }]
+}

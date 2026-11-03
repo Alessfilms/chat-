@@ -1,0 +1,24 @@
+{
+  "episode": "ep03",
+  "audio": "narration.mp3",
+  "duration": 34,
+  "events": [
+    { "time": 0, "action": "mark", "note": "TODO: mapa próprio do castelo (registrar em src/data/maps). Por ora usa a clareira." },
+    { "time": 0, "action": "igniteFire", "params": { "duration": 0 } },
+    { "time": 0, "action": "showCharacters", "params": { "duration": 0 } },
+    { "time": 0, "action": "cameraJump", "params": { "to": "north", "zoom": 2 } },
+    { "time": 0, "action": "ambient", "params": { "fog": 1.6, "fireflies": 0.3, "duration": 0 } },
+    { "time": 0, "action": "letterbox", "params": { "on": true, "duration": 0 } },
+    { "time": 0, "action": "fade", "params": { "to": 0, "duration": 2 } },
+    { "time": 0.5, "action": "titleCard", "params": { "title": "EP03", "subtitle": "O REI", "duration": 3.5 } },
+    { "time": 4.5, "action": "caption", "params": { "text": "Muito antes da fogueira,\num decreto foi lido em praça pública.", "duration": 5, "position": "top" } },
+    { "time": 10, "action": "camera", "params": { "to": "fire", "zoom": 3, "duration": 4 } },
+    { "time": 11, "action": "dialogue", "params": { "line": "decree", "index": 0, "duration": 5 } },
+    { "time": 16.5, "action": "dialogue", "params": { "line": "decree", "index": 1, "duration": 4, "who": "A" } },
+    { "time": 21, "action": "dialogue", "params": { "line": "decree", "index": 2, "duration": 4, "who": "B" } },
+    { "time": 25, "action": "hideDialogue" },
+    { "time": 25, "action": "cameraShake", "params": { "intensity": 0.004, "duration": 0.6 } },
+    { "time": 25.2, "action": "caption", "params": { "text": "O Rei descobriu a máquina.", "duration": 4, "position": "top" } },
+    { "time": 30, "action": "endCard", "params": { "text": "O REI SABE", "cta": "PRÓXIMO: O DESAFIO" } }
+  ]
+}

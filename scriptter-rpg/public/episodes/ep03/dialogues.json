@@ -1,0 +1,12 @@
+{
+  "decree": [
+    { "speaker": "ARAUTO DO REI", "text": "Por ordem de Sua Majestade: fica proibido inventar, contar ou escrever histórias." },
+    { "speaker": "HISTORIADOR 001", "text": "Proibir histórias? Isso é... uma história ruim." },
+    { "speaker": "HISTORIADOR 002", "text": "Então vamos escrever uma melhor. Em segredo." }
+  ],
+  "explore_B": [{ "speaker": "HISTORIADOR 002", "text": "Fale baixo. Os guardas do Rei andam pela estrada." }],
+  "explore_fire": [{ "speaker": "", "text": "A neblina engole a clareira. Mas o fogo resiste." }],
+  "explore_sign": [{ "speaker": "", "text": "DECRETO REAL: É PROIBIDO CONTAR HISTÓRIAS." }],
+  "explore_crowd": [{ "speaker": "", "text": "Meu avô contava histórias. Antes do decreto." }],
+  "stories": [{ "speaker": "", "text": "Um rei tão entediado que proibiu tudo — até descobrir que o tédio também era uma história." }]
+}

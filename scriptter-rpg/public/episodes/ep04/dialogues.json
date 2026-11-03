@@ -1,0 +1,11 @@
+{
+  "talk": [
+    { "speaker": "HISTORIADOR 001", "text": "Surpreender o Rei? Ele já ouviu de tudo!" },
+    { "speaker": "HISTORIADOR 002", "text": "De uma pessoa, sim. Nunca de milhares ao mesmo tempo." }
+  ],
+  "explore_B": [{ "speaker": "HISTORIADOR 002", "text": "Uma história só, de muitas vozes. É isso que vai surpreendê-lo." }],
+  "explore_fire": [{ "speaker": "", "text": "O desafio ecoa na cabeça de todos." }],
+  "explore_sign": [{ "speaker": "", "text": "AO CASTELO →" }],
+  "explore_crowd": [{ "speaker": "", "text": "Eu tenho um final perfeito. Só falta o começo." }],
+  "stories": [{ "speaker": "", "text": "O Rei abriu o pergaminho esperando um conto. Encontrou o próprio nome escrito por mil mãos." }]
+}
