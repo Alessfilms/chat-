@@ -40,6 +40,7 @@ const path = require('path');
   for (let i = 0; i < frames; i++) {
     await page.evaluate(([i, dt, t0, fps]) => {
       window.__captureTime = i / fps;
+      window.__captureDelta = dt;
       window.game.step(t0 + i * dt, dt);
     }, [i, dt, t0, fps]);
     const buf = await page.screenshot({ type: 'png' });

@@ -42,6 +42,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   init(data: { manifest: EpisodeManifest; mode: 'story' | 'explore' }) {
+    this.ready = false;
     this.manifest = data.manifest;
     this.mode = data.mode;
   }
@@ -82,7 +83,10 @@ export class UIScene extends Phaser.Scene {
     if (DEBUG) this.debugText = new PixelText(this, 6, H - 14, '', { scale: 1, color: P.firefly });
 
     this.listen();
+    this.ready = true;
   }
+
+  ready = false;
 
   // ------------------------------------------------------------------ API
   dialogueOpen() { return this.dialogue.open; }

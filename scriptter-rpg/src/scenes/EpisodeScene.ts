@@ -190,6 +190,8 @@ export class EpisodeScene extends Phaser.Scene implements Director {
   private async startStory() {
     const url = this.manifest.audio ? `episodes/${this.manifest.id}/${this.manifest.audio}` : undefined;
     const ok = await narration.load(url);
+    // garante que a UI já existe antes de disparar eventos (fade inicial, legendas...)
+    await this.uiReady();
     if (!this.sys.isActive()) return;
     if (!ok && url) console.warn('[narração] não foi possível carregar', url, '— usando relógio interno');
     this.timeline = new TimelineSystem(this.cache.json.get(`tl-${this.manifest.id}`), this, narration.duration);
@@ -199,6 +201,12 @@ export class EpisodeScene extends Phaser.Scene implements Director {
     else this.timeline.update(0);
     await narration.play(start);
     this.running = true;
+  }
+
+  private uiReady(): Promise<void> {
+    const ui = this.scene.get('UI') as unknown as { ready?: boolean; events: Phaser.Events.EventEmitter };
+    if (ui?.ready) return Promise.resolve();
+    return new Promise((r) => ui.events.once(Phaser.Scenes.Events.CREATE, () => r()));
   }
 
   private startExplore() {
