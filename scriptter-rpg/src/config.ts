@@ -37,3 +37,10 @@ export const DEPTH = {
 export const URL_PARAMS = new URLSearchParams(window.location.search);
 
 export const DEBUG = URL_PARAMS.has('debug');
+
+/**
+ * Modo captura (?capture=1): o relógio da narração é controlado de fora
+ * (window.__captureTime) e o loop é avançado quadro a quadro por um script,
+ * para exportar vídeo fluido em qualquer máquina. Ver scripts/render-video.cjs.
+ */
+export const CAPTURE = URL_PARAMS.has('capture');

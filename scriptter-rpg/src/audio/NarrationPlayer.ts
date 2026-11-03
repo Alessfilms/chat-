@@ -33,7 +33,7 @@ export class NarrationPlayer {
 
   /** Tenta carregar o áudio. Resolve `true` se ficou pronto para tocar. */
   async load(url: string | undefined, timeoutMs = 6000): Promise<boolean> {
-    if (!url) { this.hasAudio = false; return false; }
+    if (!url || new URLSearchParams(location.search).has('capture')) { this.hasAudio = false; return false; }
     // mesma narração já carregada (ex.: reinício/seek): reaproveita o elemento já destravado
     if (this.audio && this.loadedUrl === url) { this.hasAudio = true; return true; }
     let a: HTMLAudioElement;
@@ -96,6 +96,8 @@ export class NarrationPlayer {
   get isPaused() { return this.paused; }
 
   get time(): number {
+    const cap = (window as unknown as { __captureTime?: number }).__captureTime;
+    if (cap !== undefined) return cap;
     if (this.hasAudio && this.audio) return this.audio.currentTime;
     if (this.paused) return this.clockOffset;
     return this.clockOffset + (performance.now() - this.clockStart) / 1000;
