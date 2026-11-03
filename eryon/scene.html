@@ -51,7 +51,7 @@ canvas{position:absolute;inset:0;width:1080px!important;height:1920px!important;
 import * as THREE from './vendor/three.module.js';
 
 // ============================================================ timing
-const OFFSET = 1.5;            // segundos de abertura antes da narração
+const OFFSET = 0;            // segundos de abertura antes da narração
 const END = 53.4;              // tempo de cena final
 window.DURATION = OFFSET + END;
 window.OFFSET = OFFSET;
@@ -690,7 +690,7 @@ function cloud(x, y, z, s, op, layer) { const m = new THREE.SpriteMaterial({ map
 { const r2 = rng(21);
   for (let i = 0; i < 70; i++) cloud(rr(-50, 60), 38 + r2() * 50, rr(-40, 80), 24 + r2() * 40, .9, 'intro');
   for (let i = 0; i < 46; i++) { const a = i / 46 * 6.28 + r2() * .1, r = 58 + r2() * 45; cloud(Math.cos(a) * r, 4 + r2() * 12, Math.sin(a) * r, 40 + r2() * 40, .7, 'veil'); }
-  for (let i = 0; i < 18; i++) { const a = r2() * 6.28, r = r2() * 10; cloud(GROVE.x + Math.cos(a) * r, heightAt(GROVE.x, GROVE.z) + .6 + r2() * 1.5, GROVE.z + Math.sin(a) * r, 6 + r2() * 6, .12, 'grove'); }
+  for (let i = 0; i < 18; i++) { const a = r2() * 6.28, r = r2() * 10; cloud(GROVE.x + Math.cos(a) * r, heightAt(GROVE.x, GROVE.z) + .6 + r2() * 1.5, GROVE.z + Math.sin(a) * r, 6 + r2() * 6, .06, 'grove'); }
   for (let i = 0; i < 26; i++) { const a = r2() * 6.28, r = 13 + r2() * 20; cloud(Math.cos(a) * r, .8 + r2() * 1.8, Math.sin(a) * r, 8 + r2() * 8, .22, 'ground'); }
 }
 // raios de sol (god rays)
@@ -749,8 +749,7 @@ postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post));
 
 // ============================================================ camera shots
 const shotA = [
-  [-1.6, [20, 128, 96], [0, 0, -6], 32],
-  [0.7, [15, 62, 48], [0, 0, -1], 31],
+  [0, [17.5, 31, 27.5], [0, .4, 0], 30],
   [2.6, [14.5, 27, 23], [0, .5, 0], 30],
   [6.2, [10.5, 14.5, 15.5], [.8, 1.4, 1.0], 30],
   [8.7, [-5, 20, 21], [0, 1.3, 0], 30],
@@ -849,7 +848,7 @@ function renderFrame(T) {
   // ---------- iluminação / atmosfera
   const grove = inB ? 0 : sstep(39.2, 41.0, t);
   const golden = inB ? 1 : 0;
-  const dawn = sstep(-1.2, 2.2, t);
+  const dawn = 1;
   const sunCol = golden ? colKeys([[43, 0xffe0b0], [53, 0xffc890]], t) : colKeys([[-2, 0x8aa6ff], [2, 0xfff1d6], [24.5, 0xfff1d6], [25.2, 0xffffff], [26, 0xfff1d6]], t);
   sun.color.copy(sunCol);
   sun.intensity = (golden ? 2.3 : lerp(.3, 2.5, dawn) + pulse(t, 24.4, 24.9, 26.2) * .8) * (1 - grove * .78);
@@ -864,21 +863,20 @@ function renderFrame(T) {
   const fogCol = golden ? colKeys([[43, 0xf3dfc0], [53, 0xf0cfa8]], t) : colKeys([[-2, 0x0b1020], [1.2, 0x9fb2c4], [3, 0xcfe3dc], [38.8, 0xcfe3dc], [40.6, 0x1f3a44]], t);
   scene.fog.color.copy(fogCol); renderer.setClearColor(fogCol);
   scene.fog.near = camDist * lerp(.9, .55, grove) + 8; scene.fog.far = camDist * lerp(2.6, 2.0, grove) + lerp(110, 38, grove);
-  if (t < 2) { scene.fog.near = 30; scene.fog.far = lerp(140, 260, dawn); }
 
   // ---------- nuvens e névoa
   const camY = camera.position.y;
   for (const c of cloudSprites) {
     let o = c.op;
-    if (c.layer === 'intro') { o *= 1 - sstep(1.4, 3.2, t); c.sp.position.x = c.x + t * 1.2; o *= sstep(-1.6, -.6, t) * .6 + .4; o *= clamp((camY - c.sp.position.y + 25) / 25); }
-    else if (c.layer === 'veil') { o *= .35 + pulse(t, 8.6, 11, 15.5) * .65; c.sp.position.x = c.x + Math.sin(t * .1 + c.z) * 3; if (inB) o *= .4; }
+    if (c.layer === 'intro') { o = 0; c.sp.position.x = c.x + t * 1.2; o *= sstep(-1.6, -.6, t) * .6 + .4; o *= clamp((camY - c.sp.position.y + 25) / 25); }
+    else if (c.layer === 'veil') { o *= .12 + pulse(t, 8.6, 11, 15.5) * .5; c.sp.position.x = c.x + Math.sin(t * .1 + c.z) * 3; if (inB) o *= .4; }
     else if (c.layer === 'grove') { o *= inB ? 0 : sstep(38.6, 40.5, t) + .25; }
-    else if (c.layer === 'ground') { o *= inB ? .45 : 1; c.sp.position.x = c.x + Math.sin(t * .15 + c.z) * 1.5; }
+    else if (c.layer === 'ground') { o *= .3; c.sp.position.x = c.x + Math.sin(t * .15 + c.z) * 1.5; }
     c.sp.material.opacity = o; c.sp.visible = o > .003;
     c.sp.material.color.copy(golden ? colA.setHex(0xffe6cc) : (c.layer === 'grove' ? colA.setHex(0x9fd8d0) : colA.setHex(t < 1 ? 0xc8d4f0 : 0xffffff)));
   }
   { const sd = (golden ? V(-14, 14, -9) : V(-14, 26, -10)).normalize(); rays.quaternion.setFromUnitVectors(V(0, 1, 0), sd); rays.position.copy(sd).multiplyScalar(36); }
-  rayMat.uniforms.uO.value = (inB ? .3 : pulse(t, 0.2, 2.4, 9) * 1.6 + .35 * (1 - grove)) * 1;
+  rayMat.uniforms.uO.value = (inB ? .3 : .35 * (1 - grove));
 
   // ---------- cristal & runas
   const cpulse = pulse(t, 24.3, 24.75, 26.3);
@@ -890,7 +888,7 @@ function renderFrame(T) {
   // ---------- orbes
   for (const o of orbs) {
     const visible = t < o.tLand + .05 && (o.ghostOnly ? t > o.tStart - .4 : t > -0.2) && !inB;
-    const appear = o.ghostOnly ? sstep(o.tStart - .4, o.tStart, t) : sstep(.3, 1.6, t);
+    const appear = o.ghostOnly ? sstep(o.tStart - .4, o.tStart, t) : 1;
     orbPos(o, t, tmpV);
     o.core.visible = o.halo.visible = visible;
     o.core.position.copy(tmpV); o.halo.position.copy(tmpV);
@@ -972,19 +970,19 @@ function renderFrame(T) {
   post.uniforms.uAp.value = numKeys([[-2, 2], [2, 7], [6, 10], [9, 9], [13.5, 7], [17, 10], [19, 15], [23, 11], [25.5, 14], [29, 9], [33.5, 7], [36, 9], [38, 7], [40.7, 10], [43.3, 13], [43.6, 11], [47, 12], [53, 9]], t) * 2;
   post.uniforms.uMaxR.value = 14;
   post.uniforms.uRes.value.set(RW * 2, RH * 2);
-  const mist = pulse(t, 43.0, CUT, 44.4);
-  post.uniforms.uMist.value = mist * .97; post.uniforms.uMistC.value.setHex(0xf4f0e6);
-  post.uniforms.uFade.value = clamp(1 - sstep(-1.5, .6, t) + sstep(52.4, 53.4, t)) * 1;
+  const mist = pulse(t, 43.3, CUT, 43.85);
+  post.uniforms.uMist.value = 0; post.uniforms.uMistC.value.setHex(0xf4f0e6);
+  post.uniforms.uFade.value = Math.max(sstep(52.4, 53.4, t), mist);
   post.uniforms.uSat.value = 1.12 - grove * .2;
   post.uniforms.uTint.value.set(1, 1, 1);
   if (golden) post.uniforms.uTint.value.set(1.035, .995, .95);
-  post.uniforms.uVig.value = .32 + grove * .3 + (t < 3 ? .2 : 0);
+  post.uniforms.uVig.value = .32 + grove * .3 ;
   renderer.setRenderTarget(null); renderer.render(postScene, postCam);
 
   // ---------- overlay HTML
   updateCaption(t);
   // contador
-  let cOp = sstep(.2, .8, t) * (1 - sstep(8.6, 9.2, t)) + sstep(26.6, 27.1, t) * (1 - sstep(35.9, 36.4, t)) + (inB ? sstep(44.1, 44.6, t) : 0);
+  let cOp = 1 * (1 - sstep(8.6, 9.2, t)) + sstep(26.6, 27.1, t) * (1 - sstep(35.9, 36.4, t)) + (inB ? sstep(44.1, 44.6, t) : 0);
   if (inB) cOp *= 1 - sstep(48.7, 49.2, t);
   counterEl.style.opacity = clamp(cOp).toFixed(3);
   let n = 2, word = 'seguidores';
