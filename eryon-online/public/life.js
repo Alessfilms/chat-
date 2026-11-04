@@ -109,8 +109,8 @@ function poseFor(q, t) {
   }
   const tool = (q.look && q.look.equipTool) || (classOf(q) || {}).tool || null;
   if (q.carry) { const f2 = Math.floor(t * 6 + (q.ph || 0)) % 2; return { legs: q.moving ? (f2 ? 'w1' : 'w2') : 'stand', arm: 'carry', tool: 'log', eyes: 0, br: 0 }; }
-  const f = Math.floor(t * 6 + (q.ph || 0)) % 2;
-  return q.moving ? { legs: f ? 'w1' : 'w2', arm: 'down', tool, eyes: 0, br: 0 } : { legs: 'stand', arm: 'down', tool, eyes: 0, br: Math.floor(t * 1.3 + (q.ph || 0)) % 2 };
+  const f4 = Math.floor(t * 9 + (q.ph || 0)) % 4;
+  return q.moving ? { legs: ['w1', 'stand', 'w2', 'stand'][f4], bob: f4 % 2 === 0, arm: 'down', tool, eyes: 0, br: 0 } : { legs: 'stand', arm: 'down', tool, eyes: 0, br: Math.floor(t * 1.3 + (q.ph || 0)) % 2 };
 }
 const MAGIC_COLS = [[P.cy2, '#ffffff', P.cy], ['#f6b6d8', '#ffffff', '#b06a9a'], [P.fire3, P.fire4, P.fire2], ['#9cbf62', '#e6efa0', '#ffffff']];
 function drawActFx(x, q, t) {

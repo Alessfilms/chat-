@@ -74,7 +74,7 @@ function roundTree(r, pal, seed) {
   for (let Y = 0; Y < h; Y++) for (let X = 0; X < w; X++) {
     if (!inside(X, Y)) continue;
     const edge = !inside(X + 1, Y) || !inside(X - 1, Y) || !inside(X, Y + 1) || !inside(X, Y - 1);
-    const dx = X - cx, dy = Y - cy, l = (-dx * .6 - dy * .8) / r + (h2(X + seed, Y) - .5) * .35;
+    const dx = X - cx, dy = Y - cy, l = (-dx * .6 - dy * .8) / r + (h2(X + seed, Y) - .5) * .22 + (((X + Y) & 1) ? .09 : -.09);
     px(x, edge ? P.ink : l > .5 ? pal[3] : l > .05 ? pal[2] : l > -.45 ? pal[1] : pal[0], X, Y);
   }
   return { c, ax: cx, ay: h - 4 };
@@ -88,7 +88,7 @@ function pineTree(r, pal, seed) {
   for (let Y = 0; Y < h - 7; Y++) for (let X = 0; X < w; X++) {
     if (!inside(X, Y)) continue;
     const edge = !inside(X + 1, Y) || !inside(X - 1, Y) || !inside(X, Y + 1) || !inside(X, Y - 1);
-    const l = (cx - X) / r + (h2(X, Y + seed) - .5) * .4;
+    const l = (cx - X) / r + (h2(X, Y + seed) - .5) * .25 + (((X + Y) & 1) ? .1 : -.1);
     px(x, edge ? P.ink : l > .45 ? pal[3] : l > -.05 ? pal[2] : l > -.5 ? pal[1] : pal[0], X, Y);
   }
   return { c, ax: cx, ay: h - 4 };
@@ -130,7 +130,8 @@ function charBuilder(sp) {
   const cache = new Map();
   const M = { k: P.ink, h: sp.hair || '#5a3a26', s: sp.skin || P.skin, S: sp.skinD || P.skinD, e: P.ink, c: sp.shirt || '#6e7a84', C: sp.shirtD || '#4a535c',
     p: sp.pants || '#2c4f7a', b: sp.boots || '#2e1d16', B: sp.beard || sp.hair || '#3a2618', a: sp.apron || '#4a2f22', l: sp.belt || '#4a2f22', w: '#ffffff', g: P.fire3,
-    m: sp.cape || '#4e6c4a', A: sp.armor || '#4a535c', r: sp.rust || '#8b5e3c', D: '#2b3138' };
+    m: sp.cape || '#4e6c4a', A: sp.armor || '#4a535c', r: sp.rust || '#8b5e3c', D: '#2b3138',
+    H: shadeHex(sp.hair || '#5a3a26', 1.35), L: shadeHex(sp.shirt || '#6e7a84', 1.25), o: shadeHex(sp.skinD || P.skinD, .8), P: shadeHex(sp.pants || '#2c4f7a', 1.3) };
   function build(po) {
     const big = !!sp.big;
     const [c, x] = canvas(30, 34);
@@ -138,14 +139,14 @@ function charBuilder(sp) {
     const rows = [];
     // cabeça
     const eyeRow = ['k', 's', 's', 's', 's', 's', 's', 'k']; eyeRow[2 + (po.eyes || 0)] = 'e'; eyeRow[5 + (po.eyes || 0)] = 'e'; eyeRow[6 + (po.eyes > 0 ? 0 : 0)] = eyeRow[6] === 'e' ? 'e' : 'S';
-    let head = ["..kkkk..", ".khhhhk.", "khhhhhhk", "khsssshk", eyeRow.join(''), sp.beard ? "kBBBBBBk" : "kSssssSk"];
+    let head = ["..kkkk..", ".khHHhk.", "khHhhhhk", "khsssshk", eyeRow.join(''), sp.beard ? "kBBBBBBk" : "kSsoosSk"];
     if (sp.longHair) head = head.map((r, i) => i >= 3 ? 'h' + r.slice(1, 7) + 'h' : r);
     // tronco
     const tw = big ? 10 : 8, th = big ? 5 : 3, lh = big ? 4 : 3;
     const torso = [];
     for (let j = 0; j < th; j++) {
       let r = 'k' + 'c'.repeat(tw - 2) + 'k';
-      r = r.split(''); r[2] = 'C'; r[tw - 3] = 'C';
+      r = r.split(''); r[2] = 'C'; r[tw - 3] = 'C'; if (j === 0) r[1] = 'L';
       if (sp.plaid && j % 2 === 0) for (let i = 1; i < tw - 1; i += 2) r[i] = 'C';
       if (sp.armor) { r = ('k' + 'A'.repeat(tw - 2) + 'k').split(''); if ((j * 3 + 1) % 4 === 0) r[3] = 'r'; if (j === 1) r[tw - 4] = 'r'; if (j === 0) { r[1] = 'D'; r[tw - 2] = 'D'; } }
       if (j === th - 1) r = ('k' + (sp.armor ? 'D' : 'l').repeat(tw - 2) + 'k').split('');
@@ -230,11 +231,13 @@ function charBuilder(sp) {
   };
 }
 // desenha personagem: X,Y = pés; face: 1 direita, -1 esquerda
+function shadeHex(h, k) { const [r, g, b] = hex(h); const f = v => Math.max(0, Math.min(255, Math.round(k > 1 ? v + (255 - v) * (k - 1) : v * k))); return '#' + [r, g, b].map(v => f(v).toString(16).padStart(2, '0')).join(''); }
 function drawCharAt(x, ch, X, Y, po, face = 1, alpha = 1) {
   const fr = ch.frame(po);
-  x.fillStyle = 'rgba(5,10,8,.5)'; x.fillRect(Math.round(X - 4) - (ch.sp.big ? 1 : 0), Math.round(Y) - 1, ch.sp.big ? 10 : 8, 2);
+  const sw = ch.sp.big ? 10 : 8, sx = Math.round(X - sw / 2), sy = Math.round(Y) - 1;
+  x.fillStyle = 'rgba(5,10,8,.42)'; x.fillRect(sx + 1, sy, sw - 2, 2); x.fillStyle = 'rgba(5,10,8,.22)'; x.fillRect(sx, sy, sw, 2); x.fillRect(sx + 1, sy + 2, sw - 2, 1);
   if (alpha < 1) x.globalAlpha = alpha;
-  x.drawImage(face < 0 ? fr.f : fr.c, Math.round(X) - (face < 0 ? fr.c.width - fr.ax : fr.ax), Math.round(Y) - fr.ay);
+  x.drawImage(face < 0 ? fr.f : fr.c, Math.round(X) - (face < 0 ? fr.c.width - fr.ax : fr.ax), Math.round(Y) - fr.ay - (po.bob ? 1 : 0));
   x.globalAlpha = 1;
 }
 
@@ -243,15 +246,38 @@ function drawCharAt(x, ch, X, Y, po, face = 1, alpha = 1) {
 // =====================================================================
 function houseSprite(roof, roofD, chim) {
   const w = 26, h = 26, [c, x] = canvas(w + 4, h + 3);
-  x.fillStyle = 'rgba(5,15,12,.55)'; x.fillRect(4, h - 2, w, 4);
-  px(x, P.ink, 2, 11, w - 2, h - 11); px(x, P.wall, 3, 12, w - 4, h - 13); px(x, P.wallD, w - 3, 12, 2, h - 13); px(x, '#f0e2b8', 3, 12, 1, h - 13);
-  px(x, P.ink, 11, h - 9, 6, 8); px(x, P.woodD, 12, h - 8, 4, 7); px(x, P.fire3, 15, h - 5, 1, 1);
-  for (const wx of [5, 19]) { px(x, P.ink, wx - 1, 15, 5, 5); px(x, P.fire3, wx, 16, 3, 3); px(x, P.fire4, wx, 16, 1, 1); }
-  px(x, P.ink, 0, 0, w + 2, 13);
-  for (let y = 1; y < 12; y++) px(x, (y % 3 === 0) ? roofD : roof, 1, y, w, 1);
-  px(x, roofD, 1, 11, w, 1); px(x, 'rgba(255,255,255,.2)', 1, 1, w, 1);
-  if (chim) { px(x, P.ink, 18, 0, 5, 5); px(x, P.st2, 19, 0, 3, 4); }
+  fancyBuilding(x, { w, wallTop: 12, wallH: h - 12, roof, roofD, chim, timber: true, door: 'wood' });
   return c;
+}
+// prédio detalhado: base de pedra, enxaimel, janelas com floreira, porta com lampião e telhado de telhas
+function fancyBuilding(x, o) {
+  const { w, wallTop, wallH } = o, bot = wallTop + wallH, roofTop = o.roofTop || 0, wallC = o.wall || P.wall, wallD2 = o.wallD || P.wallD;
+  x.fillStyle = 'rgba(5,15,12,.5)'; x.fillRect(4, bot - 1, w + 1, 4); x.fillStyle = 'rgba(5,15,12,.25)'; x.fillRect(w + 1, wallTop + 2, 3, wallH);
+  // paredes
+  px(x, P.ink, 2, wallTop - 1, w - 2, wallH + 1); px(x, wallC, 3, wallTop, w - 4, wallH - 1); px(x, wallD2, w - 4, wallTop, 2, wallH - 1);
+  for (let y = wallTop + 1; y < bot - 3; y += 3) for (let X = 4; X < w - 4; X += 5) if (h2(X, y) > .7) px(x, wallD2, X, y, 1, 1);
+  if (o.stone) for (let y = wallTop + 1; y < bot - 3; y += 3) for (let X = 3 + ((y / 3) % 2) * 2; X < w - 3; X += 5) px(x, wallD2, X, y, 4, 1);
+  if (o.timber) { const beam = P.woodD; for (const X of [3, Math.floor(w / 2), w - 5]) px(x, beam, X, wallTop, 2, wallH - 3); px(x, beam, 3, wallTop, w - 6, 1); px(x, beam, 3, wallTop + Math.floor(wallH / 2) - 1, w - 6, 1);
+    for (const X0 of [5, Math.floor(w / 2) + 2]) for (let k = 0; k < 4; k++) px(x, beam, X0 + k, wallTop + 1 + k, 1, 1); }
+  if (o.columns) for (let X = 4; X < w - 4; X += 7) { px(x, '#eef0ea', X, wallTop + 1, 2, wallH - 4); px(x, P.st3, X + 1, wallTop + 1, 1, wallH - 4); }
+  // base de pedra
+  for (let X = 2; X < w; X += 4) { px(x, P.ink, X, bot - 3, 4, 3); px(x, X % 8 ? P.st2 : P.st3, X + 1, bot - 2, 2, 1); }
+  // janelas com veneziana e floreira
+  const wy = wallTop + 3, wxs = o.windows || [5, w - 10];
+  for (const wx of wxs) { px(x, P.ink, wx - 1, wy - 1, 7, 6); px(x, '#ffd84a', wx, wy, 5, 4); px(x, '#fff3b0', wx, wy, 2, 2); px(x, '#c9a46a', wx + 2, wy, 1, 4); px(x, '#c9a46a', wx, wy + 2, 5, 1);
+    px(x, P.wood, wx - 3, wy - 1, 2, 6); px(x, P.wood, wx + 6, wy - 1, 2, 6); px(x, P.woodD, wx - 3, wy + 1, 2, 1); px(x, P.woodD, wx + 6, wy + 1, 2, 1);
+    px(x, P.ink, wx - 1, wy + 5, 7, 2); px(x, P.dirt3, wx, wy + 5, 5, 1); for (let k = 0; k < 5; k += 2) px(x, ['#f6b6d8', '#a83a32', '#fff3b0'][k / 2], wx + k, wy + 4, 1, 1); px(x, P.f8, wx + 1, wy + 4, 1, 1); px(x, P.f8, wx + 3, wy + 4, 1, 1); }
+  // porta em arco com lampião
+  const dw = o.doorW || 6, dx = Math.floor(w / 2) - Math.floor(dw / 2) + 1, dh = 9;
+  px(x, P.ink, dx - 1, bot - dh - 1, dw + 2, dh + 1); px(x, P.ink, dx, bot - dh - 2, dw, 1);
+  px(x, o.door === 'open' ? '#2a1a0c' : P.woodD, dx, bot - dh, dw, dh - 1); if (o.door !== 'open') { for (let X = dx + 1; X < dx + dw; X += 2) px(x, P.wood, X, bot - dh + 1, 1, dh - 2); px(x, P.fire3, dx + dw - 2, bot - 5, 1, 1); } else px(x, P.fire2, dx + 1, bot - 5, dw - 2, 3);
+  px(x, P.ink, dx + dw + 1, bot - dh, 3, 4); px(x, P.fire3, dx + dw + 2, bot - dh + 1, 1, 2);
+  // telhado de telhas
+  const rH = wallTop - roofTop + 1; px(x, P.ink, 0, roofTop, w + 2, rH);
+  for (let y = 1; y < rH - 1; y++) { const yy = roofTop + y; px(x, o.stripes ? (Math.floor(y / 2) % 2 ? o.roof : o.roofD) : o.roof, 1, yy, w, 1);
+    if (!o.stripes) { if (y % 3 === 0) px(x, o.roofD, 1, yy, w, 1); else for (let X = 1 + ((Math.floor(y / 3) % 2) * 2); X < w; X += 4) px(x, o.roofD, X, yy, 1, 1); } }
+  px(x, shadeHex(o.roof, 1.3), 1, roofTop + 1, w, 1); px(x, o.roofD, 1, wallTop - 1, w, 1); px(x, 'rgba(5,10,8,.35)', 3, wallTop, w - 4, 1);
+  if (o.chim) { const cx = w - 9; px(x, P.ink, cx, roofTop - 3 < 0 ? 0 : roofTop, 6, 6); px(x, '#8a3a1c', cx + 1, roofTop + 1, 4, 4); px(x, '#5a2418', cx + 1, roofTop + 2, 4, 1); px(x, P.st1, cx, roofTop, 6, 1); }
 }
 const ROOFS = [['#a83a32', '#5a2418'], ['#3c5f9a', '#1d3550'], ['#6e4a8a', '#3a2650'], ['#8b5e3c', '#4a2f22'], ['#3f7ab0', '#2c4f7a'], ['#d0622a', '#8a3a1c']];
 const HOUSE_SPR = ROOFS.map((r, i) => houseSprite(r[0], r[1], i % 2 === 0));
@@ -277,13 +303,9 @@ function forgeSprite() {
 const FORGE_SPR = forgeSprite();
 function tavernSprite(open) {
   const [c, x] = canvas(48, 38);
-  x.fillStyle = 'rgba(5,15,12,.55)'; x.fillRect(5, 34, 42, 4);
-  px(x, P.ink, 1, 15, 46, 21); px(x, '#8b5e3c', 2, 16, 44, 19); for (let y = 16; y < 35; y += 2) px(x, '#7a4f2e', 2, y, 44, 1); px(x, '#5a3a26', 44, 16, 2, 19);
-  px(x, P.ink, 0, 0, 48, 17); for (let y = 1; y < 16; y++) px(x, y % 3 === 0 ? '#5a2418' : '#a83a32', 1, y, 46, 1); px(x, 'rgba(255,255,255,.18)', 1, 1, 46, 1);
-  px(x, P.ink, 19, 23, 10, 13); px(x, open ? '#2a1a0c' : '#5a3a26', 20, 24, 8, 12); if (!open) { px(x, '#4a2f22', 24, 24, 1, 12); px(x, P.fire3, 26, 30, 1, 1); } else { px(x, P.fire2, 21, 30, 6, 6); }
-  for (const wx of [6, 35]) { px(x, P.ink, wx - 1, 21, 8, 7); px(x, open ? P.fire3 : '#3a2a20', wx, 22, 6, 5); px(x, P.ink, wx + 2, 22, 1, 5); }
-  // placa com caneca
-  px(x, P.ink, 30, 17, 12, 8); px(x, P.woodL, 31, 18, 10, 6); px(x, P.fire4, 34, 19, 3, 4); px(x, P.fire3, 34, 21, 3, 2); px(x, P.ink, 37, 20, 1, 2);
+  fancyBuilding(x, { w: 46, wallTop: 15, wallH: 21, roof: '#a83a32', roofD: '#5a2418', wall: '#8b5e3c', wallD: '#6b4630', timber: true, door: open ? 'open' : 'wood', doorW: 8, windows: [5, 14, 27, 36], chim: true });
+  // placa com caneca pendurada
+  px(x, P.ink, 30, 17, 1, 3); px(x, P.ink, 28, 19, 11, 8); px(x, P.woodL, 29, 20, 9, 6); px(x, P.fire4, 31, 21, 4, 4); px(x, P.fire3, 31, 23, 4, 2); px(x, P.ink, 35, 22, 1, 2);
   return c;
 }
 const TAVERN_SPR = [tavernSprite(false), tavernSprite(true)];

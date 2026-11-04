@@ -134,15 +134,8 @@ function buildingSprite(type, roofIdx) {
   if (B_SPR[type]) return B_SPR[type];
   const T = BTYPES[type], w = T.w, wallH = 16, roofH = 13, top = T.tower ? 14 : 0, H = top + roofH + wallH + 3, [c, x] = canvas(w + 4, H);
   const y0 = top + roofH - 2;
-  x.fillStyle = 'rgba(5,15,12,.55)'; x.fillRect(4, H - 4, w, 4);
-  px(x, P.ink, 2, y0, w - 2, wallH + 1); px(x, T.walls, 3, y0 + 1, w - 4, wallH - 1); px(x, T.wallsD, w - 3, y0 + 1, 2, wallH - 1);
-  if (T.columns) for (let cx2 = 5; cx2 < w - 4; cx2 += 7) { px(x, '#eef0ea', cx2, y0 + 2, 2, wallH - 3); px(x, P.st2, cx2 + 1, y0 + 2, 1, wallH - 3); }
-  const dx = Math.floor(w / 2) - 3; px(x, P.ink, dx, y0 + wallH - 9, 8, 9); px(x, type === 'bar' ? '#2a1a0c' : P.woodD, dx + 1, y0 + wallH - 8, 6, 8); px(x, P.fire3, dx + 5, y0 + wallH - 4, 1, 1);
-  for (const wx of [5, w - 10]) { px(x, P.ink, wx - 1, y0 + 3, 6, 5); px(x, P.fire3, wx, y0 + 4, 4, 3); px(x, P.fire4, wx, y0 + 4, 1, 1); }
-  px(x, P.ink, 0, top, w + 2, roofH); for (let y = 1; y < roofH - 1; y++) px(x, T.stripes ? (Math.floor(y / 2) % 2 ? T.roof[0] : T.roof[1]) : (y % 3 === 0 ? T.roof[1] : T.roof[0]), 1, top + y, w, 1);
-  if (T.stripes) for (let k = 1; k < w; k += 4) px(x, T.roof[1], k, top + roofH - 1, 2, 2);
-  px(x, 'rgba(255,255,255,.2)', 1, top + 1, w, 1);
-  if (T.tower) { const tx = Math.floor(w / 2) - 5; px(x, P.ink, tx, 2, 11, top + 2); px(x, T.walls, tx + 1, 3, 9, top); disc(x, tx + 5, 8, 3, P.ink); disc(x, tx + 5, 8, 2, '#eef0ea'); px(x, P.ink, tx + 5, 6, 1, 3); px(x, P.woodD, tx + 10, 0, 1, 8); px(x, '#a83a32', tx + 11, 0, 5, 4); px(x, P.fire3, tx + 12, 1, 2, 1); }
+  fancyBuilding(x, { w, wallTop: y0, wallH: wallH + 1, roofTop: top, roof: T.roof[0], roofD: T.roof[1], wall: T.walls, wallD: T.wallsD, stripes: T.stripes, columns: T.columns, stone: !!T.columns, timber: !T.columns && type !== 'hospital', door: type === 'bar' || type === 'mercado' ? 'open' : 'wood', doorW: w > 40 ? 8 : 6, windows: w > 40 ? [5, 14, w - 19, w - 10] : [5, w - 10], chim: type === 'bar' || type === 'escola' });
+  if (T.tower) { const tx = Math.floor(w / 2) - 5; px(x, P.ink, tx, 2, 11, top + 2); px(x, T.walls, tx + 1, 3, 9, top); for (let y = 4; y < top; y += 3) px(x, T.wallsD, tx + 1, y, 9, 1); disc(x, tx + 5, 8, 3, P.ink); disc(x, tx + 5, 8, 2, '#eef0ea'); px(x, P.ink, tx + 5, 6, 1, 3); px(x, P.ink, tx + 5, 8, 2, 1); px(x, P.woodD, tx + 10, 0, 1, 8); px(x, '#a83a32', tx + 11, 0, 5, 4); px(x, P.fire3, tx + 12, 1, 2, 1); }
   // placa
   const sx = Math.floor(w / 2) - 4, sy = y0 - 3; px(x, P.ink, sx, sy, 9, 7); px(x, P.woodL, sx + 1, sy + 1, 7, 5);
   const ic = { mug: [[2, 1, 3, 3, P.fire4], [5, 2, 1, 1, P.ink]], crate: [[2, 1, 4, 3, P.dirt3], [2, 2, 4, 1, P.woodD]], leaf: [[3, 1, 2, 3, '#4e6c4a'], [2, 2, 4, 1, '#9cbf62']], book: [[2, 1, 4, 3, '#3c5f9a'], [4, 1, 1, 3, '#eef0ea']], coin: [[2, 1, 3, 3, P.fire3], [3, 2, 1, 1, P.fire2]], flag: [[2, 1, 4, 2, '#a83a32'], [2, 3, 1, 1, P.woodD]] }[T.sign] || [];

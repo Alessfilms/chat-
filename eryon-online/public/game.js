@@ -51,15 +51,19 @@ function buildWorld(world) {
   const [v, x] = canvas(WW, WH); villageLayer = v;
   x.drawImage(ground, 0, 0);
   x.save(); x.beginPath(); x.ellipse(C.x, C.y, VR, VR * .95, 0, 0, 6.283); x.clip(); x.drawImage(clearTex, 0, 0); x.restore();
-  paintDetails(x);
+  paintDetails(x); paintRiver(x);
   const pts = [];
   const road = p => { for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1], d = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let s = 0; s < d; s += 2) pts.push([a[0] + (b[0] - a[0]) * s / d, a[1] + (b[1] - a[1]) * s / d]); } };
   road([[360, 622], [400, 566], [440, 520], [GATE.x, GATE.y], [496, 452], [508, 425], [520, 404]]);
   road([[340, 642], [270, 640], [208, 624], [170, 630]]); road([[380, 644], [440, 664], [480, 690], [530, 712]]);
   road([[362, 664], [362, 720], [pathS(780), 780], [pathS(860), 860]]); road([[352, 650], [310, 700], [300, 790]]); road([[372, 652], [420, 700], [420, 786]]); road([[350, 628], [306, 560], [306, 522]]);
   for (const [X, Y] of pts) px(x, P.dirt2, Math.round(X) - 3, Math.round(Y) - 2, 7, 5);
-  for (const [X, Y] of pts) if (h2(Math.round(X), Math.round(Y)) > .8) px(x, P.sand, Math.round(X) - 1, Math.round(Y), 2, 1);
-  disc(x, C.x, C.y, 24, P.dirt2); disc(x, C.x, C.y, 18, P.dirt1);
+  for (const [X, Y] of pts) { const hx = h2(Math.round(X), Math.round(Y)); if (hx > .72) { px(x, P.st1, Math.round(X) - 1, Math.round(Y) + 1, 3, 1); px(x, hx > .86 ? P.st3 : P.sand, Math.round(X) - 1, Math.round(Y), 3, 1); }
+    if (hx < .1) px(x, P.f7, Math.round(X) + (hx < .05 ? 4 : -4), Math.round(Y) - 1, 1, 2); }
+  disc(x, C.x, C.y, 25, P.ink); disc(x, C.x, C.y, 24, P.dirt2); disc(x, C.x, C.y, 21, P.dirt1);
+  // praça de pedras (calçamento)
+  for (let Y = C.y - 22; Y <= C.y + 22; Y += 3) for (let X = C.x - 22 + ((Y / 3) % 2) * 2; X <= C.x + 22; X += 4) { const d = Math.hypot(X - C.x, Y - C.y); if (d > 21 || d < 9) continue; const v = h2(X, Y); px(x, P.ink, X - 1, Y - 1, 4, 3); px(x, v > .6 ? P.st3 : v > .3 ? P.st2 : P.sand, X, Y, 3, 2); px(x, P.st4, X, Y, 1, 1); }
+  for (let i = 0; i < 28; i++) { const a = i / 28 * 6.283; px(x, i % 2 ? P.st3 : P.st2, Math.round(C.x + Math.cos(a) * 24) - 1, Math.round(C.y + Math.sin(a) * 23) - 1, 3, 2); }
   drawBridgeOn(x, BRIDGE.x);
   for (const f of [B.plantacao_1, B.plantacao_2]) { px(x, P.dirt1, f.x - f.w / 2, f.y - f.h / 2, f.w, f.h);
     for (let r = 0; r < Math.floor(f.h / 4); r++) for (let c = 0; c < f.w - 2; c += 3) px(x, (r + c) % 7 === 0 ? P.fire3 : P.f8, f.x - f.w / 2 + 1 + c, f.y - f.h / 2 + r * 4, 1, 3);
@@ -108,6 +112,13 @@ function paintDetails(x) {
     }
   }
 }
+function paintRiver(x) {
+  const r = rng(99);
+  for (let X = 0; X < WW; X += 2) { const y = riverY(X);
+    if (r() < .35) for (const s of [-1, 1]) { const by = Math.round(y + s * (11 + r() * 3)); px(x, P.f6, X, by - 3, 1, 4); if (r() < .4) px(x, '#8b5e3c', X, by - 4, 1, 2); }
+    if (r() < .05) { const ly = Math.round(y + (r() - .5) * 10); px(x, '#3c5d4a', X - 1, ly, 4, 2); px(x, '#4e6c4a', X, ly, 2, 1); if (r() < .4) px(x, '#f6b6d8', X + 1, ly - 1, 1, 1); }
+    if (r() < .08) px(x, '#6fb0d8', X, Math.round(y + (r() - .5) * 12), 3, 1); }
+}
 // ---- vida ambiente: brilho na água, vagalumes, folhas, fumaça das chaminés e sombra das nuvens
 const FIREFLIES = Array.from({ length: 70 }, (_, i) => ({ x: h2(i, 1) * WW, y: h2(i, 2) * WH, ph: h2(i, 3) * 6.283 }));
 function drawAmbient(x, t, li, ti, cw, ch) {
@@ -117,10 +128,24 @@ function drawAmbient(x, t, li, ti, cw, ch) {
   for (const id of ['casa_1', 'casa_3', 'casa_5', 'casa_7', 'casa_9']) { const b = B[id]; if (b && b.x > li - 20 && b.x < li + cw + 20) smoke(x, b.x + 5, b.y - 26, t + b.x, 4, '#c4ccd0'); }
   for (const h of BUILT) if ((h.type || 'casa') === 'casa' && (h.roof || 0) % 2 === 0 && h.x > li - 20 && h.x < li + cw + 20) smoke(x, h.x + 5, h.y - 26, t + h.x, 4, '#c4ccd0');
   // vagalumes
-  for (const f of FIREFLIES) { const X = f.x + Math.sin(t * .4 + f.ph) * 12, Y = f.y + Math.cos(t * .33 + f.ph * 2) * 8; if (X < li || X > li + cw || Y < ti || Y > ti + ch) continue; const on = .5 + .5 * Math.sin(t * 2.4 + f.ph * 3); if (on < .25) continue; x.globalAlpha = on; px(x, '#fff3b0', Math.round(X), Math.round(Y), 1, 1); x.globalAlpha = on * .25; px(x, '#ffd84a', Math.round(X) - 1, Math.round(Y) - 1, 3, 3); }
+  for (const f of FIREFLIES) { const X = f.x + Math.sin(t * .4 + f.ph) * 12, Y = f.y + Math.cos(t * .33 + f.ph * 2) * 8; if (X < li || X > li + cw || Y < ti || Y > ti + ch) continue; const on = (.5 + .5 * Math.sin(t * 2.4 + f.ph * 3)) * (.35 + .65 * ambient().night); if (on < .2) continue; x.globalAlpha = on; px(x, '#fff3b0', Math.round(X), Math.round(Y), 1, 1); x.globalAlpha = on * .25; px(x, '#ffd84a', Math.round(X) - 1, Math.round(Y) - 1, 3, 3); }
   x.globalAlpha = 1;
   // folhas caindo
   for (let i = 0; i < 14; i++) { const ph = (t * .08 + i / 14) % 1, X = li + ((i * 97 + t * 6) % cw), Y = ti + ph * ch; px(x, i % 3 ? '#9a9442' : '#d0622a', Math.round(X + Math.sin(ph * 12 + i) * 6), Math.round(Y), 2, 1); }
+}
+const DAY_LEN = 1200;  // 20 minutos
+function dayPhase() { return (Date.now() / 1000 % DAY_LEN) / DAY_LEN; }
+function ambient() {   // cor e intensidade do escuro em cada momento do dia
+  const K = [[0, [6, 14, 22], .10], [.40, [6, 14, 22], .12], [.47, [96, 40, 6], .30], [.53, [30, 12, 40], .48], [.6, [2, 6, 30], .68], [.82, [2, 6, 30], .68], [.9, [60, 26, 40], .38], [.96, [12, 16, 24], .16], [1, [6, 14, 22], .10]];
+  const p = dayPhase(); let i = 0; while (K[i + 1][0] < p) i++; const a = K[i], b = K[i + 1], k = (p - a[0]) / (b[0] - a[0]);
+  return { r: Math.round(lerp(a[1][0], b[1][0], k)), g: Math.round(lerp(a[1][1], b[1][1], k)), b: Math.round(lerp(a[1][2], b[1][2], k)), a: lerp(a[2], b[2], k), night: clamp((lerp(a[2], b[2], k) - .2) / .48) };
+}
+function phaseName() { const p = dayPhase(); return p < .44 ? 'Dia' : p < .53 ? 'Pôr do sol' : p < .86 ? 'Noite' : 'Amanhecer'; }
+let vigC = null, vigKey = '';
+function drawVignette() {
+  const key = cv.width + 'x' + cv.height; if (vigKey !== key) { vigKey = key; vigC = document.createElement('canvas'); vigC.width = cv.width; vigC.height = cv.height; const q = vigC.getContext('2d');
+    const g2 = q.createRadialGradient(cv.width / 2, cv.height / 2, Math.min(cv.width, cv.height) * .35, cv.width / 2, cv.height / 2, Math.hypot(cv.width, cv.height) * .62); g2.addColorStop(0, 'rgba(0,0,0,0)'); g2.addColorStop(1, 'rgba(4,8,10,.45)'); q.fillStyle = g2; q.fillRect(0, 0, cv.width, cv.height); }
+  ctx.drawImage(vigC, 0, 0);
 }
 function drawCloudShadows(x, t, li, ti, cw, ch) {
   x.fillStyle = 'rgba(4,10,14,.10)';
@@ -406,19 +431,22 @@ function draw(t, p) {
   if (target) { x.globalAlpha = .7; ring(x, target.x, target.y, 3 + (Math.floor(t * 4) % 2), P.fire3); x.globalAlpha = 1; }
   // luz
   const l = lx; l.setTransform(1, 0, 0, 1, 0, 0); l.globalCompositeOperation = 'source-over'; l.clearRect(0, 0, cw, ch);
-  l.fillStyle = room ? (room.dark ? 'rgba(2,4,8,.62)' : 'rgba(20,10,4,.28)') : 'rgba(6,14,22,.32)'; l.fillRect(0, 0, cw, ch); l.translate(-li, -ti); l.globalCompositeOperation = 'destination-out';
+  const AMB = ambient(), NIGHT = room ? 0 : AMB.night, LB = 1 + NIGHT * .6;
+  l.fillStyle = room ? (room.dark ? 'rgba(2,4,8,.62)' : 'rgba(20,10,4,.28)') : `rgba(${AMB.r},${AMB.g},${AMB.b},${AMB.a.toFixed(3)})`; l.fillRect(0, 0, cw, ch); l.translate(-li, -ti); l.globalCompositeOperation = 'destination-out';
   if (room) { if (room.fire) lightHole(l, room.fire.x, room.fire.y, 60); if (room.dark) { for (const [gx2, gy2] of room.glows) lightHole(l, gx2, gy2, 22); } else lightHole(l, room.w / 2, room.h / 2, Math.max(room.w, room.h) * .45); }
   else { lightHole(l, C.x, C.y, 46 + Math.round(Math.sin(t * 9))); if (B.forja) lightHole(l, B.forja.x, B.forja.y - 8, 24); if (B.taverna) lightHole(l, B.taverna.x, B.taverna.y - 10, 28);
-    for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) lightHole(l, B[id].x, B[id].y - 8, 14); }
-  if (!room) { for (const lm of LANDMARKS) if (LM_LIGHT[lm.id]) lightHole(l, lm.x, lm.y - 10, LM_LIGHT[lm.id]); for (const h of BUILT) lightHole(l, h.x, h.y - 8, 14); for (const d of DECOR) if (DECOR_LIGHT[d.kind]) lightHole(l, d.x, d.y - 8, DECOR_LIGHT[d.kind]); }
-  if (p) lightHole(l, p.x, p.y - 6, 22);
+    for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) lightHole(l, B[id].x, B[id].y - 6, Math.round(16 * LB)); }
+  if (!room) { for (const lm of LANDMARKS) if (LM_LIGHT[lm.id]) lightHole(l, lm.x, lm.y - 10, LM_LIGHT[lm.id]); for (const h of BUILT) lightHole(l, h.x, h.y - 6, Math.round(16 * LB)); for (const d of DECOR) if (DECOR_LIGHT[d.kind]) lightHole(l, d.x, d.y - 8, DECOR_LIGHT[d.kind]); }
+  if (p) lightHole(l, p.x, p.y - 6, Math.round(22 + NIGHT * 10));
   l.globalCompositeOperation = 'source-over';
   x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(light, 0, 0, cw, ch, 0, 0, cw, ch);
+  if (!room && NIGHT > .05) { x.translate(-li, -ti); glow(x, C.x, C.y - 4, 24, P.fire2, .06 * NIGHT); for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) glow(x, B[id].x, B[id].y - 8, 8, P.fire3, .07 * NIGHT); for (const h of BUILT) glow(x, h.x, h.y - 8, 8, P.fire3, .07 * NIGHT); x.setTransform(1, 0, 0, 1, 0, 0); }
   if (room && room.dark) { x.translate(-li, -ti); for (const [gx2, gy2, gc] of room.glows) glow(x, gx2, gy2, 10, gc, .14); x.setTransform(1, 0, 0, 1, 0, 0); }
   // mundo aberto (sem névoa)
   // saída ampliada
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#060b0a'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(view, 0, 0, cw, ch, Math.round(-(L - li) * S), Math.round(-(T - ti) * S), cw * S, ch * S);
+  drawVignette();
   // nomes e balões (só de quem está no mesmo lugar)
   const fs = Math.round(15 * DPR), now = performance.now();
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.lineJoin = 'round';
@@ -606,6 +634,7 @@ function renderMe() {
   $('wood').textContent = `Lenha ${INV.lenha || 0} · Pedra ${INV.pedra || 0} · Ervas ${INV.ervas || 0}`;
   const cv2 = $('meCv'), q2 = cv2.getContext('2d'); q2.imageSmoothingEnabled = false; q2.clearRect(0, 0, 16, 18); if (p) q2.drawImage(p.ch.frame({ legs: 'stand', arm: 'down', tool: (p.look && p.look.equipTool) || (c || {}).tool || null, eyes: 0, br: 0 }).c, -7, -14);
   $('nameBtn').textContent = me && !/^visitante\d+$/.test(me) ? 'Trocar meu @' : 'Usar meu @';
+  $('meRole').textContent += ' · ' + phaseName() + ' em Eryon';
 }
 $('menuBtn').onclick = () => { const open = $('menu').hidden; closePanels(); $('menu').hidden = !open; $('menuBtn').setAttribute('aria-expanded', open); if (open) { renderMe(); $('nameForm').hidden = true; $('nameBtn').hidden = false; } };
 $('menuClose').onclick = () => { $('menu').hidden = true; $('menuBtn').setAttribute('aria-expanded', 'false'); };
