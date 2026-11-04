@@ -27,6 +27,8 @@ function save() { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(
 function initDb() {
   db.users ||= {}; db.sessions ||= {}; db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
   db.decor ||= []; db.nextDecor ||= 1; db.firsts ||= {};
+  db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
+  for (const r of Object.values(db.users)) if (r && typeof r === 'object') { if (r.tot && typeof r.tot !== 'object') r.tot = {}; }
 }
 initDb();
 
@@ -52,13 +54,13 @@ function pruneSessions() {
 }
 async function remoteLoad() {
   if (!remoteOn()) return;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     try {
       const v = await upstash(['GET', DB_KEY]);
       if (v) { db = JSON.parse(zlib.gunzipSync(Buffer.from(v, 'base64')).toString('utf8')); initDb(); console.log('[memória] mundo carregado do Upstash:', Object.keys(db.users).length, 'jogadores,', db.houses.length, 'construções,', db.decor.length, 'decorações'); }
       else { console.log('[memória] Upstash vazio: começando com o mundo local e salvando lá.'); dirty = true; }
       remote.ok = true; return;
-    } catch (e) { remote.error = String(e.message || e); console.warn('[memória] falha ao carregar do Upstash:', remote.error); await new Promise(r => setTimeout(r, 2000 * (i + 1))); }
+    } catch (e) { remote.error = String(e.message || e); console.warn('[memória] falha ao carregar do Upstash:', remote.error); await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
   }
 }
 let saving = null;
@@ -428,7 +430,8 @@ wss.on('connection', (ws, req) => {
   if (limited('ws:' + ipOf(req), 30, 60000)) return ws.close(4029, 'muitas conexões');
   let c = null;
   const timer = setTimeout(() => { if (!c) ws.close(4000, 'sem login'); }, 8000);
-  ws.on('message', raw => {
+  ws.on('message', raw => { try { onMsg(raw); } catch (e) { console.error('[erro em mensagem]', e && e.stack || e); } });
+  const onMsg = raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (!c) {
       if (m.t !== 'hello') return;
@@ -560,7 +563,7 @@ wss.on('connection', (ws, req) => {
       if (!pet) delete look.pet; else { if (!PETS.has(pet)) return; if (!r.sup && !isStaff(c.user)) return note(c, 'Bichinhos são um presente para apoiadores de Eryon ♥'); look.pet = pet; }
       save(); all({ t: 'look', id: c.id, look });
     }
-  });
+  };
   ws.on('close', () => { clearTimeout(timer); if (!c) return; clients.delete(c); const rec = db.users[c.user]; if (rec) { rec.x = Math.round(c.x); rec.y = Math.round(c.y); save(); } all({ t: 'leave', id: c.id }); });
   ws.on('error', () => {});
 });
@@ -580,6 +583,7 @@ async function shutdown(sig) {
   try { if (saving) await saving; await remoteSave(true); } catch {}
   console.log('[memória] mundo salvo antes de desligar (' + sig + ').'); process.exit(0);
 }
+process.on('uncaughtException', e => console.error('[erro inesperado]', e && e.stack || e)); process.on('unhandledRejection', e => console.error('[promessa rejeitada]', e && e.stack || e));
 process.on('SIGTERM', () => shutdown('SIGTERM')); process.on('SIGINT', () => shutdown('SIGINT'));
 
 remoteLoad().finally(() => {
