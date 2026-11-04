@@ -18,58 +18,193 @@ let FOUND = new Set(), FIRSTS = {};
 
 // ---------------------------------------------------------------- desenho dos monumentos (sprites estáticos + partes animadas)
 const LM_SPR = {};
+const BONE = ['#a8875a', '#d6c094', '#efe2bf', '#fffaf0'], BONE_O = '#3a2818';
+const STONE = ['#4d5566', '#6e7789', '#939cae', '#c3cad6'], STONE_O = '#22262f';
+const MOSS = ['#2f7a40', '#47994a', '#66b350', '#90d064'];
+const EARTH = ['#6a3c22', '#8a5430', '#b0703f', '#cf8d50'];
+function grassRim(x, cx, cy, rx, ry, seed) {   // tufos de grama e florzinhas em volta da base
+  for (let i = 0; i < rx * 1.4; i++) { const a = h2(i, seed) * 6.283, k = .85 + h2(seed, i) * .3, X = Math.round(cx + Math.cos(a) * rx * k), Y = Math.round(cy + Math.sin(a) * ry * k);
+    if (h2(i * 3, seed) > .75) { px(x, '#f4f0d8', X, Y, 1, 1); px(x, '#ffd84a', X, Y + 1, 1, 1); } else { px(x, MOSS[1], X, Y, 1, 2); px(x, MOSS[3], X + 1, Y - 1, 1, 2); } }
+}
 function lmSprite(id) {
   if (LM_SPR[id]) return LM_SPR[id];
   let c, x, ax, ay;
-  const bone = '#e4d0a0', boneD = '#c9a46a', boneL = '#fff3d6';
   if (id === 'costela') { [c, x] = canvas(96, 52); ax = 48; ay = 44;
-    x.fillStyle = 'rgba(5,15,12,.5)'; x.fillRect(6, 40, 86, 8); px(x, P.dirt1, 8, 38, 82, 7);
-    // coluna
-    for (let i = 0; i < 26; i++) { const X = 14 + i * 3, Y = 38 - Math.round(Math.sin(i / 25 * Math.PI) * 6); px(x, P.ink, X - 1, Y - 2, 4, 4); px(x, i % 2 ? boneD : bone, X, Y - 1, 2, 2); }
-    // costelas em arco
-    for (let k = 0; k < 7; k++) { const cx = 24 + k * 9, hgt = 26 - Math.abs(k - 3) * 3;
-      for (let s = -1; s <= 1; s += 2) for (let j = 0; j <= hgt; j++) { const X = Math.round(cx + s * Math.sin(j / hgt * 1.4) * 7), Y = 36 - j; px(x, P.ink, X - 1, Y, 3, 1); px(x, j > hgt - 3 ? boneL : bone, X, Y, 1, 1); } }
-    // crânio
-    px(x, P.ink, 74, 22, 20, 16); px(x, bone, 75, 23, 18, 14); px(x, boneD, 75, 33, 18, 4); px(x, P.ink, 80, 26, 4, 4); px(x, '#3a2618', 81, 27, 2, 2);
-    for (let i = 0; i < 4; i++) px(x, boneL, 77 + i * 4, 37, 2, 3); px(x, P.ink, 70, 19, 6, 3); px(x, bone, 70, 18, 8, 2); px(x, boneL, 92, 16, 2, 6); px(x, boneL, 88, 15, 2, 6);
-    for (let i = 0; i < 18; i++) px(x, i % 3 ? P.f6 : P.f8, 10 + Math.floor(h2(i, 5) * 78), 36 + Math.floor(h2(i, 8) * 6), 2, 1);
+    // cratera de terra onde o dragão caiu
+    softShadow(x, 48, 42, 46, 8, .25);
+    painter(x).ell(48, 40, 45, 9, EARTH, '#3a2216', -.1).done();
+    for (let i = 0; i < 40; i++) { const X = 6 + Math.floor(h2(i, 2) * 84), Y = 34 + Math.floor(h2(i, 3) * 12); if (((X - 48) / 44) ** 2 + ((Y - 40) / 8) ** 2 < .8) px(x, h2(i, 4) > .5 ? EARTH[3] : EARTH[0], X, Y, 2, 1); }
+    const pt = painter(x);
+    // costelas de trás (mais escuras)
+    const spine = k => [10 + k * 66, 32 - Math.sin(k * Math.PI * .9) * 10 - k * 2];
+    for (let i = 0; i < 6; i++) { const [sx, sy] = spine(.28 + i * .085), pts = []; for (let t = 0; t <= 1.001; t += .125) pts.push([sx - Math.sin(t * 2.6) * 9 - t * 2, sy + t * (39 - sy) - Math.sin(t * 3) * 2, 1.4 - t * .5]); pt.tube(pts, 1.2, ['#7a6040', '#a8875a', '#c8b080', '#e0d0a8'], BONE_O); }
+    pt.done();
+    // asa ossuda aberta com membrana rasgada
+    const sh = spine(.7), tips = [[24, 4], [34, 1], [45, 1], [55, 5]];
+    x.globalAlpha = .5; x.fillStyle = '#6a2a2a';
+    for (let i = 0; i < tips.length - 1; i++) { x.beginPath(); x.moveTo(sh[0], sh[1] - 2); x.lineTo(tips[i][0] + 1, tips[i][1] + 3); x.lineTo((tips[i][0] + tips[i + 1][0]) / 2, tips[i][1] + 9 + (i % 2) * 3); x.lineTo(tips[i + 1][0] - 1, tips[i + 1][1] + 3); x.closePath(); x.fill(); }
+    x.globalAlpha = 1;
+    for (const [ex, ey] of tips) pt.tube([[sh[0], sh[1] - 2, 1.6], [(sh[0] + ex) / 2, Math.min(sh[1], ey) - 1, 1.1], [ex, ey, .5]], 1, BONE, BONE_O);
+    pt.tube([[sh[0] - 2, sh[1], 2], [sh[0] - 6, sh[1] - 8, 1.6]], 1.5, BONE, BONE_O);
+    pt.done();
+    // coluna (vértebras com espinhos)
+    const sp = []; for (let k = 0; k <= 1.001; k += .05) { const [X, Y] = spine(k); sp.push([X, Y, 1 + Math.sin(k * Math.PI) * 1.6]); }
+    pt.tube(sp, 2, BONE, BONE_O).done();
+    for (let k = .08; k < .95; k += .06) { const [X, Y] = spine(k), hgt = 2 + Math.round(Math.sin(k * Math.PI) * 3); px(x, BONE_O, X - 1, Y - hgt - 2, 3, hgt); px(x, BONE[2], X, Y - hgt - 1, 1, hgt - 1); px(x, BONE[0], X, Y - 1, 1, 1); }
+    // cauda enrolada
+    pt.tube([[10, 32, 1.6], [5, 36, 1.3], [5, 41, 1.1], [10, 43, .9], [15, 41, .7]], 1, BONE, BONE_O).done();
+    // costelas da frente
+    for (let i = 0; i < 6; i++) { const [sx, sy] = spine(.28 + i * .085), pts = []; for (let t = 0; t <= 1.001; t += .125) pts.push([sx + Math.sin(t * 2.6) * 8 + t * 3, sy + t * (42 - sy) - Math.sin(t * 3) * 2, 1.6 - t * .6]); pt.tube(pts, 1.3, BONE, BONE_O); }
+    pt.done();
+    // garras no chão
+    for (const gx2 of [30, 58]) { pt.tube([[gx2, 40, 1.3], [gx2 + 3, 44, 1]], 1, BONE, BONE_O); for (let f = -1; f <= 1; f++) pt.tube([[gx2 + 3, 44, .9], [gx2 + 3 + f * 3, 46, .5]], .7, BONE, BONE_O); }
+    pt.done();
+    // crânio de dragão: focinho longo, chifres para trás, crista
+    pt.tube([[72, 14, 1.6], [65, 9, 1.2], [58, 9, .9], [55, 12, .5]], 1, BONE, BONE_O).tube([[74, 12, 1.5], [69, 5, 1.1], [62, 2, .5]], 1, BONE, BONE_O).done();
+    pt.poly([[76, 29], [93, 28], [95, 30], [86, 33], [76, 32]], BONE, BONE_O, -.25).done();                                     // mandíbula
+    pt.poly([[68, 19], [72, 13], [80, 12], [86, 16], [95, 22], [95, 26], [85, 28], [72, 27]], BONE, BONE_O, .05).done();          // crânio
+    px(x, BONE[0], 74, 13, 9, 1); px(x, BONE[3], 75, 14, 6, 1);                                                                  // crista
+    px(x, '#2a1a10', 75, 16, 5, 4); px(x, '#140c08', 76, 17, 3, 2); px(x, '#9ff3ff', 77, 17, 1, 1);                              // órbita com brilho
+    px(x, '#2a1a10', 92, 22, 2, 1); px(x, BONE[0], 80, 21, 10, 1); px(x, BONE[0], 71, 24, 6, 1);
+    for (let i = 0; i < 7; i++) { px(x, BONE[3], 79 + i * 2, 28, 1, 2); px(x, BONE_O, 80 + i * 2, 28, 1, 1); }                  // dentes
+    px(x, BONE[3], 93, 27, 1, 2);
+    // musgo e flores sobre os ossos, ossinhos soltos
+    for (let i = 0; i < 26; i++) { const k = h2(i, 9), [X, Y] = spine(k); if (h2(i, 1) > .45) px(x, MOSS[h2(i, 7) > .5 ? 2 : 1], Math.round(X + (h2(i, 5) - .5) * 4), Math.round(Y - 2), 2, 1); }
+    px(x, MOSS[2], 80, 12, 4, 1); px(x, MOSS[3], 81, 11, 2, 1);
+    for (const [X, Y] of [[20, 46], [70, 45], [86, 41], [40, 47]]) { px(x, BONE_O, X - 1, Y - 1, 5, 3); px(x, BONE[2], X, Y, 3, 1); }
+    grassRim(x, 48, 40, 46, 9, 7);
   }
   if (id === 'ruinas') { [c, x] = canvas(70, 48); ax = 35; ay = 40;
-    for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283 + .2, X = Math.round(35 + Math.cos(a) * 26), Y = Math.round(36 + Math.sin(a) * 9), hg = 7 + (i * 7) % 14;
-      px(x, P.ink, X - 4, Y - hg - 1, 9, hg + 3); px(x, P.st2, X - 3, Y - hg, 7, hg + 1); px(x, P.st3, X - 3, Y - hg, 7, 2); px(x, P.st1, X + 1, Y - hg + 2, 2, hg - 1);
-      if (i % 3 === 0) { px(x, P.ink, X - 5, Y - hg - 4, 11, 4); px(x, P.st3, X - 4, Y - hg - 3, 9, 2); }
-      for (let v = 0; v < hg; v += 2) if (h2(i, v) > .45) px(x, h2(v, i) > .5 ? P.f6 : P.f8, X - 3 + Math.floor(h2(i * 3, v) * 7), Y - hg + v); }
-    px(x, P.ink, 12, 2, 7, 34); px(x, P.st2, 13, 3, 5, 32); px(x, P.ink, 12, 0, 26, 6); px(x, P.st3, 13, 1, 23, 4); px(x, P.f8, 14, 0, 9, 1); for (let v = 4; v < 30; v += 3) px(x, P.f6, 13 + (v % 4), v, 1, 2);
-    px(x, P.ink, 40, 18, 15, 20); px(x, P.st1, 41, 19, 13, 18); px(x, P.st2, 41, 19, 13, 2);
+    softShadow(x, 35, 40, 32, 6, .25);
+    // piso de lajes
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 7; k++) { const X = 6 + k * 8 + (r % 2) * 4, Y = 33 + r * 4; if (h2(k, r) < .2) continue; px(x, STONE_O, X - 1, Y - 1, 8, 5); px(x, h2(r, k) > .5 ? STONE[1] : STONE[2], X, Y, 6, 3); px(x, STONE[3], X, Y, 6, 1); if (h2(k + 9, r) > .7) px(x, MOSS[1], X + 1, Y + 2, 3, 1); }
+    const pt = painter(x);
+    // tambor de coluna caído
+    pt.ell(58, 39, 6, 4, STONE, STONE_O).done(); px(x, STONE[3], 56, 37, 3, 1); px(x, STONE[0], 55, 41, 7, 1);
+    // pilar esquerdo inteiro + capitel, pilar do meio quebrado, arco partido
+    pt.poly([[11, 6], [18, 6], [18, 38], [11, 38]], STONE, STONE_O).poly([[8, 2], [21, 2], [21, 7], [8, 7]], STONE, STONE_O, .2).done();
+    pt.poly([[21, 2], [34, 2], [36, 5], [30, 7], [21, 7]], STONE, STONE_O, .1).done();
+    pt.poly([[26, 20], [33, 18], [33, 38], [26, 38]], STONE, STONE_O).done();
+    for (let Y = 10; Y < 38; Y += 6) { px(x, STONE[0], 12, Y, 6, 1); } for (let Y = 23; Y < 38; Y += 6) px(x, STONE[0], 27, Y, 6, 1);
+    // estela da inscrição (as runas brilham por cima)
+    pt.poly([[40, 20], [47, 17], [54, 20], [54, 38], [40, 38]], STONE, STONE_O, -.15).done();
+    px(x, '#2b3240', 42, 21, 11, 14); px(x, '#3a4354', 42, 21, 11, 1);
+    // hera
+    for (const [X, Y0, L] of [[11, 3, 22], [18, 4, 14], [26, 21, 10], [33, 2, 5], [53, 21, 9]]) for (let k = 0; k < L; k++) if (h2(X, k) > .25) px(x, k % 3 ? MOSS[1] : MOSS[3], X + (h2(k, X) > .5 ? 1 : 0), Y0 + k, 1, 1);
+    px(x, MOSS[2], 8, 1, 6, 1); px(x, MOSS[3], 9, 0, 3, 1); px(x, MOSS[2], 26, 17, 5, 1);
+    grassRim(x, 35, 38, 32, 6, 3);
   }
   if (id === 'torre') { [c, x] = canvas(40, 70); ax = 20; ay = 64;
-    x.fillStyle = 'rgba(5,15,12,.5)'; x.fillRect(6, 60, 32, 8);
-    px(x, P.ink, 7, 22, 26, 44); px(x, P.st2, 8, 23, 24, 42); for (let y = 24; y < 64; y += 5) for (let k = 0; k < 4; k++) px(x, P.st1, 8 + ((y / 5) % 2) * 3 + k * 6, y, 5, 1); px(x, P.st3, 8, 23, 3, 42);
-    px(x, P.ink, 16, 50, 8, 15); px(x, '#1a1208', 17, 51, 6, 14); px(x, P.ink, 17, 32, 6, 8); px(x, P.fire3, 18, 33, 4, 6);
-    for (let y = 0; y < 24; y++) { const w = Math.round(2 + y * .7); px(x, P.ink, 20 - w - 1, y, w * 2 + 2, 1); px(x, y % 4 === 0 ? '#1d3550' : '#3c5f9a', 20 - w, y, w * 2, 1); }
-    px(x, P.ink, 5, 20, 30, 4); px(x, P.st3, 6, 21, 28, 2); for (let v = 0; v < 10; v++) px(x, P.f8, 8 + Math.floor(h2(v, 2) * 24), 24 + Math.floor(h2(v, 4) * 40), 1, 2);
+    softShadow(x, 21, 64, 16, 4, .3);
+    // corpo cilíndrico de pedra
+    for (let Y = 24; Y < 64; Y++) for (let X = 8; X < 32; X++) { const u = (X - 19.5) / 12, row = Math.floor((Y - 24) / 4), joint = ((X + (row % 2) * 3) % 6 === 0) || (Y - 24) % 4 === 0;
+      let col = shade4(STONE, -u * 1.1 + .15 + ((X + Y) & 1 ? .06 : -.06)); if (joint) col = u > .3 ? STONE_O : STONE[0]; px(x, col, X, Y); }
+    px(x, STONE_O, 7, 24, 1, 40); px(x, STONE_O, 32, 24, 1, 40); px(x, STONE_O, 7, 63, 26, 1);
+    // base mais larga
+    const pt = painter(x); pt.poly([[5, 58], [35, 58], [35, 64], [5, 64]], STONE, STONE_O, -.1).done(); for (let X = 6; X < 35; X += 5) px(x, STONE[0], X, 59, 1, 5);
+    // porta em arco e janela iluminada
+    px(x, STONE_O, 15, 49, 10, 15); px(x, '#5a3a22', 16, 51, 8, 12); px(x, '#3a2414', 16, 51, 8, 1); px(x, STONE_O, 16, 49, 8, 2); px(x, '#8a5530', 17, 53, 2, 9); px(x, '#ffd84a', 22, 57, 1, 1);
+    px(x, STONE_O, 16, 31, 8, 10); px(x, '#ffd84a', 17, 33, 6, 7); px(x, '#fff3b0', 18, 34, 2, 3); px(x, STONE_O, 19, 33, 1, 7); px(x, STONE_O, 17, 36, 6, 1); px(x, STONE_O, 17, 32, 6, 1);
+    // ameias + telhado cônico de telhas
+    for (let i = 0; i < 6; i++) { px(x, STONE_O, 6 + i * 5, 18, 4, 7); px(x, i < 2 ? STONE[3] : STONE[2], 7 + i * 5, 19, 2, 5); }
+    px(x, STONE_O, 5, 23, 30, 3); px(x, STONE[2], 6, 24, 28, 1);
+    const ROOF = ['#1d3550', '#2c4f8a', '#3f6fc0', '#6f9be0'];
+    for (let Y = 2; Y < 21; Y++) { const w = Math.round(1 + (Y - 2) * .78); for (let X = 20 - w; X <= 20 + w; X++) { const u = (X - 20) / Math.max(1, w), band = (Y + (X & 1)) % 3 === 0; px(x, X === 20 - w || X === 20 + w ? '#101a2a' : band ? ROOF[0] : shade4(ROOF, -u * .9 + .1), X, Y); } }
+    px(x, '#101a2a', 5, 21, 31, 1);
+    px(x, '#55321c', 20, 0, 1, 4); px(x, '#a83a32', 21, 0, 4, 2); px(x, '#d0622a', 21, 0, 3, 1);   // bandeira
+    for (let k = 0; k < 26; k++) if (h2(k, 4) > .3) px(x, k % 3 ? MOSS[1] : MOSS[3], 9 + (k % 3), 62 - k, 1, 1);
+    for (let k = 0; k < 14; k++) if (h2(k, 6) > .3) px(x, k % 2 ? MOSS[1] : MOSS[2], 30 - (k % 2), 62 - k, 1, 1);
+    grassRim(x, 20, 63, 17, 3, 11);
   }
   if (id === 'caverna') { [c, x] = canvas(80, 54); ax = 40; ay = 48;
-    x.fillStyle = 'rgba(5,15,12,.5)'; x.fillRect(4, 44, 74, 8);
-    disc(x, 40, 30, 26, P.ink); disc(x, 40, 29, 25, P.st1); disc(x, 34, 24, 16, P.st2); disc(x, 30, 19, 7, P.st3); disc(x, 58, 34, 12, P.ink); disc(x, 58, 33, 11, P.st1);
-    px(x, P.ink, 31, 28, 18, 20); px(x, '#030606', 33, 30, 14, 18); px(x, P.ink, 33, 26, 14, 3);
-    px(x, P.f6, 14, 12, 26, 2); for (let v = 0; v < 12; v++) px(x, P.f8, 12 + Math.floor(h2(v, 3) * 50), 8 + Math.floor(h2(v, 6) * 26), 2, 1);
+    softShadow(x, 40, 47, 38, 6, .3);
+    const pt = painter(x);
+    pt.ell(62, 34, 15, 13, STONE, STONE_O).ell(18, 34, 15, 12, STONE, STONE_O).done();
+    pt.ell(40, 28, 27, 21, STONE, STONE_O, .05).done();
+    pt.ell(30, 40, 9, 7, STONE, STONE_O).ell(52, 41, 8, 6, STONE, STONE_O, -.1).done();
+    // musgo no topo
+    for (let X = 16; X < 66; X++) { const top = Math.round(28 - 21 * Math.sqrt(Math.max(0, 1 - ((X - 40) / 27) ** 2))); if (top > 26) continue; const L = 2 + Math.floor(h2(X, 3) * 4); for (let k = 0; k < L; k++) px(x, k === 0 ? MOSS[3] : k < 2 ? MOSS[2] : MOSS[1], X, top + 1 + k, 1, 1); }
+    // rachaduras
+    for (const [X, Y] of [[24, 22], [56, 18], [66, 30]]) { px(x, STONE[0], X, Y, 1, 3); px(x, STONE[0], X + 1, Y + 3, 1, 2); }
+    // entrada escura em arco com vigas de madeira
+    for (let Y = 27; Y < 48; Y++) { const w = Y < 32 ? Math.round(7 * Math.sqrt(1 - ((32 - Y) / 6) ** 2)) : 7; px(x, '#05070a', 40 - w, Y, w * 2, 1); if (Y > 32) px(x, '#0c1016', 40 - w, Y, 2, 1); }
+    px(x, '#3a2216', 31, 27, 3, 21); px(x, '#8a5530', 32, 28, 1, 20); px(x, '#3a2216', 46, 27, 3, 21); px(x, '#8a5530', 47, 28, 1, 20);
+    px(x, '#3a2216', 30, 25, 20, 3); px(x, '#b8814a', 31, 26, 18, 1);
+    // cristais na rocha
+    for (const [X, Y, h] of [[24, 30, 6], [55, 31, 5], [36, 18, 4], [45, 19, 5], [60, 40, 4]]) { px(x, '#1a3a4a', X - 1, Y - h - 1, 4, h + 2); px(x, '#3fd0e0', X, Y - h, 2, h); px(x, '#9ff3ff', X, Y - h, 1, Math.ceil(h / 2)); }
+    grassRim(x, 40, 46, 37, 5, 13);
   }
   if (id === 'buraco') { [c, x] = canvas(56, 34); ax = 28; ay = 26;
-    for (let r2 = 0; r2 < 3; r2++) { x.fillStyle = [P.ink, P.st1, P.st2][r2]; x.beginPath(); x.ellipse(28, 18, 26 - r2 * 2, 13 - r2, 0, 0, 6.283); x.fill(); }
-    x.fillStyle = '#0a0612'; x.beginPath(); x.ellipse(28, 18, 19, 9, 0, 0, 6.283); x.fill(); x.fillStyle = '#000'; x.beginPath(); x.ellipse(28, 19, 14, 6, 0, 0, 6.283); x.fill();
-    for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; px(x, i % 2 ? P.st3 : P.st2, Math.round(28 + Math.cos(a) * 22) - 2, Math.round(18 + Math.sin(a) * 11) - 1, 4, 3); }
-    for (let k = 0; k < 5; k++) { px(x, P.woodD, 24, 9 + k * 3, 1, 2); px(x, P.woodD, 31, 9 + k * 3, 1, 2); px(x, P.wood, 24, 10 + k * 3, 8, 1); }
+    // terra em volta, paredes em camadas descendo para o escuro
+    painter(x).ell(28, 19, 26, 13, EARTH, '#3a2216', .2).done();
+    const layers = ['#5a3420', '#3e2416', '#26160e', '#140c08', '#07040a'];
+    layers.forEach((col, i) => { x.fillStyle = col; x.beginPath(); x.ellipse(28, 19 + i * .8, 20 - i * 2.2, 9.5 - i * 1.3, 0, 0, 6.283); x.fill(); });
+    x.fillStyle = '#000'; x.beginPath(); x.ellipse(28, 23, 8, 3, 0, 0, 6.283); x.fill();
+    // anel de pedras
+    const pt = painter(x);
+    for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283 + .2, X = 28 + Math.cos(a) * 22, Y = 19 + Math.sin(a) * 10.5; if (Math.sin(a) < 0) pt.ell(X, Y, 3 + (i % 2), 2.4, STONE, STONE_O); }
+    pt.done();
+    // escada descendo
+    for (let k = 0; k < 6; k++) { px(x, '#55321c', 24, 10 + k * 3, 1, 3); px(x, '#55321c', 31, 10 + k * 3, 1, 3); px(x, k > 3 ? '#5a3a22' : '#b8814a', 24, 11 + k * 3, 8, 1); }
+    for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283 + .2, X = 28 + Math.cos(a) * 22, Y = 19 + Math.sin(a) * 10.5; if (Math.sin(a) >= 0) pt.ell(X, Y, 3 + (i % 2), 2.4, STONE, STONE_O); }
+    pt.done();
+    for (let i = 0; i < 6; i++) px(x, MOSS[2], 8 + i * 8, 10 + (i % 2) * 18, 2, 1);
+    grassRim(x, 28, 19, 27, 14, 17);
   }
   if (id === 'circulo') { [c, x] = canvas(76, 50); ax = 38; ay = 40;
-    for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283, X = Math.round(38 + Math.cos(a) * 30), Y = Math.round(32 + Math.sin(a) * 12), hg = 12 + (i * 5) % 9;
-      x.fillStyle = 'rgba(5,15,12,.45)'; x.fillRect(X - 2, Y, 8, 3); px(x, P.ink, X - 3, Y - hg - 1, 7, hg + 2); px(x, i % 2 ? P.st2 : P.st1, X - 2, Y - hg, 5, hg); px(x, P.st3, X - 2, Y - hg, 2, hg); }
-    px(x, P.ink, 30, 26, 17, 9); px(x, P.st3, 31, 27, 15, 7); px(x, P.st2, 31, 31, 15, 3);
+    painter(x).ell(38, 33, 34, 12, ['#3f8f45', '#4f9f4a', '#66b350', '#84c65a'], null).done();
+    for (let i = 0; i < 30; i++) { const a = i / 30 * 6.283; px(x, '#a6da6a', Math.round(38 + Math.cos(a) * 18), Math.round(33 + Math.sin(a) * 6), 1, 1); }   // círculo de grama clara
+    const stones = []; for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283 + .35; stones.push({ X: 38 + Math.cos(a) * 30, Y: 34 + Math.sin(a) * 11, h: 13 + (i * 5) % 8, w: 3 + (i % 3 === 0 ? 1 : 0), i }); }
+    stones.sort((a, b) => a.Y - b.Y);
+    const pt = painter(x); let altarDone = false;
+    for (const s2 of stones) {
+      if (!altarDone && s2.Y > 33) { softShadow(x, 39, 35, 9, 2, .3); pt.poly([[30, 27], [46, 27], [48, 33], [28, 33]], STONE, STONE_O, .25).done(); px(x, STONE[0], 29, 33, 19, 2); px(x, STONE_O, 28, 35, 21, 1); px(x, '#3fd0e0', 36, 29, 4, 1); px(x, '#3fd0e0', 37, 28, 2, 3); altarDone = true; }
+      softShadow(x, s2.X + 2, s2.Y, s2.w + 2, 2, .3);
+      pt.poly([[s2.X - s2.w, s2.Y], [s2.X - s2.w + 1, s2.Y - s2.h + 2], [s2.X - 1, s2.Y - s2.h], [s2.X + s2.w - 1, s2.Y - s2.h + 1], [s2.X + s2.w, s2.Y]], STONE, STONE_O).done();
+      const X = Math.round(s2.X), Y = Math.round(s2.Y);
+      px(x, MOSS[2], X - s2.w + 1, Y - s2.h + 1, s2.w + 1, 1); px(x, MOSS[1], X - s2.w + 1, Y - 2, s2.w * 2 - 1, 1);
+      px(x, '#2a5a6a', X - 1, Y - s2.h + 5, 1, 4); px(x, '#3fd0e0', X - 1, Y - s2.h + 5, 1, 3); px(x, '#3fd0e0', X, Y - s2.h + 6, 1, 1);   // runa
+    }
+    grassRim(x, 38, 34, 35, 12, 23);
   }
-  if (id === 'arvore') { const t2 = roundTree(22, [P.f3, P.f5, P.f6, P.f8], 3.3); c = t2.c; ax = t2.ax; ay = t2.ay; }
-  if (id === 'poco') { [c, x] = canvas(56, 40); ax = 28; ay = 32;
-    disc(x, 28, 26, 16, P.ink); disc(x, 28, 26, 15, '#eef0ea'); disc(x, 28, 26, 12, P.ink); disc(x, 28, 26, 11, '#1d3550'); disc(x, 26, 24, 6, '#2c4f7a');
-    for (const [X, Y] of [[8, 18], [48, 18], [12, 36], [44, 36]]) { px(x, P.ink, X - 3, Y - 16, 7, 18); px(x, '#eef0ea', X - 2, Y - 15, 5, 16); px(x, '#c4ccd0', X + 1, Y - 15, 1, 16); px(x, '#eef0ea', X - 3, Y - 17, 7, 2); }
+  if (id === 'arvore') { [c, x] = canvas(72, 80); ax = 36; ay = 74;
+    softShadow(x, 38, 73, 30, 5, .3);
+    const pt = painter(x), BARK = ['#3a2216', '#5a3420', '#7a4a2a', '#9a6538'];
+    // raízes e tronco retorcido
+    for (const [ex, ey] of [[18, 75], [26, 77], [48, 77], [56, 74], [36, 78]]) pt.tube([[36, 66, 3], [(36 + ex) / 2, 72, 2], [ex, ey, .8]], 1, BARK, '#1e120a');
+    pt.tube([[36, 70, 6], [34, 58, 5], [38, 46, 4.5], [35, 36, 4]], 4, BARK, '#1e120a').tube([[36, 46, 2.5], [24, 36, 1.6]], 2, BARK, '#1e120a').tube([[37, 50, 2.5], [50, 40, 1.6]], 2, BARK, '#1e120a').done();
+    for (let k = 0; k < 8; k++) px(x, '#2a160c', 33 + (k % 3), 50 + k * 2, 1, 2);   // veios da casca
+    // copa em camadas de tufos
+    const LEAVES = ['#1d5a3a', '#2f7a40', '#4f9f4a', '#84c65a'];
+    const clumps = [[36, 22, 17, 13], [20, 30, 12, 10], [52, 30, 12, 10], [28, 14, 11, 9], [46, 14, 11, 9], [36, 8, 10, 7], [14, 40, 8, 6], [58, 40, 8, 6], [36, 34, 14, 8]];
+    for (const [X, Y, rx, ry] of clumps) pt.ell(X, Y, rx, ry, LEAVES, '#0f2a1a', .05);
+    pt.done();
+    for (const [X, Y, rx, ry] of clumps) for (let k = 0; k < rx; k++) { const a = h2(k, X) * 3 + 3.6, R2 = .55 + h2(X, k) * .3; px(x, LEAVES[3], Math.round(X + Math.cos(a) * rx * R2), Math.round(Y + Math.sin(a) * ry * R2), 2, 1); }
+    // frutos de luz
+    for (const [X, Y] of [[22, 30], [48, 22], [30, 12], [56, 36], [16, 40], [40, 34], [44, 6]]) { px(x, '#1a3a4a', X - 1, Y - 1, 3, 3); px(x, '#9ff3ff', X, Y, 1, 1); }
+    grassRim(x, 36, 74, 28, 4, 29);
+  }
+  if (id === 'poco') { [c, x] = canvas(56, 46); ax = 28; ay = 38;
+    softShadow(x, 29, 37, 22, 5, .3);
+    const pt = painter(x), MARBLE = ['#9aa4b8', '#c8cfdc', '#e8ecf2', '#ffffff'];
+    // colunas de trás
+    pt.poly([[9, 10], [14, 10], [14, 30], [9, 30]], MARBLE, STONE_O).poly([[42, 10], [47, 10], [47, 30], [42, 30]], MARBLE, STONE_O).done();
+    // borda do poço em blocos de pedra
+    pt.ell(28, 30, 17, 8, STONE, STONE_O, .15).done();
+    for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283, X = Math.round(28 + Math.cos(a) * 15.5), Y = Math.round(30 + Math.sin(a) * 6.8); px(x, STONE[0], X, Y, 1, 1); }
+    x.fillStyle = STONE_O; x.beginPath(); x.ellipse(28, 29.5, 12, 5, 0, 0, 6.283); x.fill();
+    x.fillStyle = '#16305e'; x.beginPath(); x.ellipse(28, 30, 11, 4.3, 0, 0, 6.283); x.fill();
+    x.fillStyle = '#2a4f9a'; x.beginPath(); x.ellipse(27, 29.5, 8, 2.8, 0, 0, 6.283); x.fill();
+    px(x, '#fff8d8', 29, 28, 3, 1); px(x, '#fff8d8', 31, 29, 1, 2); px(x, '#fff8d8', 29, 31, 3, 1);   // lua refletida
+    // frente da borda (parede)
+    for (let X = 11; X <= 45; X++) { const Y = Math.round(30 + 8 * Math.sqrt(Math.max(0, 1 - ((X - 28) / 17) ** 2))); px(x, STONE_O, X, Y, 1, 5); px(x, shade4(STONE, -(X - 28) / 17 * .9 - .1), X, Y, 1, 4); if ((X + 1) % 5 === 0) px(x, STONE[0], X, Y, 1, 4); }
+    // colunas da frente com arco e lua crescente
+    pt.poly([[5, 16], [10, 16], [10, 38], [5, 38]], MARBLE, STONE_O).poly([[46, 16], [51, 16], [51, 38], [46, 38]], MARBLE, STONE_O).done();
+    pt.tube([[7, 15, 2], [14, 7, 2], [28, 3, 2], [42, 7, 2], [49, 15, 2]], 2, MARBLE, STONE_O).done();
+    disc(x, 28, 3, 4, STONE_O); disc(x, 28, 3, 3, '#fff3b0'); disc(x, 30, 2, 3, STONE_O); disc(x, 30, 2, 2, '#e8ecf2');
+    px(x, '#c8cfdc', 30, 2, 2, 2);
+    for (const X of [5, 46]) { px(x, STONE_O, X - 1, 37, 7, 2); for (let k = 0; k < 10; k++) if (h2(X, k) > .35) px(x, k % 3 ? MOSS[1] : MOSS[3], X + (k % 2) * 4, 36 - k, 1, 1); }
+    grassRim(x, 28, 36, 24, 5, 31);
   }
   return LM_SPR[id] = { c, ax, ay };
 }

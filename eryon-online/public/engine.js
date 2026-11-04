@@ -396,3 +396,34 @@ function track(keys, t) {
     if (t < b[0]) { const k = (t - a[0]) / (b[0] - a[0]); const mv = Math.hypot(b[1] - a[1], b[2] - a[2]) > .5; return { x: lerp(a[1], b[1], k), y: lerp(a[2], b[2], k), moving: mv, face: mv ? Math.sign(b[1] - a[1]) : 0, speed: Math.hypot(b[1] - a[1], b[2] - a[2]) / (b[0] - a[0]) }; } }
   const l = keys[keys.length - 1]; return { x: l[1], y: l[2], moving: false, face: 0 };
 }
+
+// =====================================================================
+// PINTOR DE FORMAS (pixel art com contorno): cada forma tem "dentro" e "cor";
+// primeiro desenha o contorno de todas, depois o preenchimento sombreado (luz vindo de cima-esquerda)
+// =====================================================================
+function shade4(pal, l) { return l > .62 ? pal[3] : l > .18 ? pal[2] : l > -.38 ? pal[1] : pal[0]; }
+function painter(x) {
+  const ops = [], dth = (X, Y) => (((X + Y) & 1) ? .07 : -.07);
+  const api = {
+    ell(cx, cy, rx, ry, pal, o = P.ink, bias = 0) { ops.push({ o, bb: [cx - rx - 1, cy - ry - 1, cx + rx + 1, cy + ry + 1], inside: (X, Y) => ((X + .5 - cx) / rx) ** 2 + ((Y + .5 - cy) / ry) ** 2 <= 1,
+      col: (X, Y) => { const u = (X + .5 - cx) / rx, v = (Y + .5 - cy) / ry; return shade4(pal, -u * .5 - v * .85 + bias + dth(X, Y)); } }); return api; },
+    tube(pts, r, pal, o = P.ink, bias = 0) {   // pts: [[x,y,(raio)],...]
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const p of pts) { const rr = p[2] ?? r; x0 = Math.min(x0, p[0] - rr); y0 = Math.min(y0, p[1] - rr); x1 = Math.max(x1, p[0] + rr); y1 = Math.max(y1, p[1] + rr); }
+      const near = (X, Y) => { let best = 1e9, bx = 0, by = 0, br = r; for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, k = clamp(((X - a[0]) * dx + (Y - a[1]) * dy) / L), qx = a[0] + dx * k, qy = a[1] + dy * k, d = Math.hypot(X - qx, Y - qy), ra = (a[2] ?? r) + ((b[2] ?? r) - (a[2] ?? r)) * k; if (d - ra < best) { best = d - ra; bx = X - qx; by = Y - qy; br = ra; } } return [best, bx, by, br]; };
+      ops.push({ o, bb: [x0 - 1, y0 - 1, x1 + 1, y1 + 1], inside: (X, Y) => near(X + .5, Y + .5)[0] <= 0, col: (X, Y) => { const [, bx, by, br] = near(X + .5, Y + .5); return shade4(pal, (-bx * .55 - by * .85) / Math.max(1, br) + bias + dth(X, Y)); } }); return api; },
+    poly(pts, pal, o = P.ink, bias = 0) {
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, w = (x1 - x0) / 2 || 1, h = (y1 - y0) / 2 || 1;
+      const inside = (X, Y) => { X += .5; Y += .5; let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const a = pts[i], b = pts[j]; if ((a[1] > Y) !== (b[1] > Y) && X < (b[0] - a[0]) * (Y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+      ops.push({ o, bb: [x0 - 1, y0 - 1, x1 + 1, y1 + 1], inside, col: (X, Y) => shade4(pal, -(X - cx) / w * .55 - (Y - cy) / h * .6 + bias + dth(X, Y)) }); return api; },
+    done() {
+      const W = x.canvas.width, H = x.canvas.height;
+      for (const op of ops) { if (!op.o) continue; const [a, b, c, d] = op.bb.map(Math.floor); for (let Y = Math.max(0, b - 1); Y <= Math.min(H - 1, d + 1); Y++) for (let X = Math.max(0, a - 1); X <= Math.min(W - 1, c + 1); X++)
+        if (!op.inside(X, Y) && (op.inside(X + 1, Y) || op.inside(X - 1, Y) || op.inside(X, Y + 1) || op.inside(X, Y - 1))) px(x, op.o, X, Y); }
+      for (const op of ops) { const [a, b, c, d] = op.bb.map(Math.floor); for (let Y = Math.max(0, b); Y <= Math.min(H - 1, d); Y++) for (let X = Math.max(0, a); X <= Math.min(W - 1, c); X++) if (op.inside(X, Y)) px(x, op.col(X, Y), X, Y); }
+      ops.length = 0; return api;
+    },
+  };
+  return api;
+}
+function softShadow(x, cx, cy, rx, ry, a = .32) { x.fillStyle = `rgba(10,30,20,${a})`; for (let dy = -ry; dy <= ry; dy++) { const w = Math.round(rx * Math.sqrt(1 - (dy / (ry + .5)) ** 2)); x.fillRect(Math.round(cx - w), Math.round(cy + dy), w * 2, 1); } }

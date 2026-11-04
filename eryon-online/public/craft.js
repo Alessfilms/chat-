@@ -26,12 +26,28 @@ function buildNodes() {
     NODES.push({ id: 'h' + hi++, kind: 'herb', x: Math.round(x), y: Math.round(y), s: Math.floor(r() * 3) });
   }
 }
+const ROCK_SPR = [];
+function rockSprite(k) {   // pedra mineável: blocos facetados com contorno, rachaduras, musgo e veios brilhando
+  if (ROCK_SPR[k]) return ROCK_SPR[k];
+  const [c, x] = canvas(28, 26), pt = painter(x), ST = ['#4d5566', '#6e7789', '#939cae', '#c3cad6'], O = '#22262f', s = 1 + k * .25;
+  softShadow(x, 15, 22, 11 * s, 2.5, .35);
+  pt.poly([[14 - 9 * s, 22], [14 - 8 * s, 22 - 7 * s], [14 - 3 * s, 22 - 12 * s], [14 + 4 * s, 22 - 11 * s], [14 + 8 * s, 22 - 5 * s], [14 + 9 * s, 22]], ST, O, .05).done();
+  if (k > 0) pt.poly([[20 - 2 * k, 22], [21 - 2 * k, 17], [25, 16], [27, 22]], ST, O, -.1).done();
+  pt.poly([[3, 22], [4, 18], [8, 17], [10, 22]], ST, O).done();
+  // faces: topo claro, lado direito escuro
+  px(x, ST[3], Math.round(14 - 3 * s), Math.round(22 - 11 * s), Math.round(6 * s), 1);
+  px(x, ST[0], Math.round(14 + 3 * s), Math.round(22 - 6 * s), 1, Math.round(5 * s)); px(x, ST[0], Math.round(14 + 2 * s), Math.round(22 - 2 * s), Math.round(3 * s), 1);
+  px(x, O, 12, Math.round(22 - 8 * s), 1, 3); px(x, O, 13, Math.round(22 - 5 * s), 1, 2);    // rachadura
+  px(x, '#3fd0e0', Math.round(14 - 5 * s), Math.round(22 - 5 * s), 2, 1); px(x, '#c8f6ff', Math.round(14 - 5 * s), Math.round(22 - 5 * s), 1, 1);   // veio
+  px(x, '#66b350', Math.round(14 - 4 * s), Math.round(22 - 12 * s), Math.round(5 * s), 1); px(x, '#90d064', Math.round(14 - 3 * s), Math.round(22 - 12 * s), 2, 1); px(x, '#47994a', 4, 18, 4, 1);
+  for (const [a2, b2] of [[2, 23], [25, 23], [9, 23]]) { px(x, '#47994a', a2, b2 - 2, 1, 2); px(x, '#90d064', a2 + 1, b2 - 3, 1, 2); }
+  return ROCK_SPR[k] = c;
+}
 function drawNode(x, n) {
   const gone = DEPL.has(n.id), X = n.x, Y = n.y;
   if (n.kind === 'rock') {
-    if (gone) { px(x, P.ink, X - 4, Y - 3, 9, 4); px(x, P.st1, X - 3, Y - 2, 7, 2); return; }
-    const w = 7 + n.s * 2; x.fillStyle = 'rgba(5,15,12,.5)'; x.fillRect(X - w + 2, Y - 1, w * 2, 3);
-    disc(x, X, Y - 5, w - 1, P.ink); disc(x, X, Y - 5, w - 2, P.st2); disc(x, X - 2, Y - 7, Math.max(2, w - 5), P.st3); px(x, P.st4, X - 3, Y - 9, 2, 1); px(x, P.st1, X + 1, Y - 3, w - 3, 1);
+    if (gone) { px(x, P.ink, X - 5, Y - 3, 11, 4); px(x, P.st1, X - 4, Y - 2, 4, 2); px(x, P.st2, X + 1, Y - 2, 3, 1); px(x, P.st1, X + 2, Y - 1, 2, 1); return; }
+    const sp = rockSprite(n.s); x.drawImage(sp, X - 14, Y - 22);
   } else {
     if (gone) { px(x, P.f5, X - 1, Y - 3, 1, 3); px(x, P.f6, X + 1, Y - 2, 1, 2); return; }
     disc(x, X, Y - 4, 5, P.ink); disc(x, X, Y - 4, 4, P.f6); disc(x, X - 1, Y - 5, 2, P.f8);
