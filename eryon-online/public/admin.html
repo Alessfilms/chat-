@@ -70,6 +70,13 @@ code{background:#060b0a;padding:2px 6px;color:var(--gold);font-size:16px;letter-
     <p id="supL" style="margin:0;color:#98a4ac;font-size:14px"></p>
   </section>
   <section>
+    <label>Castelo de Eryon (obra da comunidade)</label>
+    <p id="cstat" style="margin:0">Entre com a chave para ver.</p>
+    <div class="row"><span>Doar para a obra:</span><input id="cP" type="number" min="0" max="5000" value="150" style="width:90px" aria-label="Pedras"><input id="cL" type="number" min="0" max="5000" value="0" style="width:90px" aria-label="Lenhas"><button id="cGive">Doar (Pedra · Lenha)</button></div>
+    <p class="hint" style="margin:0;color:#98a4ac;font-size:14px">150 pedras completam a Fundação e o castelo aparece começando. O resto a galera constrói levando pedras da pedreira.</p>
+    <div class="row"><input id="cConf" placeholder="digite RECOMECAR" style="width:180px"><button class="sm dan" id="cReset">Recomeçar a obra do zero</button></div>
+  </section>
+  <section>
     <label>Placas patrocinadas</label>
     <div class="row"><input id="sgText" maxlength="80" placeholder="Ex.: Padaria do Zé · Rua 7, 120" style="flex:1;min-width:200px"><input id="sgColor" type="color" value="#ffd84a" aria-label="Cor da placa" style="width:52px;padding:2px"></div>
     <div class="row"><input id="sgUser" placeholder="@ de quem está online (a placa aparece do lado dele)" style="flex:1;min-width:200px"><button class="sm" id="sgBtn">Colocar placa</button></div>
@@ -121,6 +128,7 @@ async function loadMod() {
   $('supL').textContent = d.supporters.length ? 'Apoiadores: ' + d.supporters.map(u => '@' + u).join(', ') : 'Ainda sem apoiadores.';
   $('supPix').value = d.supportCfg.pix || ''; $('supUrl').value = d.supportCfg.url || '';
   const sl = $('sgL'); sl.innerHTML = ''; for (const sg of d.signs) { const r = el('div', undefined, 'row'); r.append(el('span', `"${sg.text}" em (${sg.x}, ${sg.y})`), btn('Remover', () => call('/api/admin/signdel', { id: sg.id }), 'sm dan')); sl.appendChild(r); }
+  const cs = d.castle; $('cstat').textContent = cs.stage >= cs.stages ? 'Castelo PRONTO! 🏰' : `Etapa ${cs.stage + 1}/${cs.stages}: ${cs.name} · ${cs.pedra} pedras e ${cs.lenha} lenhas já colocadas` + (cs.top.length ? ' · Mestres de obra: ' + cs.top.map(([u, n]) => '@' + u + ' (' + n + ')').join(', ') : '');
   if (d.staff.length) $('staffUser').placeholder = 'Criador: ' + d.staff.map(u => '@' + u).join(', ');
 }
 const act = (fn, ok) => async () => { try { await fn(); $('msg').textContent = ok; await loadMod(); } catch (e) { $('msg').textContent = e.message; } };
@@ -135,6 +143,8 @@ $('staffOff').onclick = act(() => call('/api/admin/staff', { username: $('staffU
 $('supCfg').onclick = act(() => call('/api/admin/supportcfg', { pix: $('supPix').value, url: $('supUrl').value }), 'Forma de apoio salva.');
 $('supOn').onclick = act(() => call('/api/admin/supporter', { username: $('supUser').value, on: true }), 'Selo de apoiador dado!');
 $('supOff').onclick = act(() => call('/api/admin/supporter', { username: $('supUser').value, on: false }), 'Selo removido.');
+$('cGive').onclick = act(() => call('/api/admin/castle', { pedra: $('cP').value, lenha: $('cL').value }), 'Obra atualizada!');
+$('cReset').onclick = act(() => call('/api/admin/castle', { reset: true, confirm: $('cConf').value.trim().toUpperCase() }), 'Obra recomeçada.');
 $('sgBtn').onclick = act(() => call('/api/admin/sign', { text: $('sgText').value, username: $('sgUser').value, color: $('sgColor').value }), 'Placa colocada!');
 
 $('copyAll').onclick = () => copy(users.map(msgFor).join('\n\n'));

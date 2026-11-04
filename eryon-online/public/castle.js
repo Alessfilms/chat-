@@ -108,6 +108,7 @@ function onCastleMsg(m) {
   const wasDone = castleDone(); CSTATE = { pedra: m.pedra, lenha: m.lenha, stages: m.stages || CSTATE.stages, top: m.top || CSTATE.top };
   if (m.n) { const me2 = players.get(myId); if (me2 && !me2.room && Math.hypot(me2.x - CASTLE.x, me2.y - CASTLE.y) < 320) { castleFx(m.n); play('anvil_' + (Math.random() < .5 ? 0 : 1), .35); play('wood_hit', .3, .8); } }
   if (castleDone() && !wasDone && m.n) { fxToast('O CASTELO ESTÁ PRONTO!', 'Toda Eryon construiu junto. Entre pelo portão!', '#ffd84a', '♛'); fanfare(true); }
+  if (!m.n) castleHint();
   if (castleDone()) { if (!DOORS.some(d => d.room === 'castelo')) DOORS.push({ room: 'castelo', x: CASTLE.x, y: CASTLE.y + 4, label: 'Entrar no castelo' }); }
 }
 // ---------- Salão do Trono (quando o castelo fica pronto)
@@ -126,3 +127,9 @@ function throneRoom() {
   return { id: 'castelo', name: 'Salão do Trono de Eryon', w, h, img: c, spawn: { x: 120, y: 152 }, door: { x: 120, y: 164 }, block, glows: [[40, 50, P.fire3], [200, 50, P.fire3]],
     spots: [{ x: 120, y: 54, rx: 14, ry: 8, kind: 'magic', label: 'Sentar no trono' }], outside: { x: CASTLE.spot.x, y: CASTLE.spot.y } };
 }
+
+// placas fixas apontando para a obra
+const CASTLE_SIGNS = [{ x: 378, y: 1014, text: '↓ Obra do Castelo de Eryon · siga a estrada', color: '#ffd84a', fixed: true }, { x: 384, y: 1446, text: '→ Castelo de Eryon (obra) · leve pedras!', color: '#ffd84a', fixed: true }];
+const allSigns = () => SIGNS.concat(CASTLE_SIGNS);
+function castleHint() { try { if (localStorage.getItem('eryon_castle_hint') === '1' || castleDone()) return; localStorage.setItem('eryon_castle_hint', '1'); } catch { return; }
+  setTimeout(() => fxToast('A obra do Castelo começou!', 'Fica ao sul da vila: siga a estrada e leve pedras', '#ffd84a', '♜'), 9000); }

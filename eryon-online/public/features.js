@@ -107,7 +107,7 @@ function signSprite(col) { if (SIGN_SPR[col]) return SIGN_SPR[col]; const [c, x]
 function drawSign(x, s) { x.drawImage(signSprite(s.color || '#ffd84a'), s.x - 13, s.y - 20); }
 function drawSignLabels(ctx2, L, T, S, fs, p) {
   if (!p || p.room) return;
-  for (const s of SIGNS) { const d = Math.hypot(p.x - s.x, p.y - s.y); if (d > 70) continue;
+  for (const s of allSigns()) { const d = Math.hypot(p.x - s.x, p.y - s.y); if (d > 70) continue;
     const sx = Math.round((s.x - L) * S), sy = Math.round((s.y - 24 - T) * S); ctx2.globalAlpha = Math.min(1, (70 - d) / 20);
     ctx2.font = `700 ${Math.round(fs * .95)}px Pix, monospace`; const w = Math.min(cv.width * .8, ctx2.measureText(s.text).width + fs * 1.2), h = fs * 1.8;
     ctx2.fillStyle = 'rgba(12,20,16,.92)'; ctx2.fillRect(sx - w / 2, sy - h, w, h); ctx2.strokeStyle = s.color || '#ffd84a'; ctx2.lineWidth = Math.max(2, fs / 7); ctx2.strokeRect(sx - w / 2, sy - h, w, h);

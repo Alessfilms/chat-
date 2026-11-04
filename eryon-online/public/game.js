@@ -322,9 +322,19 @@ const keys = new Set(); let target = null;
 const cv = $('game'), ctx = cv.getContext('2d');
 let DPR = 1, S = 4;
 function resize() { DPR = Math.min(window.devicePixelRatio || 1, 3); cv.width = Math.round(innerWidth * DPR); cv.height = Math.round(innerHeight * DPR); ctx.imageSmoothingEnabled = false; baseS = Math.max(2, Math.round(Math.min(cv.width / 150, cv.height / 250))); applyZoom(); }
-let baseS = 4, zoomMul = 1;
-function applyZoom() { const smin = Math.max(1, Math.ceil(cv.width / 700), Math.ceil(cv.height / 1250)); S = clamp(Math.round(baseS * zoomMul), smin, baseS * 3); }
-function setZoom(z) { zoomMul = clamp(z, .3, 3); applyZoom(); }
+let baseS = 4, zoomMul = 1, zoomTarget = 1, zoomFocus = null, zoomSnapT = 0, pinching = false;
+// zoom contínuo e animado; quando para, encaixa numa escala inteira (pixels nítidos)
+const sMin = () => Math.max(1, cv.width / 700, cv.height / 1250);
+const sFor = z => clamp(baseS * z, sMin(), baseS * 3);
+function applyZoom() { S = sFor(zoomMul); }
+function setZoom(z, focus, instant) { zoomTarget = clamp(z, .3, 3); zoomFocus = focus || null; zoomSnapT = performance.now() + 260; if (instant) { const S0 = S; zoomMul = zoomTarget; applyZoom(); keepFocus(S0); } }
+function zoomStepBtn(dir) { const si = Math.max(Math.ceil(sMin()), Math.round(S) + dir); zoomTarget = clamp(si / baseS, .3, 3); zoomFocus = null; zoomSnapT = 0; }
+function keepFocus(S0) { if (!zoomFocus || cam.mode !== 'free' || S === S0) return; const wx = cam.L + zoomFocus.x / S0, wy = cam.T + zoomFocus.y / S0; cam.L = wx - zoomFocus.x / S; cam.T = wy - zoomFocus.y / S; cam.x = cam.L + cv.width / S / 2; cam.y = cam.T + cv.height / S / 2; }
+function zoomStep(dt) {
+  if (zoomSnapT && !pinching && performance.now() > zoomSnapT) { zoomSnapT = 0; const si = Math.max(Math.ceil(sMin()), Math.round(sFor(zoomTarget))); zoomTarget = si / baseS; }
+  if (zoomMul === zoomTarget) return; const S0 = S;
+  zoomMul += (zoomTarget - zoomMul) * (1 - Math.exp(-dt * 13)); if (Math.abs(zoomMul - zoomTarget) < .0015) zoomMul = zoomTarget; applyZoom(); keepFocus(S0);
+}
 addEventListener('resize', resize); resize();
 const [view, vx] = canvas(Math.ceil(4000 / 2) + 4, Math.ceil(4000 / 2) + 4);
 const [light, lx] = canvas(view.width, view.height);
@@ -473,21 +483,28 @@ addEventListener('keydown', e => { sndStart(); if (['INPUT', 'TEXTAREA'].include
   keys.add(k); target = null; if (cam.mode !== 'follow') follow(); });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 const cam = { L: 0, T: 0, mode: 'follow', x: C.x, y: C.y, watch: null };
-const ptrs = new Map(); let drag = null, pinch0 = 0, zoom0 = 1;
-cv.addEventListener('pointerdown', e => { sndStart(); if (!me) return; $('msg').blur(); cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (ptrs.size === 1) drag = { x: e.clientX, y: e.clientY, moved: false, cx: cam.L + cv.width / S / 2, cy: cam.T + cv.height / S / 2 };
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); zoom0 = zoomMul; if (drag) drag.moved = true; } });
+const ptrs = new Map(); let drag = null, pinch0 = 0, zoom0 = 1, pinchW = null;
+const midOf = () => { const [a, b] = [...ptrs.values()]; return { x: (a.x + b.x) / 2 * DPR, y: (a.y + b.y) / 2 * DPR, d: Math.hypot(a.x - b.x, a.y - b.y) }; };
+cv.addEventListener('pointerdown', e => { sndStart(); if (!me) return; $('msg').blur(); try { cv.setPointerCapture(e.pointerId); } catch { } ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); cam.vx = cam.vy = 0;
+  if (ptrs.size === 1) drag = { x: e.clientX, y: e.clientY, moved: false, cx: cam.L + cv.width / S / 2, cy: cam.T + cv.height / S / 2, lt: performance.now(), lx: e.clientX, ly: e.clientY, vx: 0, vy: 0 };
+  if (ptrs.size === 2) { const m = midOf(); pinch0 = m.d; zoom0 = zoomMul; pinching = true; pinchW = { x: cam.L + m.x / S, y: cam.T + m.y / S }; if (drag) drag.moved = true; } });
 cv.addEventListener('pointermove', e => { if (!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0 > 0) setZoom(zoom0 * d / pinch0); return; }
+  if (ptrs.size === 2) { const m = midOf(); if (pinch0 > 0) { zoomTarget = zoomMul = clamp(zoom0 * m.d / pinch0, .3, 3); applyZoom(); zoomFocus = null;
+      if (cam.mode === 'free' && pinchW) { cam.x = pinchW.x - m.x / S + cv.width / S / 2; cam.y = pinchW.y - m.y / S + cv.height / S / 2; } } return; }
   if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (!drag.moved && Math.hypot(dx, dy) > 8) drag.moved = true;
-  if (drag.moved) { cam.mode = 'free'; cam.watch = null; cam.x = drag.cx - dx * DPR / S; cam.y = drag.cy - dy * DPR / S; showRecenter(); } });
-const endPtr = e => { const was = drag; ptrs.delete(e.pointerId); if (ptrs.size === 0) { if (was && !was.moved) { target = { x: cam.L + (e.clientX * DPR) / S, y: cam.T + (e.clientY * DPR) / S }; follow(); } drag = null; pinch0 = 0; } };
-cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); drag = null; });
-cv.addEventListener('wheel', e => { e.preventDefault(); setZoom(zoomMul * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); }, { passive: false });
+  if (drag.moved) { cam.mode = 'free'; cam.watch = null; cam.x = drag.cx - dx * DPR / S; cam.y = drag.cy - dy * DPR / S; showRecenter();
+    const now = performance.now(), dtm = Math.max(1, now - drag.lt), k = .35; drag.vx = drag.vx * (1 - k) + (-(e.clientX - drag.lx) * DPR / S / dtm) * k; drag.vy = drag.vy * (1 - k) + (-(e.clientY - drag.ly) * DPR / S / dtm) * k; drag.lt = now; drag.lx = e.clientX; drag.ly = e.clientY; } });
+const endPtr = e => { const was = drag; ptrs.delete(e.pointerId);
+  if (ptrs.size < 2 && pinching) { pinching = false; zoomSnapT = performance.now() + 120; pinchW = null; if (ptrs.size === 1) { const [q] = [...ptrs.values()]; drag = { x: q.x, y: q.y, moved: true, cx: cam.L + cv.width / S / 2, cy: cam.T + cv.height / S / 2, lt: performance.now(), lx: q.x, ly: q.y, vx: 0, vy: 0 }; } }
+  if (ptrs.size === 0) { if (was && !was.moved) { target = { x: cam.L + (e.clientX * DPR) / S, y: cam.T + (e.clientY * DPR) / S }; follow(); }
+    else if (was && was.moved && performance.now() - was.lt < 80) { cam.vx = clamp(was.vx, -2, 2); cam.vy = clamp(was.vy, -2, 2); }   // inércia ao soltar
+    drag = null; pinch0 = 0; } };
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); drag = null; pinching = false; pinch0 = 0; });
+cv.addEventListener('wheel', e => { e.preventDefault(); const f = Math.exp(-clamp(e.deltaY, -120, 120) * .0022); setZoom(zoomTarget * f, { x: e.clientX * DPR, y: e.clientY * DPR }); }, { passive: false });
 function follow() { cam.mode = 'follow'; cam.watch = null; showRecenter(); }
 function showRecenter() { $('recenter').hidden = cam.mode === 'follow'; }
-$('recenter').onclick = follow; $('zin').onclick = () => setZoom(zoomMul * 1.25); $('zout').onclick = () => setZoom(zoomMul / 1.25);
+$('recenter').onclick = follow; $('zin').onclick = () => zoomStepBtn(1); $('zout').onclick = () => zoomStepBtn(-1);
 // lista de quem está online
 $('onlineBtn').onclick = () => { const l = $('plist'); l.hidden = !l.hidden; if (!l.hidden) renderList(); };
 function renderList() { const l = $('plist'); l.innerHTML = ''; const arr = [...players.values()].sort((a, b) => (b.mine - a.mine) || a.username.localeCompare(b.username));
@@ -506,6 +523,8 @@ function start() {
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
   const p = players.get(myId);
+  zoomStep(dt);
+  if (!drag && cam.mode === 'free' && (cam.vx || cam.vy)) { cam.x += cam.vx * dt * 1000; cam.y += cam.vy * dt * 1000; const fr = Math.exp(-dt * 4.5); cam.vx *= fr; cam.vy *= fr; if (Math.hypot(cam.vx, cam.vy) < .004) cam.vx = cam.vy = 0; }
   if (p) {
     let ix = 0, iy = 0;
     if (keys.has('arrowleft') || keys.has('a')) ix--; if (keys.has('arrowright') || keys.has('d')) ix++;
@@ -539,6 +558,11 @@ function draw(t, p) {
   let cx = p ? p.x : C.x, cy = p ? p.y - 8 : C.y;
   if (!room) { if (cam.mode === 'free') { cx = cam.x; cy = cam.y; } else if (cam.mode === 'watch') { const w = players.get(cam.watch); if (w && !w.room) { cx = w.x; cy = w.y - 8; } else follow(); } }
   const fit = (c, v, M) => v >= M ? M / 2 : clamp(c, v / 2, M - v / 2);
+  // câmera desliza suave até o personagem (e salta direto em distâncias grandes, ex.: portal)
+  const dtc = Math.min(.05, Math.max(0, t - (cam.lt || t))); cam.lt = t;
+  if (!room && cam.mode !== 'free') { if (cam.sx === undefined || Math.hypot(cx - cam.sx, cy - cam.sy) > 260 || cam.room) { cam.sx = cx; cam.sy = cy; } else { const k = 1 - Math.exp(-dtc * 9); cam.sx += (cx - cam.sx) * k; cam.sy += (cy - cam.sy) * k; } cx = cam.sx; cy = cam.sy; }
+  else if (!room) { cam.sx = cx; cam.sy = cy; }
+  cam.room = room ? 1 : 0;
   cx = fit(cx, vw, MW); cy = fit(cy, vh, MH); if (!room) { cam.x = cx; cam.y = cy; }
   const L = cx - vw / 2, T = cy - vh / 2, li = Math.floor(L), ti = Math.floor(T), cw = Math.ceil(vw) + 2, ch = Math.ceil(vh) + 2;
   cam.L = L; cam.T = T;
@@ -554,7 +578,7 @@ function draw(t, p) {
   for (const q of players.values()) if ((q.room || '') === myRoom) list.push({ y: q.y, pl: q });
   if (!room) { for (const n of NODES) if (n.x > li - 20 && n.x < li + cw + 20 && n.y > ti - 10 && n.y < ti + ch + 20) list.push({ y: n.y, node: n }); for (const d of DECOR) if (d.x > li - 30 && d.x < li + cw + 30 && d.y > ti - 10 && d.y < ti + ch + 30) list.push({ y: d.y, decor: d }); }
   if (!room) for (const h of BUILT) if (h.x > li - 40 && h.x < li + cw + 40 && h.y > ti - 10 && h.y < ti + ch + 40) list.push({ y: h.y, built: h });
-  if (!room) for (const sg of SIGNS) if (sg.x > li - 30 && sg.x < li + cw + 30 && sg.y > ti - 10 && sg.y < ti + ch + 30) list.push({ y: sg.y, sign: sg });
+  if (!room) for (const sg of allSigns()) if (sg.x > li - 30 && sg.x < li + cw + 30 && sg.y > ti - 10 && sg.y < ti + ch + 30) list.push({ y: sg.y, sign: sg });
   if (!room) drawDragonShadows(x, li, ti, cw, ch);
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
@@ -773,6 +797,7 @@ function drawMap() {
   x.drawImage(villageLayer, 0, 0, c.width, c.height); x.globalAlpha = .55; for (const o of OBJ) if (o.tree !== undefined && !CUT.has(o.tree)) { x.fillStyle = '#1c3831'; x.fillRect(o.x * k - 1, o.y * k - 2, 3, 3); } x.globalAlpha = 1;
   x.font = '700 11px Pix, monospace'; x.textAlign = 'center';
   for (const l of LANDMARKS) if (FOUND.has(l.id)) { x.fillStyle = '#140e06'; x.fillRect(l.x * k - 3, l.y * k - 3, 7, 7); x.fillStyle = '#ffd84a'; x.fillRect(l.x * k - 2, l.y * k - 2, 5, 5); x.lineWidth = 3; x.strokeStyle = '#140e06'; x.strokeText(l.name, l.x * k, l.y * k - 6); x.fillStyle = '#fff3b0'; x.fillText(l.name, l.x * k, l.y * k - 6); }
+  { const cx = CASTLE.x * k, cy = (CASTLE.y - 60) * k; x.fillStyle = '#140e06'; x.fillRect(cx - 5, cy - 5, 11, 11); x.fillStyle = castleDone() ? '#ffd84a' : '#c3cad6'; x.fillRect(cx - 4, cy - 4, 9, 9); x.fillStyle = '#c0302a'; x.fillRect(cx - 1, cy - 3, 3, 3); x.lineWidth = 3; x.strokeStyle = '#140e06'; const nm = castleDone() ? 'Castelo' : 'Obra do Castelo'; x.strokeText(nm, cx, cy - 8); x.fillStyle = '#ffd84a'; x.fillText(nm, cx, cy - 8); }
   const p = players.get(myId); if (p && !p.room) { x.fillStyle = '#9ff3ff'; x.fillRect(p.x * k - 2, p.y * k - 2, 5, 5); }
   $('mapList').innerHTML = LANDMARKS.map(l => `<li class="${FOUND.has(l.id) ? 'f' : ''}" data-id="${l.id}">${FOUND.has(l.id) ? l.name + ' ▶' : '???'}</li>`).join('');
   for (const li2 of $('mapList').querySelectorAll('li.f')) { li2.style.cursor = 'pointer'; li2.title = 'Ver a animação de novo'; li2.onclick = () => { closePanels(); showDiscovery(LM[li2.dataset.id]); }; }
