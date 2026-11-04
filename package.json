@@ -1,0 +1,8 @@
+{
+  "name": "eryon",
+  "private": true,
+  "description": "Raiz do repositório: permite publicar o Eryon Online no Render mesmo sem definir a pasta eryon-online.",
+  "scripts": { "start": "node eryon-online/server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" }
+}
