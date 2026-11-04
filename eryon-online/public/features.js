@@ -31,6 +31,7 @@ function onFeatureMsg(m) {
   if (m.t === 'announce') { showAnnounce(m.text); return true; }
   if (m.t === 'rain') { startRain(m.gift || {}); return true; }
   if (m.t === 'signs') { SIGNS = m.list || []; return true; }
+  if (m.t === 'castle') { onCastleMsg(m); return true; }
   if (m.t === 'tp') { const p = players.get(myId); if (p) { p.x = m.x; p.y = m.y; p.room = ''; target = null; follow(); fxToast('Whoosh!', 'O portal te levou de volta para a vila', '#d0a0ff', '✦'); } return true; }
   if (m.t === 'perk') { try { localStorage.setItem('eryon_perk', JSON.stringify(m.perk)); } catch { }
     // devolve o bichinho guardado no aparelho se o servidor tiver esquecido
@@ -47,7 +48,11 @@ function renderQuests() {
   h += '<h3>Missões de hoje</h3>';
   for (const q of P2.missions) { const r = Object.entries(q.rew).map(([k, v]) => `${v} ${k}`).join(' + ');
     h += `<div class="item quest${q.done ? ' done' : ''}"><b>${q.done ? '✔ ' : ''}${esc(q.text)}</b><div class="qbar"><i style="width:${Math.round(100 * q.have / q.n)}%"></i></div><span>${q.have}/${q.n} · Prêmio: ${q.xp} XP + ${r}</span></div>`; }
-  h += '<p class="hint">Complete as 3 e ganhe +60 XP de bônus. Novas missões todo dia.</p><h3>Conquistas</h3><div class="achgrid">';
+  h += '<p class="hint">Complete as 3 e ganhe +60 XP de bônus. Novas missões todo dia.</p>';
+  if (CSTATE.stages.length) { const tot = CSTATE.stages.reduce((a, st) => a + st.pedra + st.lenha, 0), pc = Math.floor(100 * Math.min(tot, CSTATE.pedra + CSTATE.lenha) / tot), cur = curStage();
+    h += `<h3>Castelo de Eryon</h3><div class="item"><b>${pc}% construído${cur < CSTATE.stages.length ? ' · Etapa ' + (cur + 1) + ': ' + esc(CSTATE.stages[cur].name) : ' · PRONTO!'}</b><div class="xpbar"><i style="width:${pc}%"></i></div><span>Quebre pedras e leve até a obra, ao sul da vila (Vale das Flores).</span>`;
+    if (CSTATE.top.length) h += '<span>Mestres de obra: ' + CSTATE.top.map(([u, n], i) => `${i + 1}º @${esc(u)} (${n})`).join(' · ') + '</span>'; h += '</div>'; }
+  h += '<h3>Conquistas</h3><div class="achgrid">';
   for (const a of P2.achAll) { const got = P2.ach.includes(a.id); h += `<div class="ach${got ? ' got' : ''}" title="${esc(a.desc)}"><i>${got ? '🏆' : '🔒'}</i><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></div>`; }
   $('questBody').innerHTML = h + '</div>';
 }

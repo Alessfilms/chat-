@@ -89,7 +89,7 @@ function buildWorld(world) {
   const [pc, pq] = canvas(4, 10); px(pq, P.ink, 0, 0, 4, 9); px(pq, P.wood, 1, 1, 2, 7); px(pq, P.woodL, 1, 0, 1, 1); PAL_IMG = pc;
   placePalisade();
   const LB = { costela: [-42, 42, -12, 0], ruinas: [4, 20, -8, 0], torre: [-13, 13, -14, 0], caverna: [-36, 36, -22, -2], buraco: [-22, 22, -16, -2], poco: [-16, 16, -14, 2], arvore: [-4, 4, -5, 0], circulo: [-6, 8, -6, 0] };
-  placeScenery(x);
+  placeScenery(x); castleWorld(x);
   Object.assign(LB, { lago: [[-10, 10, -10, 0]], gigante: [-40, 40, -14, 0], acampamento: [[-36, -12, -10, 0], [12, 36, -10, 0]], cristais: [-20, 20, -10, 0], cemiterio: [[-2, 2, -1, 0]], portal: [[-27, -16, -8, 0], [16, 27, -8, 0]], ninho: [-30, 30, -10, 0] });
   for (const l of LANDMARKS) { OBJ.push({ y: l.y, x: l.x, lm: l }); const bb = LB[l.id]; if (bb) for (const b of (Array.isArray(bb[0]) ? bb : [bb])) blockers.push({ k: 'r', x0: l.x + b[0], x1: l.x + b[1], y0: l.y + b[2], y1: l.y + b[3] }); }
   OBJ.sort((a, b) => a.y - b.y);
@@ -203,6 +203,7 @@ function placeScenery(x) {
     if (Math.abs(Y - riverY(X)) < 26 || nearLandmark(X, Y, 16) || lakeVal(X, Y) < 1.5 || nearRoad(X, Y, 22)) return false;
     if (Y > 690 && Math.abs(X - pathS(Y)) < 18) return false;
     if (Math.hypot(X - BRIDGE.x, Y - BRIDGE.y) < 40) return false;
+    if (X > 380 && X < 700 && Y > 1230 && Y < 1610) return false;   // castelo e pedreira
     if (placed.some(p => Math.hypot(p.x - X, p.y - Y) < rad + p.r)) return false;
     if (typeof NODES !== 'undefined' && NODES.some(n => Math.hypot(n.x - X, n.y - Y) < rad + 8)) return false;
     return true;
@@ -425,7 +426,7 @@ function connect() {
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, perk: readPerk() }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
     if (onFeatureMsg(m)) return;
-    if (m.t === 'welcome') { SIGNS = m.signs || []; setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { SIGNS = m.signs || []; if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
     else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; } } }
@@ -546,6 +547,7 @@ function draw(t, p) {
     if (o.fire) { drawFire(x, C.x, C.y + 1, t); continue; }
     if (o.pl) { const q = o.pl; drawPet(x, q, t); drawCharAt(x, q.ch, q.x, q.y, poseFor(q, t), q.face || 1); continue; }
     if (o.sign) { drawSign(x, o.sign); continue; }
+    if (o.castle) { drawCastle(x, t); continue; }
     if (o.lm) { drawLandmark(x, o.lm, t); continue; }
     if (o.node) { drawNode(x, o.node); continue; }
     if (o.decor) { drawDecor(x, o.decor, t); continue; }
@@ -596,7 +598,7 @@ function draw(t, p) {
     const role0 = q.badge === 'criador' ? 'Criador' : NAMED[q.username]?.role || classOf(q)?.name, role = (q.lv ? 'Nv ' + q.lv + (role0 ? ' · ' : '') : '') + (role0 || ''); if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
     if (q.say && now - q.sayT < 6000) bubble(q.say, sx, sy - fs * 1.2, fs);
   }
-  if (!room) drawSignLabels(ctx, L, T, S, fs, p);
+  if (!room) { drawSignLabels(ctx, L, T, S, fs, p); castleLabel(ctx, L, T, S, fs, p); }
 }
 // ---------------------------------------------------------------- ações e portas
 let ctxAct = null;
@@ -608,6 +610,7 @@ function updateContext(p, t) {
     if (!c) c = { kind: 'exit', label: 'Sair' };
   } else {
     for (const d of DOORS) if (Math.hypot(p.x - d.x, p.y - d.y) < 10) c = { kind: 'enter', label: d.label, room: d.room };
+    if (!c) { const cc = castleContext(p); if (cc) c = cc; }
     { const pl = LM.portal; if (!c && pl && Math.abs(p.x - pl.x) < 13 && p.y > pl.y - 22 && p.y < pl.y + 10) c = { kind: 'portal', label: 'Atravessar o portal' }; }
     if (!c && B.serraria && Math.hypot(p.x - (B.serraria.x + 18), p.y - (B.serraria.y + 8)) < 18) c = { kind: 'split', label: 'Rachar lenha' };
     const kit = B.cozinha, nearKit = kit && Math.hypot(p.x - kit.x, p.y - (kit.y + 8)) < 24, lunchOn = lunch && Date.now() < lunch.until;
@@ -628,6 +631,7 @@ function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; c
   if (c.kind === 'cmine' || c.kind === 'cherb') { const kind = c.kind === 'cmine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
   if (c.kind === 'mine' || c.kind === 'herb') { p.face = c.tx < p.x ? -1 : 1; const kind = c.kind === 'mine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
   if (c.kind === 'pickup') { send({ t: 'pickup', id: c.id }); return; }
+  if (c.kind === 'castle') { castleGive(); return; }
   if (c.kind === 'portal') { send({ t: 'tp', to: 'vila' }); doAct('magic'); return; }
   if (c.kind === 'movedecor') { startPlacing({ kind: c.d.kind, id: c.d.id, rot: c.d.rot }); return; }
   if (c.kind === 'bridge') { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'bridge', x: Math.round(p.x) })); doAct('build'); return; }
@@ -690,7 +694,7 @@ function bubble(text, sx, sy, fs) {
 
 // ---------------------------------------------------------------- início
 fetch('world.json').then(r => r.json()).then(async w => {
-  buildWorld(w); indexBlockers(); buildNodes(); await document.fonts.load('700 20px Pix');
+  buildWorld(w); indexBlockers(); buildNodes(); castleQuarry(); await Promise.all([document.fonts.load('700 20px Pix'), document.fonts.load('400 20px P2P')]).catch(() => {});
   // tela de fundo atrás do login: a fogueira de Eryon
   (function idle(n) { if (me) return; draw(n / 1000, null); requestAnimationFrame(idle); })(performance.now());
   if (token) { const r = await API('/api/me?token=' + encodeURIComponent(token)); if (r.ok) { const sl = savedLook(); if (!r.data.look && sl) { await post('/api/look', { token, look: sl }); r.data.look = sl; } return afterLogin(r.data); } store.del('eryon_token'); token = null; }

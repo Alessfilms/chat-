@@ -1,13 +1,15 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
+<link rel="preload" href="fonts/pixelify-sans-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/press-start-2p-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0c1410">
 <title>Eryon Online</title>
 <style>
-@font-face{font-family:Pix;src:url(fonts/pixelify-sans-latin-700-normal.woff2)}
-@font-face{font-family:P2P;src:url(fonts/press-start-2p-latin-400-normal.woff2)}
+@font-face{font-family:Pix;src:url(fonts/pixelify-sans-latin-700-normal.woff2) format('woff2');font-display:block}
+@font-face{font-family:P2P;src:url(fonts/press-start-2p-latin-400-normal.woff2) format('woff2');font-display:block}
 :root{--ink:#140e06;--panel:#1c2a22;--edge:#c9a46a;--gold:#ffd84a;--cream:#fff3b0;--txt:#eef0ea}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -234,12 +236,13 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 <div id="chatlog"></div>
 <div id="chatbar"><button id="chatToggle" type="button" class="sec" aria-pressed="false" aria-label="Tela cheia" title="Tela cheia: deixa só o campo de mensagem"></button><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
 
-<script src="engine.js?v=30"></script>
-<script src="life.js?v=30"></script>
-<script src="craft.js?v=30"></script>
-<script src="explore.js?v=30"></script>
-<script src="dragons.js?v=30"></script>
-<script src="features.js?v=30"></script>
-<script src="game.js?v=30"></script>
+<script src="engine.js?v=31"></script>
+<script src="life.js?v=31"></script>
+<script src="craft.js?v=31"></script>
+<script src="explore.js?v=31"></script>
+<script src="dragons.js?v=31"></script>
+<script src="features.js?v=31"></script>
+<script src="castle.js?v=31"></script>
+<script src="game.js?v=31"></script>
 </body>
 </html>

@@ -58,7 +58,7 @@ function houseRoom(id, bb) {
   const block = [[0, 0, w, 26], [3, 22, 35, 56], [52, 52, 77, 70], [96, 22, 124, 40], [109, 72, 123, 86], [0, 0, 3, h], [127, 0, w, h]];
   return { id, name: 'Casa', w, h, img: c, spawn: { x: 65, y: 86 }, door: { x: 65, y: 93 }, fire: null, block, spots: [], outside: { x: b.x - 1, y: b.y + 6 } };
 }
-function roomOf(id) { if (!ROOM_CACHE[id]) { if (id === 'taverna') ROOM_CACHE[id] = tavernRoom(); else if (id === 'gruta' || id === 'abismo') ROOM_CACHE[id] = caveRoom(id); else if (id.startsWith('h_')) { const h = BUILT.find(q => 'h_' + q.id === id) || { x: 360, y: 700, roof: 0 }; const T = BTYPES[h.type] || BTYPES.casa;
+function roomOf(id) { if (!ROOM_CACHE[id]) { if (id === 'castelo') ROOM_CACHE[id] = throneRoom(); else if (id === 'taverna') ROOM_CACHE[id] = tavernRoom(); else if (id === 'gruta' || id === 'abismo') ROOM_CACHE[id] = caveRoom(id); else if (id.startsWith('h_')) { const h = BUILT.find(q => 'h_' + q.id === id) || { x: 360, y: 700, roof: 0 }; const T = BTYPES[h.type] || BTYPES.casa;
       const r = h.type === 'bar' ? { ...tavernRoom(), id, outside: { x: h.x + 1, y: h.y + 6 } } : houseRoom(id, { x: h.x, y: h.y, telhado: h.roof }); r.outside = { x: h.x + 1, y: h.y + 6 };
       r.name = h.type === 'prefeitura' ? 'Prefeitura de Eryon' : `${T.name} de @${h.owner || 'alguém'}`; ROOM_CACHE[id] = r; } else ROOM_CACHE[id] = houseRoom(id); } return ROOM_CACHE[id]; }
 function roomBlocked(id, x, y) { const r = roomOf(id); if (x < 4 || x > r.w - 4 || y < 10 || y > r.h - 3) return true; return rectsBlock(r.block, x, y); }

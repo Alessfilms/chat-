@@ -28,6 +28,7 @@ function initDb() {
   db.users ||= {}; db.sessions ||= {}; db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
   db.decor ||= []; db.nextDecor ||= 1; db.firsts ||= {};
   db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
+  db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {};
   for (const r of Object.values(db.users)) if (r && typeof r === 'object') { if (r.tot && typeof r.tot !== 'object') r.tot = {}; }
 }
 initDb();
@@ -313,7 +314,7 @@ const all = (m, except) => { const s = JSON.stringify(m); for (const c of client
 const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, lv: levelOf(db.users[c.user]?.xp || 0), badge: badgeOf(c.user) });
 const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', cost: { lenha: 14, pedra: 4 } }, mercado: { name: 'Mercado', cost: { lenha: 12, pedra: 4, ervas: 2 } }, hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 } },
   escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 } };
-const ROOM_OK = /^(|taverna|gruta|abismo|casa_[1-9]|h_[0-9]{1,6})$/;
+const ROOM_OK = /^(|taverna|gruta|abismo|castelo|casa_[1-9]|h_[0-9]{1,6})$/;
 const LANDMARK_NAMES = { costela: 'a Costela de Dragão', ruinas: 'as Ruínas da Inscrição', torre: 'a Torre Antiga', caverna: 'a Caverna Escondida', buraco: 'o Buraco Misterioso', circulo: 'o Círculo de Pedras', arvore: 'a Árvore Ancestral', poco: 'o Poço da Lua', lago: 'o Lago Espelhado', gigante: 'a Estátua do Gigante', acampamento: 'o Acampamento Abandonado', cristais: 'o Jardim de Cristais', cemiterio: 'o Cemitério Antigo', portal: 'o Portal Esquecido', ninho: 'o Ninho do Dragão' };
 const ACTS = new Set(['mine', 'gather', 'eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
 db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
@@ -339,7 +340,7 @@ setInterval(() => { const n = Date.now(); let ch = false; for (const [i, t] of d
 // =====================================================================
 // MODERAÇÃO: filtro de palavrões, bloqueio de telefone/links, silenciar, denúncias
 // =====================================================================
-db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
+db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {}; db.castle ||= { pedra: 0, lenha: 0, by: {} };
 const BAD = ['porra', 'caralho', 'krl', 'crl', 'merda', 'puta', 'puto', 'putaria', 'putinha', 'buceta', 'boceta', 'bct', 'foder', 'foda', 'fodase', 'fudido', 'fdp', 'pqp', 'vsf', 'vtnc', 'tnc', 'arrombado', 'arrombada',
   'viado', 'viadinho', 'traveco', 'sapatao', 'corno', 'cuzao', 'cuzinho', 'desgracado', 'desgracada', 'piroca', 'xoxota', 'xereca', 'xota', 'punheta', 'siririca', 'gozar', 'gozei', 'porno', 'nude', 'nudes',
   'otario', 'otaria', 'retardado', 'retardada', 'mongol', 'babaca', 'escroto', 'escrota', 'vagabundo', 'vagabunda', 'piranha', 'vadia', 'estupro', 'estuprar', 'nazista', 'hitler', 'suicidio', 'penis', 'vagina', 'sexo', 'transar', 'safada', 'safado', 'cacete', 'kct', 'bosta'];
@@ -349,7 +350,7 @@ const BAD_N = [...new Set(BAD.map(normWord))], BAD_EXACT_N = new Set([...BAD_EXA
 function censor(text) {
   let t = text
     .replace(/(?:\+?\d[\s.\-()]*){8,}/g, m => '*'.repeat(Math.min(10, m.trim().length)) + (/\s$/.test(m) ? ' ' : ''))                                   // telefones
-    .replace(/\b(?:https?:\/\/|www\.)\S+|\b\S+\.(?:com|net|org|br|io|gg|me|xyz|ly)(?:\/\S*)?/gi, '[link]')             // links
+    .replace(/\b(?:https?:\/\/|www\.)\S+|\b[a-z0-9-]{2,}\.(?:com|net|org|br|io|gg|me|xyz|ly)(?:\.br)?(?=$|[\s\/?!,;:)])(?:\/\S*)?/gi, '[link]')             // links
     .replace(/\S+@\S+\.\S+/g, '[email]');
   let bad = false;
   t = t.split(/(\s+)/).map(w => { if (/^\s+$/.test(w)) return w; const n = normWord(w); if (!n) return w;
@@ -373,6 +374,7 @@ const MISSIONS = [
   { id: 'give', text: 'Dê um item para alguém', n: 1, xp: 40, rew: { ervas: 3 } },
   { id: 'visit', text: 'Visite 2 lugares do mapa', n: 2, xp: 45, rew: { lenha: 3, pedra: 3 } },
   { id: 'eat', text: 'Coma ou beba algo', n: 1, xp: 20, rew: { ervas: 2 } },
+  { id: 'castle', text: 'Leve 10 pedras para o castelo', n: 10, xp: 50, rew: { lenha: 5 } },
 ];
 const ACH = {
   primeira_arvore: { name: 'Primeiro tronco', desc: 'Derrube sua primeira árvore', test: r => (r.tot.cut || 0) >= 1 },
@@ -385,6 +387,8 @@ const ACH = {
   desbravador: { name: 'Desbravador', desc: 'Descubra todos os 15 lugares', test: r => (r.found || []).length >= 15 },
   social: { name: 'Boa prosa', desc: 'Mande 50 mensagens', test: r => (r.tot.chat || 0) >= 50 },
   generoso: { name: 'Coração de ouro', desc: 'Dê 10 itens', test: r => (r.tot.give || 0) >= 10 },
+  pedreiro: { name: 'Pedreiro do Rei', desc: 'Leve 100 blocos para o castelo', test: r => (r.tot.castle || 0) >= 100 },
+  mestre_obras: { name: 'Mestre de Obras', desc: 'Leve 500 blocos para o castelo', test: r => (r.tot.castle || 0) >= 500 },
   dedicado: { name: 'Dedicado', desc: 'Complete 10 missões', test: r => (r.tot.missions || 0) >= 10 },
   nivel5: { name: 'Veterano', desc: 'Chegue ao nível 5', test: r => levelOf(r.xp || 0) >= 5 },
   nivel10: { name: 'Lenda de Eryon', desc: 'Chegue ao nível 10', test: r => levelOf(r.xp || 0) >= 10 },
@@ -401,7 +405,7 @@ function addXp(c, n) { const r = db.users[c.user]; if (!r) return; const before 
 function track(c, kind, n = 1) {
   const r = db.users[c.user]; if (!r) return; r.tot ||= {}; r.tot[kind] = (r.tot[kind] || 0) + n;
   const dl = dailyOf(r, c.user); dl.c[kind] = (dl.c[kind] || 0) + n;
-  const xpBase = { cut: 3, mine: 3, herb: 2, craft: 6, build: 25, place: 4, split: 1, give: 5, chat: 0, visit: 5, eat: 1 }[kind] || 0; if (xpBase) addXp(c, xpBase * n);
+  const xpBase = { cut: 3, mine: 3, herb: 2, craft: 6, build: 25, place: 4, split: 1, give: 5, chat: 0, visit: 5, eat: 1, castle: 1 }[kind] || 0; if (xpBase) addXp(c, xpBase * n);
   for (const m of missionsFor(c.user, dl.d)) if (m.id === kind && !dl.done.includes(m.id) && dl.c[kind] >= m.n) {
     dl.done.push(m.id); r.tot.missions = (r.tot.missions || 0) + 1; const inv = invOf(r); for (const [k, v] of Object.entries(m.rew)) inv[k] = (inv[k] || 0) + v; addXp(c, m.xp);
     out(c.ws, { t: 'mission', text: m.text, xp: m.xp, rew: m.rew }); sendInv(c);
@@ -411,6 +415,17 @@ function track(c, kind, n = 1) {
   save(); sendProg(c);
 }
 const LM_POS = { costela: [170, 1060], ruinas: [520, 400], torre: [290, 118], caverna: [92, 812], buraco: [575, 1110], circulo: [610, 880], arvore: [110, 340], poco: [630, 120], lago: [1090, 668], gigante: [1260, 372], acampamento: [232, 1560], cristais: [468, 1930], cemiterio: [636, 2232], portal: [1220, 1522], ninho: [1124, 2080] };
+
+// =====================================================================
+// CASTELO DE ERYON: obra da comunidade inteira, em 7 etapas
+// =====================================================================
+const CASTLE_SPOT = [540, 1458];
+const STAGES = (() => { let p = 0, l = 0; return [
+  { id: 'fundacao', name: 'Fundação', pedra: 150, lenha: 0 }, { id: 'muralha', name: 'Muralha da frente', pedra: 300, lenha: 0 }, { id: 'laterais', name: 'Muralhas laterais', pedra: 300, lenha: 0 },
+  { id: 'torres', name: 'Torres dos cantos', pedra: 400, lenha: 0 }, { id: 'portao', name: 'Portão', pedra: 200, lenha: 100 }, { id: 'torre', name: 'Torre do Rei', pedra: 500, lenha: 0 },
+  { id: 'telhados', name: 'Telhados e bandeiras', pedra: 250, lenha: 150 }].map(st => { const o = { ...st, p0: p, l0: l }; p += st.pedra; l += st.lenha; return o; }); })();
+const stageIdx = () => { for (let i = 0; i < STAGES.length; i++) { const st = STAGES[i]; if (db.castle.pedra < st.p0 + st.pedra || db.castle.lenha < st.l0 + st.lenha) return i; } return STAGES.length; };
+const castleState = (extra = {}) => ({ t: 'castle', pedra: db.castle.pedra, lenha: db.castle.lenha, stages: STAGES, top: Object.entries(db.castle.by).sort((a, b) => b[1] - a[1]).slice(0, 5), ...extra });
 
 // =====================================================================
 // APOIADORES, BICHINHOS, CRIADOR e PLACAS PATROCINADAS
@@ -443,7 +458,7 @@ wss.on('connection', (ws, req) => {
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c);
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
       all({ t: 'join', p: pub(c) }, c); sendProg(c); out(ws, { t: 'perk', perk: perkFor(u) });
       return;
     }
@@ -471,7 +486,7 @@ wss.on('connection', (ws, req) => {
       const now = Date.now(), id = String(m.id || ''), r = db.users[c.user];
       if (!r || !/^([rh][0-9]{1,3}|[gamn][0-9])$/.test(id) || depleted.has(id) || now - (c.lastGather || 0) < 1500) return; c.lastGather = now;
       const stone = id[0] === 'r' || id[0] === 'g' || id[0] === 'a';
-      depleted.set(id, now + (stone ? 6 : 3) * 60000); all({ t: 'nodes', dep: [...depleted.keys()] });
+      depleted.set(id, now + (stone ? (/^r1(6\d|7[01])$/.test(id) ? 2 : 6) : 3) * 60000); all({ t: 'nodes', dep: [...depleted.keys()] });
       if (stone) addRes(c, 'pedra', (id[0] === 'r' ? 2 : 3) + (invOf(r).picareta ? 1 : 0)); else addRes(c, 'ervas', id[0] === 'h' ? 2 : 3); track(c, stone ? 'mine' : 'herb');
     } else if (m.t === 'discover') {
       const r = db.users[c.user], id = String(m.id || ''); if (!r || !LANDMARK_NAMES[id]) return;
@@ -560,6 +575,16 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'visit') {
       const id = String(m.id || ''), lp = LM_POS[id], r = db.users[c.user]; if (!lp || !r || c.room || Math.hypot(c.x - lp[0], c.y - lp[1]) > 70) return;
       const dl = dailyOf(r, c.user); dl.v ||= []; if (dl.v.includes(id)) return; dl.v.push(id); track(c, 'visit');
+    } else if (m.t === 'castle') {
+      const now = Date.now(), r = db.users[c.user]; if (!r || c.room || now - (c.lastCastle || 0) < 800 || Math.hypot(c.x - CASTLE_SPOT[0], c.y - CASTLE_SPOT[1]) > 60) return; c.lastCastle = now;
+      const cur = stageIdx(); if (cur >= STAGES.length) return note(c, 'O castelo já está pronto!');
+      const st = STAGES[cur], inv = invOf(r), int = v => Math.max(0, Math.floor(Number(v) || 0));
+      const p = Math.min(int(m.pedra), 50, inv.pedra || 0, st.p0 + st.pedra - db.castle.pedra), l = Math.min(int(m.lenha), 50, inv.lenha || 0, st.l0 + st.lenha - db.castle.lenha);
+      if (p + l <= 0) return note(c, st.l0 + st.lenha > db.castle.lenha && !(inv.lenha > 0) ? `A etapa "${st.name}" precisa de lenha!` : 'Traga pedras para o castelo (quebre pedras na pedreira em frente).');
+      inv.pedra -= p; inv.lenha -= l; db.castle.pedra += p; db.castle.lenha += l; db.castle.by[c.user] = (db.castle.by[c.user] || 0) + p + l; save(); sendInv(c); track(c, 'castle', p + l);
+      const after = stageIdx(); all(castleState({ n: p + l, by: c.user }));
+      if (p + l >= 10) all({ t: 'chat', id: c.id, username: c.user, text: `colocou ${p + l} blocos no castelo!`, ts: now });
+      if (after > cur) { const txt = after >= STAGES.length ? 'O CASTELO DE ERYON ESTÁ PRONTO! Obrigado, comunidade!' : `O castelo ganhou: ${st.name}! Próxima etapa: ${STAGES[after].name}.`; all({ t: 'announce', text: txt }); const msg = { t: 'chat', id: 0, username: 'Castelo de Eryon', text: txt, ts: now, badge: 'criador' }; chatLog.push(msg); all(msg); }
     } else if (m.t === 'tp') {       // Portal Esquecido -> volta para a vila
       const pp = LM_POS.portal, now = Date.now(); if (c.room || Math.hypot(c.x - pp[0], c.y - pp[1]) > 40 || now - (c.lastTp || 0) < 3000) return; c.lastTp = now;
       c.x = SPAWN.x + (Math.random() * 30 - 15); c.y = SPAWN.y + Math.random() * 10; c.lastRoom = now; c.dirty = true; out(c.ws, { t: 'tp', x: c.x, y: c.y }); all({ t: 'act', id: c.id, kind: 'magic' }, c);
