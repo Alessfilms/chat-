@@ -2,57 +2,104 @@
 // EVENTO: O GIGANTE DE PEDRA — desenho, efeitos, contagem regressiva, ataques, catapultas e consertos
 // =====================================================================
 let GIANT = { at: 0, state: 'none', result: '', damaged: new Set(), live: null };
-const GFX = { shots: [], hits: [], smash: [], shakeUntil: 0, view: null };
+const GFX = { shots: [], hits: [], smash: [], shakeUntil: 0, view: null, catFire: {} };
 // ---------- sprite do gigante (pedra com musgo e olhos azuis, como a estátua)
 const GSPR = {};
-function giantSprite(f) {   // f: 0/1 andando, 2 braços para cima, 3 pancada
-  if (GSPR[f]) return GSPR[f]; const W = 76, H = 96, [c, x] = canvas(W, H), pt = painter(x), ST = ['#3e4554', '#5a6272', '#7a8396', '#9aa4b4'], O = '#14161c', M = ['#2f6a3a', '#3f8f45', '#66b350', '#84c65a'];
-  const cx = 38, legY = 92, sw = f === 0 ? 1 : f === 1 ? -1 : 0;
-  // pernas
-  pt.tube([[cx - 9, 62, 7], [cx - 10 - sw * 3, legY - 4, 7]], 7, ST, O).tube([[cx + 9, 62, 7], [cx + 10 + sw * 3, legY - 4, 7]], 7, ST, O).done();
-  pt.ell(cx - 10 - sw * 3, legY - 3, 9, 4, ST, O).ell(cx + 10 + sw * 3, legY - 3, 9, 4, ST, O).done();
+function giantSprite(f) {   // f: 0/1 andando, 2 braços erguidos, 3 pancada — corpo de rochas empilhadas, musgo, cipós e magia
+  if (GSPR[f]) return GSPR[f]; const W = 100, H = 116, [c, x] = canvas(W, H), O = '#121419';
+  const ST = ['#3a404e', '#555e6e', '#78818f', '#a0a9b6'], SD = ['#2e333e', '#454c5a', '#636b79', '#858e9b'], M = ['#245a32', '#2f7a40', '#4f9f4a', '#84c65a'];
+  const cx = 50, foot = 110, sw = f === 0 ? 1 : f === 1 ? -1 : 0, up = f === 2, hit = f === 3;
+  const pt = painter(x), rocks = [], vines = [];
+  const R = (X, Y, rx, ry, back) => { rocks.push([X, Y, rx, ry, back]); };
+  // pernas (pedras empilhadas)
+  const lx = cx - 13 - sw * 3, rx2 = cx + 13 + sw * 3;
+  for (const [X, back] of [[lx, sw > 0], [rx2, sw < 0]]) { R(X, foot - 4, 11, 5, back); R(X + (X < cx ? 1 : -1), foot - 15, 8, 8, back); R(X + (X < cx ? 2 : -2), foot - 28, 9, 9, back); }
   // braço de trás
-  const up = f === 2, hit = f === 3;
-  const armB = up ? [[cx - 16, 34, 6], [cx - 20, 18, 5], [cx - 16, 4, 6]] : hit ? [[cx - 16, 34, 6], [cx - 22, 52, 5], [cx - 18, 70, 7]] : [[cx - 18, 34, 6], [cx - 24 + sw * 2, 52, 5], [cx - 24 + sw * 4, 66, 7]];
-  pt.tube(armB, 6, ST, O, -.15).done();
-  // tronco e cabeça
-  pt.ell(cx, 42, 20, 22, ST, O, .05).done(); pt.ell(cx, 16, 11, 10, ST, O, .1).done();
-  for (let i = 0; i < 30; i++) { const a = 3.5 + h2(i, 7) * 2.4, r = .7 + h2(7, i) * .25; px(x, M[(i % 3) + 1], Math.round(cx + Math.cos(a) * 19 * r), Math.round(42 + Math.sin(a) * 21 * r), 2, 1); }
-  for (let i = 0; i < 10; i++) px(x, M[2], Math.round(cx - 8 + h2(i, 3) * 16), Math.round(8 + h2(i, 4) * 4), 2, 1);
-  for (const [X, Y] of [[cx - 6, 34], [cx + 8, 48], [cx - 2, 56], [cx + 4, 28]]) { px(x, O, X, Y, 1, 4); px(x, O, X + 1, Y + 4, 1, 3); }   // rachaduras
-  px(x, O, cx - 6, 14, 4, 3); px(x, O, cx + 3, 14, 4, 3); px(x, '#9ff3ff', cx - 5, 15, 2, 1); px(x, '#9ff3ff', cx + 4, 15, 2, 1);   // olhos
-  px(x, O, cx - 4, 21, 9, 2); px(x, '#2b3240', cx - 3, 21, 7, 1);                                                                       // boca
-  // braço da frente
-  const armF = up ? [[cx + 16, 34, 6], [cx + 20, 18, 5], [cx + 16, 4, 6]] : hit ? [[cx + 16, 34, 6], [cx + 22, 52, 5], [cx + 18, 70, 7]] : [[cx + 18, 34, 6], [cx + 24 - sw * 2, 52, 5], [cx + 24 - sw * 4, 66, 7]];
-  pt.tube(armF, 6, ST, O, .1).done();
-  return GSPR[f] = { r: c, l: flipped(c), W, H };
+  const arm = (side, back) => { const s2 = side, sx = cx + s2 * 24;
+    if (up) { R(sx, 40, 9, 9, back); R(sx + s2 * 3, 26, 7, 8, back); R(sx + s2 * 2, 12, 7, 7, back); R(sx, 2 + 6, 10, 9, back); }
+    else if (hit) { R(sx, 40, 9, 9, back); R(sx + s2 * 6, 56, 7, 8, back); R(sx + s2 * 8, 70, 7, 7, back); R(sx + s2 * 6, 86, 11, 10, back); }
+    else { const k = s2 * sw * (back ? -1 : 1); R(sx, 40, 9, 9, back); R(sx + s2 * 5 + k * 2, 55, 7, 8, back); R(sx + s2 * 6 + k * 4, 69, 7, 7, back); R(sx + s2 * 6 + k * 6, 84, 10, 10, back); } };
+  arm(-1, true);
+  // tronco: bacia, peito grande e ombros
+  R(cx, 70, 17, 10, false); R(cx, 50, 23, 19, false); R(cx - 17, 38, 10, 9, false); R(cx + 17, 38, 10, 9, false);
+  // cabeça: bloco com sobrancelha e mandíbula
+  R(cx, 22, 12, 11, false); R(cx, 30, 9, 5, false);
+  // desenha (pedras de trás mais escuras), cada camada com contorno
+  // cada pedra é um polígono irregular (quinas e faces), não uma bola
+  const rock = (X, Y, rx, ry, pal, i) => { const n = 7 + (i % 3), pts = []; for (let k = 0; k < n; k++) { const a = k / n * 6.283 + h2(i, k) * .5, j = .78 + h2(k, i + 3) * .3; pts.push([X + Math.cos(a) * rx * j * 1.08, Y + Math.sin(a) * ry * j * 1.08]); } pt.poly(pts, pal, O, .08); };
+  for (const back of [true, false]) { rocks.forEach(([X, Y, rx, ry, b2], i) => { if (!!b2 === back) rock(X, Y, rx, ry, back ? SD : ST, i + f * 0); }); pt.done(); }
+  arm(1, false); rocks.slice(-4).forEach(([X, Y, rx, ry], i) => rock(X, Y, rx, ry, ST, 40 + i)); pt.done();
+  // faces das pedras: uma aresta clara em cima de cada uma
+  rocks.forEach(([X, Y, rx, ry], i) => { const w = Math.round(rx * .9); for (let k = -w; k < w - 1; k++) { const yy = Math.round(Y - ry * .55 + Math.abs(k) * .18); const d = x.getImageData(Math.round(X + k), yy, 1, 1).data; if (d[3] && d[0] > 60) px(x, ST[3], Math.round(X + k), yy, 1, 1); } });
+  // juntas escuras entre as pedras e textura
+  for (let i = 0; i < 120; i++) { const X = Math.floor(h2(i, f + 3) * W), Y = Math.floor(h2(f + 3, i) * H); const d = x.getImageData(X, Y, 1, 1).data; if (d[3] && d[0] > 90 && h2(i, 9) > .5) px(x, ST[1], X, Y, 1, 1); }
+  // sobrancelha, olhos e boca
+  px(x, O, cx - 11, 18, 22, 3); px(x, ST[3], cx - 10, 17, 20, 1);
+  px(x, O, cx - 8, 21, 6, 4); px(x, O, cx + 2, 21, 6, 4); px(x, '#9ff3ff', cx - 7, 22, 4, 2); px(x, '#9ff3ff', cx + 3, 22, 4, 2); px(x, '#ffffff', cx - 6, 22, 1, 1); px(x, '#ffffff', cx + 4, 22, 1, 1);
+  px(x, O, cx - 6, 30, 12, 2); for (let k = 0; k < 4; k++) px(x, ST[3], cx - 5 + k * 3, 30, 1, 1);
+  // rachaduras com magia azul no peito, ombros e pernas
+  const crack = (pts) => { for (let i = 0; i < pts.length - 1; i++) { const [a1, b1] = pts[i], [a2, b2] = pts[i + 1], n = Math.max(Math.abs(a2 - a1), Math.abs(b2 - b1)); for (let k = 0; k <= n; k++) { const X = Math.round(a1 + (a2 - a1) * k / n), Y = Math.round(b1 + (b2 - b1) * k / n); px(x, O, X, Y, 1, 1); px(x, '#3fd0e0', X + 1, Y, 1, 1); } } };
+  crack([[cx - 4, 36], [cx - 1, 44], [cx - 5, 52], [cx - 2, 60]]); crack([[cx + 8, 42], [cx + 12, 50], [cx + 9, 56]]); crack([[cx - 18, 34], [cx - 15, 41]]); crack([[lx + 1, foot - 32], [lx - 2, foot - 24]]);
+  px(x, '#9ff3ff', cx - 2, 47, 2, 2); px(x, '#9ff3ff', cx + 10, 49, 1, 2);
+  // musgo no alto das pedras (ombros, cabeça, peito, punhos)
+  const moss = (X, Y, w) => { for (let k = -w; k <= w; k++) { const hh = 2 + Math.round(h2(X + k, Y) * 2); px(x, M[1], X + k, Y, 1, hh); px(x, M[3], X + k, Y, 1, 1); if (h2(k, X) > .82) { px(x, '#f6b6d8', X + k, Y - 1, 1, 1); } } };
+  moss(cx, 12, 7); moss(cx - 17, 30, 6); moss(cx + 17, 30, 6); moss(cx - 6, 32, 5); moss(cx + 8, 34, 4); moss(lx, foot - 37, 4);
+  // cipós pendurados com folhas
+  const vine = (X, Y, L, sway) => { let vx = X; for (let k = 0; k < L; k++) { vx += Math.sin(k * .5 + sway) * .6; px(x, M[0], Math.round(vx), Y + k, 1, 1); if (k % 3 === 1) { px(x, M[2], Math.round(vx) + (k % 2 ? 1 : -1), Y + k, 1, 1); px(x, M[3], Math.round(vx) + (k % 2 ? 2 : -2), Y + k - 1, 1, 1); } } px(x, M[2], Math.round(vx), Y + L, 1, 2); };
+  vine(cx - 20, 42, 26, f); vine(cx - 14, 46, 18, f + 1); vine(cx + 18, 44, 22, f + 2); vine(cx - 6, 60, 16, f + 3); vine(cx + 8, 62, 20, f + 1.5); vine(cx + 24 + (hit ? 8 : 6), 60, 14, f + 2.5);
+  // pedrinhas flutuando (magia)
+  const pebbles = [[cx - 34, 24, 3], [cx + 34, 20, 2], [cx - 30, 60, 2], [cx + 36, 52, 3]];
+  return GSPR[f] = { r: c, l: flipped(c), W, H, eyes: [[cx - 5, 23], [cx + 5, 23]], pebbles };
 }
 function giantFrame(t) { const L = GIANT.live; if (!L) return 0; if (L.phase === 'stomp') { const k = ((performance.now() - (GFX.lastSmashT || 0)) / 1000); return k < .25 ? 3 : (k > 2.2 ? 2 : 0); } return Math.floor(t * 2.2) % 2; }
-function drawGiant(x, t) {
-  const L = GIANT.live; if (!L) return; const f = giantFrame(t), s = giantSprite(f), X = Math.round(L.x), Y = Math.round(L.y);
-  x.fillStyle = 'rgba(8,20,16,.4)'; x.beginPath(); x.ellipse(X, Y, 26, 7, 0, 0, 6.283); x.fill();
-  x.drawImage(L.face > 0 ? s.l : s.r, X - 38, Y - 94);
-  glow(x, X - 2, Y - 79, 6, '#9ff3ff', .18 + .08 * Math.sin(t * 4)); glow(x, X + 6, Y - 79, 6, '#9ff3ff', .18 + .08 * Math.sin(t * 4));
-  if (performance.now() - (GFX.lastHitT || 0) < 160) { x.globalAlpha = .45; x.globalCompositeOperation = 'lighter'; x.drawImage(L.face > 0 ? s.l : s.r, X - 38, Y - 94); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; }
+function drawGiantAt(x, X, Y, f, face, t, flash) {
+  const s = giantSprite(f), ox = X - s.W / 2, oy = Y - s.H + 4, flip = face > 0;
+  x.fillStyle = 'rgba(8,20,16,.42)'; x.beginPath(); x.ellipse(X, Y, 30, 8, 0, 0, 6.283); x.fill();
+  // pedrinhas flutuando em volta
+  for (const [px0, py0, r] of s.pebbles) { const ex = flip ? s.W - px0 : px0, bob = Math.sin(t * 2 + px0) * 2; disc(x, ox + ex, oy + py0 + bob, r + 1, '#121419'); disc(x, ox + ex, oy + py0 + bob, r, '#78818f'); px(x, '#a0a9b6', ox + ex - 1, oy + py0 + bob - 1, 1, 1); }
+  x.drawImage(flip ? s.l : s.r, ox, oy);
+  for (const [ex, ey] of s.eyes) glow(x, ox + (flip ? s.W - ex : ex), oy + ey, 6, '#9ff3ff', .2 + .08 * Math.sin(t * 4));
+  if (flash) { x.globalAlpha = .45; x.globalCompositeOperation = 'lighter'; x.drawImage(flip ? s.l : s.r, ox, oy); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; }
 }
-// ---------- catapulta (objeto que todos podem criar)
+function drawGiant(x, t) { const L = GIANT.live; if (!L) return; drawGiantAt(x, Math.round(L.x), Math.round(L.y), giantFrame(t), L.face, t, performance.now() - (GFX.lastHitT || 0) < 160); }
+// ---------- catapulta (objeto que todos podem criar): base fixa + braço que gira quando dispara
 let CAT_SPR = null;
-function catapultSprite() { if (CAT_SPR) return CAT_SPR; const [c, x] = canvas(30, 24); x.fillStyle = 'rgba(10,30,20,.3)'; x.fillRect(2, 21, 27, 3);
-  px(x, P.ink, 2, 14, 26, 6); px(x, P.wood, 3, 15, 24, 4); px(x, P.woodL, 3, 15, 24, 1);
-  for (const X of [5, 22]) { disc(x, X, 20, 3, P.ink); disc(x, X, 20, 2, P.woodD); px(x, P.woodL, X, 19, 1, 1); }
-  px(x, P.ink, 12, 4, 4, 12); px(x, P.wood, 13, 5, 2, 10);
-  for (let k = 0; k < 14; k++) { const X = 14 - k, Y = 12 - Math.round(k * .55); px(x, P.ink, X, Y, 2, 3); px(x, P.woodL, X, Y + 1, 1, 1); }
-  px(x, P.ink, 0, 3, 6, 5); px(x, '#5a3420', 1, 4, 4, 3); px(x, P.st2, 2, 4, 2, 2); return CAT_SPR = { c, ax: 15, ay: 22 }; }
+function catapultSprite() { if (CAT_SPR) return CAT_SPR; const [c, x] = canvas(36, 30), O = '#1a120c', WD = ['#4a2f22', '#6b4630', '#8b5e3c', '#b8814a'];
+  x.fillStyle = 'rgba(10,30,20,.32)'; x.fillRect(2, 26, 33, 4);
+  // chassi com tábuas e cravos
+  px(x, O, 3, 17, 30, 7); px(x, WD[2], 4, 18, 28, 5); px(x, WD[3], 4, 18, 28, 1); px(x, WD[0], 4, 22, 28, 1); for (let X = 7; X < 31; X += 6) px(x, '#2b3138', X, 19, 1, 1);
+  // montantes em A e eixo
+  for (const X of [12, 22]) { px(x, O, X - 1, 6, 3, 13); px(x, WD[2], X, 7, 1, 11); } px(x, O, 10, 5, 16, 3); px(x, WD[3], 11, 6, 14, 1);
+  // corda enrolada no tambor
+  disc(x, 17, 15, 3, O); disc(x, 17, 15, 2, '#c9a46a'); px(x, '#8a6a3c', 16, 14, 3, 1); px(x, '#8a6a3c', 16, 16, 3, 1);
+  // rodas com raios
+  for (const X of [7, 29]) { disc(x, X, 24, 5, O); disc(x, X, 24, 4, WD[1]); ring(x, X, 24, 3, WD[3]); px(x, WD[0], X - 3, 24, 7, 1); px(x, WD[0], X, 21, 1, 7); disc(x, X, 24, 1, '#2b3138'); }
+  // pilha de pedras de munição
+  for (const [X, Y] of [[31, 15], [34, 15], [32, 12]]) { disc(x, X, Y, 2, O); px(x, '#939cae', X - 1, Y - 1, 2, 2); }
+  return CAT_SPR = { c, ax: 18, ay: 28 }; }
+function drawCatapultArm(x, d, t) {
+  // braço armado para trás (com pedra no cesto) que gira por cima até quase em pé ao disparar, e depois volta
+  const fired = GFX.catFire[d.id], k = fired ? (performance.now() - fired) / 1000 : 9, REST = 205, UP = 80;
+  const deg = k < .22 ? REST - (REST - UP) * (k / .22) ** 1.6 : k < .7 ? UP : k < 2.4 ? UP + (REST - UP) * ((k - .7) / 1.7) : REST, a = deg * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+  const pivX = d.x, pivY = d.y - 20, L1 = 17, L2 = 6, O = '#1a120c';
+  const seg = (r0, r1, col, hi) => { for (let r = r0; r <= r1; r += .5) { const X = Math.round(pivX + ca * r), Y = Math.round(pivY - sa * r); px(x, O, X - 1, Y - 1, 3, 3); } for (let r = r0; r <= r1; r += .5) { const X = Math.round(pivX + ca * r), Y = Math.round(pivY - sa * r); px(x, Math.round(r) % 5 === 0 ? hi : col, X, Y, 1, 1); } };
+  seg(-L2, L1, '#8b5e3c', '#b8814a');
+  const bx = Math.round(pivX + ca * L1), by = Math.round(pivY - sa * L1); px(x, O, bx - 3, by - 2, 7, 5); px(x, '#6b4630', bx - 2, by - 1, 5, 3); px(x, '#8b5e3c', bx - 2, by - 1, 5, 1);
+  if (!fired || k > 2.0) { disc(x, bx, by - 3, 3, O); disc(x, bx, by - 3, 2, '#7a8396'); px(x, '#a0a9b6', bx - 1, by - 4, 1, 1); }
+  const cwx = Math.round(pivX - ca * L2), cwy = Math.round(pivY + sa * L2); px(x, O, cwx - 4, cwy - 3, 9, 8); px(x, '#565e70', cwx - 3, cwy - 2, 7, 6); px(x, '#7a8396', cwx - 3, cwy - 2, 7, 1); px(x, '#2b3138', cwx - 3, cwy + 1, 7, 1);
+  disc(x, pivX, pivY, 2, O); px(x, '#c9a46a', pivX, pivY, 1, 1);
+  if (fired && k < .5) burst(x, t, fired / 1000 + .2, bx, by, 8, ['#c9a46a', '#8b5e3c'], 14, .4, 10, d.id);
+}
 // ---------- mensagens do servidor
 function onGiantMsg(m) {
   if (m.t === 'giant') { const was = GIANT.state; GIANT.at = m.at; GIANT.state = m.state; GIANT.result = m.result; GIANT.damaged = new Set(m.damaged || []); GIANT.live = m.live;
     if (m.start) { giantHorn(); setTimeout(() => dragonRoar && SND.ctx && dragonRoar(.45), 900); fxToast('O GIGANTE ACORDOU!', 'Ele vem do leste. Defendam Eryon!', '#e04a3a', '⚠'); }
     if (m.end) { fxToast(m.end === 'won' ? 'VITÓRIA!' : 'A cidade foi danificada', m.end === 'won' ? 'Eryon venceu o Gigante de Pedra!' : 'Consertem as casas com lenha', m.end === 'won' ? '#ffd84a' : '#e04a3a', m.end === 'won' ? '♛' : '⚠'); if (m.end === 'won') fanfare(true); }
     updGiantHud(); return true; }
-  if (m.t === 'giantHit') { GFX.lastHitT = performance.now(); if (GIANT.live) GFX.hits.push({ x: GIANT.live.x + (Math.random() - .5) * 24, y: GIANT.live.y - 60 - Math.random() * 20, d: m.d, t0: performance.now(), big: m.d >= 20 }); if (m.kind === 'zap' && SND.ctx) thunder(); return true; }
+  if (m.t === 'giantHit') { GFX.lastHitT = performance.now(); if (GIANT.live) GFX.hits.push({ x: GIANT.live.x + (Math.random() - .5) * 30, y: GIANT.live.y - 70 - Math.random() * 24, d: m.d, t0: performance.now(), big: m.d >= 20 }); if (m.kind === 'zap' && SND.ctx) thunder(); return true; }
   if (m.t === 'giantSmash') { GFX.lastSmashT = performance.now(); GFX.smash.push({ x: m.x, y: m.y, t0: performance.now() }); const p = players.get(myId);
     if (p && !p.room && Math.hypot(p.x - m.x, p.y - m.y) < 260) { stomp(); shake(); } return true; }
-  if (m.t === 'catShot') { GFX.shots.push({ ...m, t0: performance.now() }); const p = players.get(myId); if (p && !p.room && Math.hypot(p.x - m.x, p.y - m.y) < 220) play('wood_hit', .5, .7); return true; }
+  if (m.t === 'catShot') { GFX.catFire[m.id] = performance.now(); GFX.shots.push({ ...m, t0: performance.now() + 200 }); const p = players.get(myId); if (p && !p.room && Math.hypot(p.x - m.x, p.y - m.y) < 220) play('wood_hit', .5, .7); return true; }
   return false;
 }
 // ---------- desenho dos efeitos no mundo
@@ -68,12 +115,12 @@ function drawGiantWorld(x, t, li, ti, cw, ch) {
     x.globalAlpha = 1 - k; ring(x, s.x, s.y, 6 + k * 34, '#c9a46a'); ring(x, s.x, s.y, 3 + k * 22, '#e4d0a0'); x.globalAlpha = 1; burst(x, t, s.t0 / 1000, s.x, s.y - 4, 18, ['#8b5e3c', '#c9a46a', '#6e7789'], 28, .9, 30, 9); }
   // pedras das catapultas em arco
   for (let i = GFX.shots.length - 1; i >= 0; i--) { const s = GFX.shots[i], k = (performance.now() - s.t0) / 800; if (k > 1.4) { GFX.shots.splice(i, 1); continue; }
-    if (k <= 1) { const X = s.x + (s.tx - s.x) * k, Y = s.y - 14 + (s.ty - 60 - s.y + 14) * k - Math.sin(k * Math.PI) * 70; px(x, P.ink, Math.round(X) - 3, Math.round(Y) - 3, 7, 7); px(x, P.st2, Math.round(X) - 2, Math.round(Y) - 2, 5, 5); px(x, P.st3, Math.round(X) - 2, Math.round(Y) - 2, 2, 2); }
+    if (k < 0) continue; if (k <= 1) { const X = s.x + (s.tx - s.x) * k, Y = s.y - 30 + (s.ty - 60 - s.y + 14) * k - Math.sin(k * Math.PI) * 70; px(x, P.ink, Math.round(X) - 3, Math.round(Y) - 3, 7, 7); px(x, P.st2, Math.round(X) - 2, Math.round(Y) - 2, 5, 5); px(x, P.st3, Math.round(X) - 2, Math.round(Y) - 2, 2, 2); }
     else { if (!s.boom) { s.boom = 1; const p = players.get(myId); if (p && Math.hypot(p.x - s.tx, p.y - s.ty) < 260) stomp(.5); } burst(x, t, s.t0 / 1000 + .8, s.tx, s.ty - 60, 22, ['#c3cad6', '#939cae', '#ffd84a'], 30, .6, 20, 3); } }
 }
 // ---------- textos na tela: nome, vida e números de dano
 function giantLabels(ctx2, L, T, S, fs) {
-  const G2 = GIANT.live; if (!G2) return; const sx = Math.round((G2.x - L) * S), sy = Math.round((G2.y - 100 - T) * S);
+  const G2 = GIANT.live; if (!G2) return; const sx = Math.round((G2.x - L) * S), sy = Math.round((G2.y - 118 - T) * S);
   if (sx > -300 && sx < cv.width + 300 && sy > -100 && sy < cv.height + 200) { ctx2.textAlign = 'center'; ctx2.textBaseline = 'bottom'; ctx2.font = `700 ${Math.round(fs * 1.05)}px Pix, monospace`; ctx2.lineWidth = Math.max(3, fs / 4); ctx2.strokeStyle = '#140e06'; ctx2.strokeText('GIGANTE DE PEDRA', sx, sy); ctx2.fillStyle = '#ff9a8a'; ctx2.fillText('GIGANTE DE PEDRA', sx, sy);
     const w = fs * 7, h = Math.max(6, fs * .45); ctx2.fillStyle = '#140e06'; ctx2.fillRect(sx - w / 2 - 2, sy + 3, w + 4, h + 4); ctx2.fillStyle = '#3a1410'; ctx2.fillRect(sx - w / 2, sy + 5, w, h); ctx2.fillStyle = '#e04a3a'; ctx2.fillRect(sx - w / 2, sy + 5, w * Math.max(0, G2.hp) / G2.max, h); }
   for (let i = GFX.hits.length - 1; i >= 0; i--) { const hh = GFX.hits[i], k = (performance.now() - hh.t0) / 900; if (k > 1) { GFX.hits.splice(i, 1); continue; }

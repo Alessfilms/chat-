@@ -32,6 +32,7 @@ function econDecor(k) {
 }
 const GOOD_COL = { frutas: ['#e04a3a', '#ffd84a'], leite: ['#f4f0d8', '#c3cad6'], ovos: ['#f4ecd8', '#e8c890'], trufas: ['#4a3020', '#6b4630'], lenha: [P.wood, P.woodL], pedra: [P.st2, P.st3], ervas: ['#47994a', '#84c65a'], vaca: ['#f4f0d8', '#1a1a1a'], porco: ['#f0a0b0', '#d07890'], galinha: ['#ffffff', '#e04a3a'] };
 function drawEconDecor(x, d, t) {
+  if (d.kind === 'catapulta') drawCatapultArm(x, d, t);
   if (d.kind === 'barraca') { (d.shop || []).slice(0, 6).forEach((it, i) => { const [a, b] = GOOD_COL[it.k] || ['#c9a46a', '#ffd84a'], X = d.x - 11 + (i % 3) * 8, Y = d.y - 11 - Math.floor(i / 3) * 4;
       px(x, P.ink, X - 1, Y - 1, 6, 4); px(x, P.woodD, X, Y, 4, 2); px(x, a, X, Y - 1, 2, 1); px(x, b, X + 2, Y - 1, 2, 1); px(x, a, X + 1, Y - 2, 2, 1); }); }
   if (d.kind === 'pomar') { const ready = Date.now() - (d.lastH || 0) >= 4 * 60000; if (ready) for (const [ax2, ay2] of [[-5, -16], [3, -19], [6, -12], [-2, -10], [-7, -9]]) { px(x, '#7a1a14', d.x + ax2, d.y + ay2, 2, 2); px(x, '#e04a3a', d.x + ax2, d.y + ay2, 1, 1); } }
