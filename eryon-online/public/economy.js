@@ -12,6 +12,7 @@ const nameOf = k => GOOD_NAMES[k] || (RBY[k] || {}).name || k;
 
 // ---------- sprites dos objetos novos (muro, portão, barraca, macieira)
 function econDecor(k) {
+  if (k === 'catapulta') return catapultSprite();
   const mk = (W, H) => canvas(W, H), O = '#1a1d24', ST = ['#4d5566', '#6e7789', '#939cae', '#c3cad6'];
   if (k === 'muro') { const [c, x] = mk(16, 13); x.fillStyle = 'rgba(10,30,20,.3)'; x.fillRect(1, 11, 15, 2); px(x, O, 0, 2, 16, 10);
     for (let Y = 0; Y < 3; Y++) for (let X = 0; X < 4; X++) { const bx = 1 + X * 4 - (Y % 2) * 2, bw = 3; if (bx < 1 || bx > 13) continue; px(x, ST[(X + Y) % 2 ? 1 : 2], bx, 3 + Y * 3, bw, 2); px(x, ST[3], bx, 3 + Y * 3, bw, 1); }

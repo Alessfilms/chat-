@@ -28,11 +28,12 @@ function onFeatureMsg(m) {
   if (m.t === 'lv') { const p = players.get(m.id); if (p) p.lv = m.lv; return true; }
   if (m.t === 'badge') { const p = players.get(m.id); if (p) p.badge = m.badge; return true; }
   if (m.t === 'supporter') { fxToast('Obrigado por apoiar Eryon!', 'Escolha seu bichinho em Menu → Apoiar', '#ffd84a', '♥'); fanfare(true); return true; }
-  if (m.t === 'announce') { showAnnounce(m.text); return true; }
+  if (m.t === 'announce') { showAnnounce(m.text, m.from); return true; }
   if (m.t === 'rain') { startRain(m.gift || {}); return true; }
   if (m.t === 'signs') { SIGNS = m.list || []; return true; }
   if (m.t === 'castle') { onCastleMsg(m); return true; }
   if (onEconMsg(m)) return true;
+  if (onGiantMsg(m)) return true;
   if (m.t === 'builders') { const L = m.list.map(u => u === me ? 'você' : '@' + u), txt = L.length === 1 ? L[0] : L.slice(0, -1).join(', ') + ' e ' + L[L.length - 1];
     fxToast(`${txt}${m.more ? ' e mais ' + m.more : ''} ${L.length + m.more > 1 ? 'estão' : 'está'} construindo o castelo!`, 'Venha ajudar: pedreira ao sul da vila', '#ffd84a', '♜'); return true; }
   if (m.t === 'thanks') { showThanks(m.username, m.look); return true; }
@@ -87,7 +88,7 @@ function openReport(q) { reportTarget = q; $('repWho').textContent = '@' + q.use
 addEventListener('DOMContentLoaded', () => { for (const b of document.querySelectorAll('#repPanel .rep')) b.onclick = () => { if (reportTarget) send({ t: 'report', id: reportTarget.id, reason: b.dataset.r }); $('repPanel').hidden = true; }; });
 
 // ---------- anúncio do criador
-function showAnnounce(text) { const el = $('announce'); el.querySelector('span').textContent = text; el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); fanfare(true); clearTimeout(showAnnounce.t); showAnnounce.t = setTimeout(() => el.hidden = true, 9000); }
+function showAnnounce(text, from) { const el = $('announce'); el.querySelector('small').textContent = from || 'CRIADOR DE ERYON'; el.querySelector('span').textContent = text; el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); fanfare(true); clearTimeout(showAnnounce.t); showAnnounce.t = setTimeout(() => el.hidden = true, 9000); }
 
 // ---------- chuva de recursos (evento)
 let RAIN = null;

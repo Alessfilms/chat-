@@ -315,5 +315,28 @@
   "type": "equip",
   "tool": "knife",
   "desc": "+1 produto dos seus animais e da macieira."
+ },
+ {
+  "id": "lanca",
+  "name": "Lança",
+  "cls": "todos",
+  "cost": {
+   "lenha": 3,
+   "pedra": 1
+  },
+  "type": "equip",
+  "tool": "spear",
+  "desc": "Arma para defender Eryon. Equipe e ataque o gigante."
+ },
+ {
+  "id": "catapulta",
+  "name": "Catapulta",
+  "cls": "todos",
+  "cost": {
+   "lenha": 12,
+   "pedra": 6
+  },
+  "type": "decor",
+  "desc": "Coloque perto da vila. Atira sozinha no gigante, e qualquer um pode disparar (1 pedra)."
  }
 ]

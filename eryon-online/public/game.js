@@ -457,7 +457,7 @@ function connect() {
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, perk: readPerk() }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
     if (onFeatureMsg(m)) return;
-    if (m.t === 'welcome') { if (!connect.told) { connect.told = 1; diag('connected'); } setTimeout(skillLabel, 0); SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { if (m.giant) setTimeout(() => onGiantMsg({ t: 'giant', ...m.giant }), 0); if (!connect.told) { connect.told = 1; diag('connected'); } setTimeout(skillLabel, 0); SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
     else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; p.fly = !!s.fly; } } }
@@ -586,6 +586,7 @@ function draw(t, p) {
   for (const q of players.values()) if ((q.room || '') === myRoom) list.push({ y: q.y, pl: q });
   if (!room) { for (const n of NODES) if (n.x > li - 20 && n.x < li + cw + 20 && n.y > ti - 10 && n.y < ti + ch + 20) list.push({ y: n.y, node: n }); for (const d of DECOR) if (d.x > li - 30 && d.x < li + cw + 30 && d.y > ti - 10 && d.y < ti + ch + 30) list.push({ y: d.y, decor: d }); }
   if (!room) for (const h of BUILT) if (h.x > li - 40 && h.x < li + cw + 40 && h.y > ti - 10 && h.y < ti + ch + 40) list.push({ y: h.y, built: h });
+  if (!room && GIANT.live) list.push({ y: GIANT.live.y, giant: true });
   if (!room) for (const a of ANIMALS_L) { const q = animalPos(a, t); if (q.X > li - 20 && q.X < li + cw + 20 && q.Y > ti - 10 && q.Y < ti + ch + 20) list.push({ y: q.Y, animal: a }); }
   if (!room) for (const sg of allSigns()) if (sg.x > li - 30 && sg.x < li + cw + 30 && sg.y > ti - 10 && sg.y < ti + ch + 30) list.push({ y: sg.y, sign: sg });
   if (!room) { drawDragonShadows(x, li, ti, cw, ch); drawBalloonShadows(x); }
@@ -596,6 +597,7 @@ function draw(t, p) {
     if (o.sign) { drawSign(x, o.sign); continue; }
     if (o.castle) { drawCastle(x, t); continue; }
     if (o.merchant) { drawMerchant(x, t); continue; }
+    if (o.giant) { drawGiant(x, t); continue; }
     if (o.animal) { drawAnimal(x, o.animal, t); continue; }
     if (o.lm) { drawLandmark(x, o.lm, t); continue; }
     if (o.node) { drawNode(x, o.node); continue; }
@@ -611,6 +613,7 @@ function draw(t, p) {
     x.drawImage(o.img, o.dx, o.dy);
   }
   for (const q of players.values()) if ((q.room || '') === myRoom) drawActFx(x, q, t);
+  if (!room) drawGiantWorld(x, t, li, ti, cw, ch);
   if (window.CINE_DRAW) CINE_DRAW(x, t, room);
   if (!room) { for (const q of players.values()) if (q.fly && !q.room) drawBalloon(x, q, t); drawDragons(x, li, ti, cw, ch, p); drawRain(x, li, ti, cw, ch, t); }
   if (room && room.fire) { drawFire(x, room.fire.x, room.fire.y, t); glow(x, room.fire.x, room.fire.y - 6, 18, P.fire2, .12); }
@@ -652,7 +655,7 @@ function draw(t, p) {
     ctx.globalAlpha = 1;
   }
   ctx.globalAlpha = 1;
-  if (!room) { drawSignLabels(ctx, L, T, S, fs, p); castleLabel(ctx, L, T, S, fs, p); econLabels(ctx, L, T, S, fs, p); }
+  if (!room) { drawSignLabels(ctx, L, T, S, fs, p); castleLabel(ctx, L, T, S, fs, p); econLabels(ctx, L, T, S, fs, p); giantLabels(ctx, L, T, S, fs); }
 }
 // ---------------------------------------------------------------- ações e portas
 let ctxAct = null;
@@ -665,6 +668,7 @@ function updateContext(p, t) {
     if (!c) c = r.door.x < 0 ? { kind: 'stairs', to: (r.spots.find(s2 => s2.kind === 'stairs') || {}).to, label: 'Descer a escada' } : { kind: 'exit', label: 'Sair' };
   } else {
     for (const d of DOORS) if (Math.hypot(p.x - d.x, p.y - d.y) < 10) c = { kind: 'enter', label: d.label, room: d.room };
+    if (!c) { const gc = giantContext(p); if (gc) c = gc; }
     if (!c) { const ec = econContext(p); if (ec) c = ec; }
     if (!c) { const cc = castleContext(p); if (cc) c = cc; }
     { const pl = LM.portal; if (!c && pl && Math.abs(p.x - pl.x) < 13 && p.y > pl.y - 22 && p.y < pl.y + 10) c = { kind: 'portal', label: 'Atravessar o portal' }; }
@@ -722,7 +726,8 @@ function doSkill() { const p = players.get(myId); const c = classOf(p);
 let zapReady = 0;
 function castZap(p) {
   if (!p || p.room || p.fly) return; const now = performance.now(); if (now < zapReady) return sys(`O cajado ainda está carregando (${Math.ceil((zapReady - now) / 1000)} s).`);
-  const cx = p.x + (p.face || 1) * 30, cy = p.y - 2, near = TREE_POS.filter(tr => !CUT.has(tr.i) && !URBAN.has(tr.i) && Math.hypot(tr.x - cx, (tr.y - cy) * 1.1) < 40).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy)).slice(0, 8);
+  const GL = GIANT.live, aimG = GL && Math.hypot(GL.x - p.x, GL.y - p.y) < 115; if (aimG) p.face = GL.x < p.x ? -1 : 1;
+  const cx = aimG ? GL.x : p.x + (p.face || 1) * 30, cy = aimG ? GL.y - 4 : p.y - 2, near = TREE_POS.filter(tr => !CUT.has(tr.i) && !URBAN.has(tr.i) && Math.hypot(tr.x - cx, (tr.y - cy) * 1.1) < 40).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy)).slice(0, 8);
   const pts = near.length ? near.map(tr => [tr.x, tr.y]) : [[Math.round(cx), Math.round(cy)]], t = now / 1000;
   p.act = { kind: 'zap', t0: t, end: t + ACT_DUR.zap, pts }; zapReady = now + 10000; thunder(); send({ t: 'act', kind: 'zap' });
   send({ t: 'zap', trees: near.map(tr => tr.i), x: Math.round(cx), y: Math.round(cy), pts });

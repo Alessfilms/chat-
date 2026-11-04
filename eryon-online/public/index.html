@@ -166,6 +166,11 @@ body.clean #nudge{display:none!important}
 #achBtn b{font:700 15px Pix,monospace;color:var(--gold)}
 body.cine #hud,body.cine #chatbar,body.cine #actbar,body.cine #camctl,body.cine #chatlog,body.cine #login,body.cine #atCard,body.cine #tut,body.cine #nudge,body.cine #fxToast,body.cine #avatar{display:none!important}
 body.cine.cine-ui #hud{display:flex!important}body.cine.cine-ui #chatbar{display:flex!important}body.cine.cine-ui #actbar{display:flex!important}body.cine.cine-ui #chatlog{display:flex!important}body.cine.cine-ui #fxToast:not([hidden]){display:flex!important}
+#giantHud{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top));z-index:3;max-width:min(330px,calc(100% - 140px));font:700 13px Pix,monospace;text-align:center;color:#fff3b0;background:#2a0e0a;border:3px solid #0c1410;box-shadow:inset 0 0 0 2px #e04a3a;padding:6px 9px}
+#giantHud[hidden]{display:none}#giantHud b{color:#ffd84a}#giantHud small{display:block;font-size:11px;color:#f4d0c8;margin-top:2px}
+#giantHud.warn{animation:gpulse 1.6s infinite}@keyframes gpulse{50%{box-shadow:inset 0 0 0 2px #ffd84a}}
+#giantHud.battle{width:min(260px,calc(100% - 140px));padding:6px 8px}#giantHud .gl{display:flex;justify-content:space-between;font-size:12px}#giantHud .gb{height:8px;background:#140e06;border:1px solid #000;margin:2px 0 4px}#giantHud .gb i{display:block;height:100%;background:#e04a3a}#giantHud .gb.city i{background:#84c65a}
+body.clean #giantHud{display:none!important}body.cine #giantHud{display:none!important}
 </style>
 </head>
 <body>
@@ -231,6 +236,7 @@ body.cine.cine-ui #hud{display:flex!important}body.cine.cine-ui #chatbar{display
   <div class="mgrid"><button type="button" class="mbtn rep" data-r="palavrões ou ofensa">Palavrões / ofensa</button><button type="button" class="mbtn rep" data-r="assédio">Assédio</button><button type="button" class="mbtn rep" data-r="spam">Spam</button><button type="button" class="mbtn rep" data-r="atrapalhando o jogo">Atrapalhando</button></div>
   <p class="hint">A denúncia vai para o criador. Com 3 denúncias, a pessoa fica sem chat por um tempo.</p></div></div>
 <button id="nudge" type="button" hidden><span></span></button>
+<button id="giantHud" type="button" hidden></button>
 <div id="fxToast" hidden><i></i><div><b></b><span></span></div></div>
 <div id="announce" hidden><small>CRIADOR DE ERYON</small><span></span></div>
 <div id="tut" class="box" hidden><small></small><b></b><p></p><div class="row2"><button id="tutSkip" type="button" class="sec">Pular</button><button id="tutNext" type="button">Próximo</button></div></div>
@@ -272,14 +278,15 @@ body.cine.cine-ui #hud{display:flex!important}body.cine.cine-ui #chatbar{display
 <div id="chatlog"></div>
 <div id="chatbar"><button id="chatToggle" type="button" class="sec" aria-pressed="false" aria-label="Tela cheia" title="Tela cheia: deixa só o campo de mensagem"></button><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
 
-<script src="engine.js?v=54"></script>
-<script src="life.js?v=54"></script>
-<script src="craft.js?v=54"></script>
-<script src="explore.js?v=54"></script>
-<script src="dragons.js?v=54"></script>
-<script src="features.js?v=54"></script>
-<script src="castle.js?v=54"></script>
-<script src="economy.js?v=54"></script>
-<script src="game.js?v=58"></script>
+<script src="engine.js?v=60"></script>
+<script src="life.js?v=60"></script>
+<script src="craft.js?v=60"></script>
+<script src="explore.js?v=60"></script>
+<script src="dragons.js?v=60"></script>
+<script src="features.js?v=61"></script>
+<script src="castle.js?v=60"></script>
+<script src="economy.js?v=60"></script>
+<script src="giant.js?v=60"></script>
+<script src="game.js?v=60"></script>
 </body>
 </html>

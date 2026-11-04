@@ -95,7 +95,7 @@ function decorSprite(k) {
   if (k === 'barril') { box(1, 1, 8, 9, P.wood); px(x, '#2b3138', 1, 3, 8, 1); px(x, '#2b3138', 1, 7, 8, 1); px(x, P.woodL, 2, 1, 2, 9); }
   return DECOR_SPR[k] = { c, ax: Math.floor(W / 2), ay: H - 1 };
 }
-const DECOR_BLOCK = { muro: 8, barraca: 13, pomar: 3, portao: 0, banco: 7, barril: 4, boneco: 3, alvo: 3, runa: 4, cristal: 3, palco: 11, tabuas: 7, cerca: 7, fogueira: 6, lanterna: 2, estandarte: 1, canteiro: 7 };
+const DECOR_BLOCK = { catapulta: 11, muro: 8, barraca: 13, pomar: 3, portao: 0, banco: 7, barril: 4, boneco: 3, alvo: 3, runa: 4, cristal: 3, palco: 11, tabuas: 7, cerca: 7, fogueira: 6, lanterna: 2, estandarte: 1, canteiro: 7 };
 function decorBlocked(x, y) { for (const d of DECOR) { if (d.kind === 'portao') continue; if (ROT_KINDS.has(d.kind) && d.rot) { if (x > d.x - 3 && x < d.x + 3 && y > d.y - 15 && y < d.y + 1) return true; continue; }
   const w = DECOR_BLOCK[d.kind] || 3; if (x > d.x - w && x < d.x + w && y > d.y - 4 && y < d.y + 1) return true; } return false; }
 const sprKey = d => ROT_KINDS.has(d.kind) && d.rot ? d.kind + '_v' : d.kind;
