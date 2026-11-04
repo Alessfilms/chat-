@@ -215,7 +215,14 @@ let nextId = 1;
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 const out = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
 const all = (m, except) => { const s = JSON.stringify(m); for (const c of clients) if (c !== except && c.ws.readyState === 1) c.ws.send(s); };
-const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving });
+const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '' });
+const ROOM_OK = /^(|taverna|casa_[1-9])$/;
+const ACTS = new Set(['chop', 'split', 'drink', 'magic']);
+// árvores derrubadas: id -> hora em que voltam a crescer (5 min)
+const cutTrees = new Map();
+const cutList = () => [...cutTrees.keys()];
+setInterval(() => { const n = Date.now(); let ch = false; for (const [i, t] of cutTrees) if (t < n) { cutTrees.delete(i); ch = true; } if (ch) all({ t: 'trees', cut: cutList() }); }, 5000).unref();
+function addWood(c, n) { const r = db.users[c.user]; if (!r) return; r.wood = Math.min(99999, (r.wood || 0) + n); save(); out(c.ws, { t: 'wood', n: r.wood }); }
 
 wss.on('connection', (ws, req) => {
   if (limited('ws:' + ipOf(req), 30, 60000)) return ws.close(4029, 'muitas conexões');
@@ -231,17 +238,28 @@ wss.on('connection', (ws, req) => {
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c);
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25) });
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), wood: rec.wood || 0 });
       all({ t: 'join', p: pub(c) }, c);
       return;
     }
     if (m.t === 'move') {
       const now = Date.now(), dt = Math.min(1, (now - c.lastMove) / 1000); c.lastMove = now;
       let nx = Number(m.x), ny = Number(m.y); if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+      const room = typeof m.room === 'string' && ROOM_OK.test(m.room) ? m.room : '';
+      const changed = room !== (c.room || '') && now - (c.lastRoom || 0) > 400;
+      if (changed) { c.room = room; c.lastRoom = now; }
       const max = 70 * dt + 6, dx = nx - c.x, dy = ny - c.y, d = Math.hypot(dx, dy);
-      if (d > max) { nx = c.x + dx / d * max; ny = c.y + dy / d * max; }
+      if (!changed && d > max) { nx = c.x + dx / d * max; ny = c.y + dy / d * max; }
       c.x = Math.max(4, Math.min(WORLD.w - 4, nx)); c.y = Math.max(8, Math.min(WORLD.h - 4, ny));
       c.face = m.face < 0 ? -1 : 1; c.moving = !!m.moving; c.dirty = true;
+    } else if (m.t === 'act') {
+      const now = Date.now(); if (!ACTS.has(m.kind) || now - (c.lastAct || 0) < 1500) return; c.lastAct = now;
+      all({ t: 'act', id: c.id, kind: m.kind }, c);
+      if (m.kind === 'split') addWood(c, 1);
+    } else if (m.t === 'cut') {
+      const i = Number(m.tree), now = Date.now();
+      if (!Number.isInteger(i) || i < 0 || i > 5000 || cutTrees.has(i) || now - (c.lastCut || 0) < 2000) return; c.lastCut = now;
+      cutTrees.set(i, now + 5 * 60000); all({ t: 'trees', cut: cutList() }); addWood(c, 3);
     } else if (m.t === 'chat') {
       const now = Date.now(); if (now - c.lastChat < 1200) return; c.lastChat = now;
       const text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
@@ -256,7 +274,7 @@ wss.on('connection', (ws, req) => {
 });
 // estado 10x por segundo (só quem mudou)
 setInterval(() => {
-  const ch = []; for (const c of clients) if (c.dirty) { ch.push({ id: c.id, x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, face: c.face, moving: c.moving }); c.dirty = false; }
+  const ch = []; for (const c of clients) if (c.dirty) { ch.push({ id: c.id, x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, face: c.face, moving: c.moving, room: c.room || '' }); c.dirty = false; }
   if (ch.length) all({ t: 'state', p: ch, online: clients.size });
 }, 100);
 // mantém conexões vivas e salva posições

@@ -40,6 +40,8 @@ function charFor(username, look) {
 
 // ---------------------------------------------------------------- vila (estado do fim do Ep. 2)
 let B = {}, villageLayer = null, OBJ = [], blockers = [];
+const TREE_POS = [], CUT = new Set();
+let DOORS = [], wood = 0;
 const VR = 214, PAL_R = 212, GATE = { x: 482, y: 475 };
 const GATE_A = Math.atan2((GATE.y - C.y) / .95, GATE.x - C.x), SOUTH_A = Math.PI / 2;
 function buildWorld(world) {
@@ -64,7 +66,11 @@ function buildWorld(world) {
     px(x, P.ink, 522, 383, 13, 16); px(x, P.st1, 523, 384, 11, 14); [[0, 0, 1, 3], [4, 0, 1, 3], [7, 0, 1, 1], [1, 5, 3, 1], [6, 5, 2, 2], [2, 9, 3, 1]].forEach(([a, b, w, h]) => px(x, P.cy2, 524 + a, 385 + b, w, h)); }
   // árvores (as da área da vila foram derrubadas e viraram casas)
   const pathNear = (X, Y) => { const L = [[474, 498], [482, 476], [492, 456], [502, 438], [508, 425], [514, 414], [522, 404]]; for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((X - ax) * dx + (Y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(X - ax - dx * k, Y - ay - dy * k) < 15) return true; } return false; };
-  for (const t of trees) { if (t.dc < VR + 4 || pathNear(t.x, t.y + 6)) continue; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5 }); }
+  trees.forEach((t, i) => { if (t.dc < VR + 4 || pathNear(t.x, t.y + 6)) return; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay, tree: i }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5, tree: i }); TREE_POS.push({ i, x: t.x, y: t.y }); });
+  if (B.serraria) { const X = B.serraria.x, Y = B.serraria.y, [wc, wq] = canvas(26, 14);
+    for (let k = 0; k < 6; k++) { const r = k % 3, c2 = Math.floor(k / 3); px(wq, P.ink, 2 + r * 6 + c2 * 3, 6 - c2 * 4, 7, 7); px(wq, P.wood, 3 + r * 6 + c2 * 3, 7 - c2 * 4, 5, 5); px(wq, P.woodL, 4 + r * 6 + c2 * 3, 8 - c2 * 4, 3, 3); }
+    OBJ.push({ y: Y, x: X, img: wc, dx: X - 13, dy: Y - 12 }); const [bc, bq] = canvas(9, 7); px(bq, P.ink, 0, 0, 9, 7); px(bq, P.wood, 1, 2, 7, 4); px(bq, P.woodL, 1, 1, 7, 2); OBJ.push({ y: Y + 8, x: X + 18, img: bc, dx: X + 14, dy: Y + 2 });
+    blockers.push({ k: 'r', x0: X - 13, x1: X + 13, y0: Y - 6, y1: Y }); }
   const bld = (b, spr, ox, oy, w, h) => { if (!b) return; OBJ.push({ y: b.y, x: b.x, img: spr, dx: b.x + ox, dy: b.y + oy }); blockers.push({ k: 'r', x0: b.x - w / 2, x1: b.x + w / 2, y0: b.y - h, y1: b.y }); };
   ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9'].forEach(id => B[id] && bld(B[id], HOUSE_SPR[B[id].telhado || 0], -15, -26, 26, 10));
   bld(B.forja, FORGE_SPR, -18, -28, 34, 12); bld(B.taverna, TAVERN_SPR[1], -24, -36, 46, 14); bld(B.enfermaria, TENT_SPR, -17, -24, 30, 10); bld(B.armazem, SHED_SPR, -13, -22, 26, 10);
@@ -87,7 +93,7 @@ function blocked(x, y) {
   if (r > PAL_R - 3 && r < PAL_R + 3) { const a = Math.atan2(dy, dx); if (Math.abs(Math.atan2(Math.sin(a - GATE_A), Math.cos(a - GATE_A))) > .07 && Math.abs(Math.atan2(Math.sin(a - SOUTH_A), Math.cos(a - SOUTH_A))) > .05) return true; }
   for (const b of treeGrid.get('r') || []) if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return true;
   const gx0 = Math.floor(x / 32), gy0 = Math.floor(y / 32);
-  for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const b of treeGrid.get((gx0 + a) + ',' + (gy0 + c)) || []) if (Math.hypot(x - b.x, (y - b.y) * 1.4) < b.r) return true;
+  for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const b of treeGrid.get((gx0 + a) + ',' + (gy0 + c)) || []) if (!(b.tree !== undefined && CUT.has(b.tree)) && Math.hypot(x - b.x, (y - b.y) * 1.4) < b.r) return true;
   return false;
 }
 
@@ -187,15 +193,18 @@ function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
-    if (m.t === 'welcome') { myId = m.id; players.clear(); addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); wood = m.wood || 0; showWood(); addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
-    else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; } } }
+    else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; } } }
+    else if (m.t === 'act') { const p = players.get(m.id); if (p && !p.mine) { const t0 = performance.now() / 1000; p.act = { kind: m.kind, t0, end: t0 + (ACT_DUR[m.kind] || 1.5) }; const me2 = players.get(myId); if (me2 && (me2.room || '') === (p.room || '') && Math.hypot(me2.x - p.x, me2.y - p.y) < 120) actSound(m.kind); } }
+    else if (m.t === 'trees') { const had = CUT.size; CUT.clear(); m.cut.forEach(i => CUT.add(i)); }
+    else if (m.t === 'wood') { wood = m.n; showWood(); }
     else if (m.t === 'look') { const p = players.get(m.id); if (p) { p.look = m.look; p.ch = charFor(p.username, m.look); if (p.mine) myLook = m.look; } }
     else if (m.t === 'chat') { const p = players.get(m.id); if (p) { p.say = m.text; p.sayT = performance.now(); } logChat(m); } };
   ws.onclose = ev => { if (ev.code === 4001) { store.del('eryon_token'); location.reload(); return; } if (ev.code === 4002) { sys('Você entrou em outro aparelho.'); return; } const wait = reconnectNow ? 50 : 2000; reconnectNow = false; setTimeout(connect, wait); };
 }
-function addPlayer(p, mine) { players.set(p.id, { ...p, tx: p.x, ty: p.y, mine: !!mine, ch: charFor(p.username, p.look) }); }
+function addPlayer(p, mine) { players.set(p.id, { ...p, room: p.room || '', ph: p.id % 97, tx: p.x, ty: p.y, mine: !!mine, ch: charFor(p.username, p.look) }); }
 function logChat(m) { const d = document.createElement('div'); const b = document.createElement('b'); b.textContent = '@' + m.username + ': '; d.appendChild(b); d.appendChild(document.createTextNode(m.text)); pushLog(d); }
 function sys(t) { const d = document.createElement('div'); d.style.color = '#9ff3ff'; d.textContent = t; pushLog(d); }
 function pushLog(d) { const l = $('chatlog'); l.appendChild(d); while (l.children.length > 6) l.firstChild.remove(); setTimeout(() => { d.style.transition = 'opacity 1s'; d.style.opacity = '0'; setTimeout(() => d.remove(), 1000); }, 15000); }
@@ -203,11 +212,13 @@ function sendChat() { const t = $('msg').value.trim(); if (!t || !ws || ws.ready
 $('sendBtn').onclick = sendChat; $('msg').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); e.stopPropagation(); });
 
 // ---------------------------------------------------------------- controles
-addEventListener('keydown', e => { if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; if (e.key === 'Enter') { $('msg').focus(); e.preventDefault(); return; } keys.add(e.key.toLowerCase()); target = null; if (cam.mode !== 'follow') follow(); });
+addEventListener('keydown', e => { sndStart(); if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; if (e.key === 'Enter') { $('msg').focus(); e.preventDefault(); return; }
+  const k = e.key.toLowerCase(); if (k === 'e' || k === ' ') { e.preventDefault(); doContext(); return; } if (k === 'q') { doAct('magic'); return; }
+  keys.add(k); target = null; if (cam.mode !== 'follow') follow(); });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 const cam = { L: 0, T: 0, mode: 'follow', x: C.x, y: C.y, watch: null };
 const ptrs = new Map(); let drag = null, pinch0 = 0, zoom0 = 1;
-cv.addEventListener('pointerdown', e => { if (!me) return; $('msg').blur(); cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+cv.addEventListener('pointerdown', e => { sndStart(); if (!me) return; $('msg').blur(); cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (ptrs.size === 1) drag = { x: e.clientX, y: e.clientY, moved: false, cx: cam.L + cv.width / S / 2, cy: cam.T + cv.height / S / 2 };
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); zoom0 = zoomMul; if (drag) drag.moved = true; } });
 cv.addEventListener('pointermove', e => { if (!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -228,11 +239,11 @@ function renderList() { const l = $('plist'); l.innerHTML = ''; const arr = [...
     b.onclick = () => { if (q.mine) follow(); else { cam.mode = 'watch'; cam.watch = q.id; showRecenter(); } $('plist').hidden = true; }; l.appendChild(b); } }
 
 // ---------------------------------------------------------------- loop
-let last = performance.now(), sendT = 0, lastSent = '';
+let last = performance.now(), sendT = 0, lastSent = '', stepT = 0;
 function start() {
   if (me && !/^visitante\d+$/.test(me)) $('nameBtn').textContent = '@' + me;
   $('login').style.display = 'none'; $('hud').style.display = 'flex'; $('camctl').style.display = 'flex'; $('chatlog').style.display = 'flex'; $('chatbar').style.display = 'flex';
-  connect(); requestAnimationFrame(loop);
+  DOORS = doorsOutside(); $('actbar').style.display = 'flex'; connect(); requestAnimationFrame(loop);
 }
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
@@ -242,57 +253,73 @@ function loop(now) {
     if (keys.has('arrowleft') || keys.has('a')) ix--; if (keys.has('arrowright') || keys.has('d')) ix++;
     if (keys.has('arrowup') || keys.has('w')) iy--; if (keys.has('arrowdown') || keys.has('s')) iy++;
     if (!ix && !iy && target) { const dx = target.x - p.x, dy = target.y - p.y, d = Math.hypot(dx, dy); if (d < 2) target = null; else { ix = dx / d; iy = dy / d; } }
+    if (p.act && t < p.act.end) { ix = 0; iy = 0; target = null; }
+    const blk = (x2, y2) => p.room ? roomBlocked(p.room, x2, y2) : blocked(x2, y2);
     const len = Math.hypot(ix, iy) || 1, sp = 44 * dt, mx = ix / len * sp, my = iy / len * sp;
     let moved = false;
-    if (mx && !blocked(p.x + mx, p.y)) { p.x += mx; moved = true; }
-    if (my && !blocked(p.x, p.y + my)) { p.y += my; moved = true; }
+    if (mx && !blk(p.x + mx, p.y)) { p.x += mx; moved = true; }
+    if (my && !blk(p.x, p.y + my)) { p.y += my; moved = true; }
+    if (moved) { stepT += dt; if (stepT > .34) { stepT = 0; sfx.step(!!p.room); } } else stepT = .3;
+    updateContext(p, t);
+    setFireLevel(p.room ? (p.room === 'taverna' ? .7 : 0) : 1 - Math.hypot(p.x - C.x, p.y - C.y) / 110);
     if ((ix || iy) && !moved) target = null;
     p.moving = moved; if (ix) p.face = ix < 0 ? -1 : 1;
-    sendT += dt; const sig = `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.face},${p.moving}`;
-    if (sendT > .1 && sig !== lastSent && ws && ws.readyState === 1) { ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: p.moving })); lastSent = sig; sendT = 0; }
+    sendT += dt; const sig = `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.face},${p.moving},${p.room}`;
+    if (sendT > .1 && sig !== lastSent && ws && ws.readyState === 1) { ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: p.moving, room: p.room || '' })); lastSent = sig; sendT = 0; }
   }
   for (const q of players.values()) if (!q.mine) { q.x += (q.tx - q.x) * Math.min(1, dt * 12); q.y += (q.ty - q.y) * Math.min(1, dt * 12); }
   draw(t, p);
   requestAnimationFrame(loop);
 }
 function draw(t, p) {
+  const myRoom = p ? (p.room || '') : '', room = myRoom ? roomOf(myRoom) : null;
+  const MW = room ? room.w : WW, MH = room ? room.h : WH;
   const vw = cv.width / S, vh = cv.height / S;
   let cx = p ? p.x : C.x, cy = p ? p.y - 8 : C.y;
-  if (cam.mode === 'free') { cx = cam.x; cy = cam.y; } else if (cam.mode === 'watch') { const w = players.get(cam.watch); if (w) { cx = w.x; cy = w.y - 8; } else follow(); }
-  cam.x = clamp(cx, vw / 2, WW - vw / 2); cam.y = clamp(cy, vh / 2, WH - vh / 2);
-  cx = clamp(cx, vw / 2, WW - vw / 2); cy = clamp(cy, vh / 2, WH - vh / 2);
+  if (!room) { if (cam.mode === 'free') { cx = cam.x; cy = cam.y; } else if (cam.mode === 'watch') { const w = players.get(cam.watch); if (w && !w.room) { cx = w.x; cy = w.y - 8; } else follow(); } }
+  const fit = (c, v, M) => v >= M ? M / 2 : clamp(c, v / 2, M - v / 2);
+  cx = fit(cx, vw, MW); cy = fit(cy, vh, MH); if (!room) { cam.x = cx; cam.y = cy; }
   const L = cx - vw / 2, T = cy - vh / 2, li = Math.floor(L), ti = Math.floor(T), cw = Math.ceil(vw) + 2, ch = Math.ceil(vh) + 2;
   cam.L = L; cam.T = T;
-  const x = vx; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, cw, ch);
-  x.drawImage(villageLayer, li, ti, cw, ch, 0, 0, cw, ch); x.translate(-li, -ti);
-  // objetos ordenados por y (cenário + jogadores)
+  const x = vx; x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#060b0a'; x.fillRect(0, 0, cw, ch);
+  if (room) { x.translate(-li, -ti); x.drawImage(room.img, 0, 0); }
+  else { x.drawImage(villageLayer, li, ti, cw, ch, 0, 0, cw, ch); x.translate(-li, -ti); }
+  // objetos ordenados por y (cenário + jogadores da mesma sala)
   const list = [];
-  for (const o of OBJ) if (o.x > li - 40 && o.x < li + cw + 40 && o.y > ti - 10 && o.y < ti + ch + 50) list.push(o);
-  for (const q of players.values()) list.push({ y: q.y, pl: q });
-  list.push({ y: C.y + 1, fire: true });
+  if (!room) {
+    for (const o of OBJ) if (o.x > li - 40 && o.x < li + cw + 40 && o.y > ti - 10 && o.y < ti + ch + 50) list.push(o);
+    list.push({ y: C.y + 1, fire: true });
+  }
+  for (const q of players.values()) if ((q.room || '') === myRoom) list.push({ y: q.y, pl: q });
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
     if (o.fire) { drawFire(x, C.x, C.y + 1, t); continue; }
-    if (o.pl) { const q = o.pl; const f = Math.floor(t * 6 + q.id) % 2; drawCharAt(x, q.ch, q.x, q.y, q.moving ? { legs: f ? 'w1' : 'w2', arm: 'down', eyes: 0, br: 0 } : { legs: 'stand', arm: 'down', eyes: 0, br: Math.floor(t * 1.3 + q.id) % 2 }, q.face || 1); continue; }
+    if (o.pl) { const q = o.pl; drawCharAt(x, q.ch, q.x, q.y, poseFor(q, t), q.face || 1); continue; }
+    if (o.tree !== undefined && CUT.has(o.tree)) { px(x, P.ink, o.x - 3, o.y - 4, 7, 5); px(x, P.wood, o.x - 2, o.y - 3, 5, 3); px(x, P.woodL, o.x - 2, o.y - 3, 5, 1); continue; }
     x.drawImage(o.img, o.dx, o.dy);
   }
-  if (B.forja) { x.globalAlpha = .6 + .4 * h2(Math.floor(t * 10), 2); px(x, P.fire1, B.forja.x - 7, B.forja.y - 10, 12, 8); px(x, P.fire3, B.forja.x - 5, B.forja.y - 8, 8, 5); x.globalAlpha = 1; smoke(x, B.forja.x + 11, B.forja.y - 30, t, 6); }
+  for (const q of players.values()) if ((q.room || '') === myRoom) drawActFx(x, q, t);
+  if (room && room.fire) { drawFire(x, room.fire.x, room.fire.y, t); glow(x, room.fire.x, room.fire.y - 6, 18, P.fire2, .12); }
+  if (!room && B.forja) { x.globalAlpha = .6 + .4 * h2(Math.floor(t * 10), 2); px(x, P.fire1, B.forja.x - 7, B.forja.y - 10, 12, 8); px(x, P.fire3, B.forja.x - 5, B.forja.y - 8, 8, 5); x.globalAlpha = 1; smoke(x, B.forja.x + 11, B.forja.y - 30, t, 6); }
   if (target) { x.globalAlpha = .7; ring(x, target.x, target.y, 3 + (Math.floor(t * 4) % 2), P.fire3); x.globalAlpha = 1; }
-  // luz de entardecer
+  // luz
   const l = lx; l.setTransform(1, 0, 0, 1, 0, 0); l.globalCompositeOperation = 'source-over'; l.clearRect(0, 0, cw, ch);
-  l.fillStyle = 'rgba(6,14,22,.32)'; l.fillRect(0, 0, cw, ch); l.translate(-li, -ti); l.globalCompositeOperation = 'destination-out';
-  lightHole(l, C.x, C.y, 46 + Math.round(Math.sin(t * 9))); if (B.forja) lightHole(l, B.forja.x, B.forja.y - 8, 24); if (B.taverna) lightHole(l, B.taverna.x, B.taverna.y - 10, 28);
-  for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) lightHole(l, B[id].x, B[id].y - 8, 14);
+  l.fillStyle = room ? 'rgba(20,10,4,.28)' : 'rgba(6,14,22,.32)'; l.fillRect(0, 0, cw, ch); l.translate(-li, -ti); l.globalCompositeOperation = 'destination-out';
+  if (room) { if (room.fire) lightHole(l, room.fire.x, room.fire.y, 60); lightHole(l, room.w / 2, room.h / 2, Math.max(room.w, room.h) * .45); }
+  else { lightHole(l, C.x, C.y, 46 + Math.round(Math.sin(t * 9))); if (B.forja) lightHole(l, B.forja.x, B.forja.y - 8, 24); if (B.taverna) lightHole(l, B.taverna.x, B.taverna.y - 10, 28);
+    for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) lightHole(l, B[id].x, B[id].y - 8, 14); }
   if (p) lightHole(l, p.x, p.y - 6, 22);
   l.globalCompositeOperation = 'source-over';
   x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(light, 0, 0, cw, ch, 0, 0, cw, ch);
   // saída ampliada
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#060b0a'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(view, 0, 0, cw, ch, Math.round(-(L - li) * S), Math.round(-(T - ti) * S), cw * S, ch * S);
-  // nomes e balões
+  // nomes e balões (só de quem está no mesmo lugar)
   const fs = Math.round(15 * DPR), now = performance.now();
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.lineJoin = 'round';
+  if (room) { ctx.font = `700 ${Math.round(fs * 1.1)}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06'; const ty = Math.max(fs * 3, Math.round((0 - T) * S) - 6); ctx.strokeText(room.name, cv.width / 2, ty); ctx.fillStyle = '#ffd84a'; ctx.fillText(room.name, cv.width / 2, ty); }
   for (const q of players.values()) {
+    if ((q.room || '') !== myRoom) continue;
     const sx = Math.round((q.x - L) * S), sy = Math.round((q.y - T - (q.ch.sp.big ? 22 : 17)) * S);
     if (sx < -200 || sx > cv.width + 200 || sy < -100 || sy > cv.height + 100) continue;
     ctx.font = `700 ${fs}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06';
@@ -301,6 +328,43 @@ function draw(t, p) {
     if (q.say && now - q.sayT < 6000) bubble(q.say, sx, sy - fs * 1.2, fs);
   }
 }
+// ---------------------------------------------------------------- ações e portas
+let ctxAct = null;
+function updateContext(p, t) {
+  let c = null;
+  if (p.room) {
+    const r = roomOf(p.room);
+    if (Math.hypot(p.x - r.door.x, p.y - r.door.y) < 12) c = { kind: 'exit', label: 'Sair' };
+    else for (const s of r.spots) if (Math.abs(p.x - s.x) < s.rx && Math.abs(p.y - s.y) < s.ry) c = { kind: s.kind, label: s.label };
+  } else {
+    for (const d of DOORS) if (Math.hypot(p.x - d.x, p.y - d.y) < 10) c = { kind: 'enter', label: d.label, room: d.room };
+    if (!c && B.serraria && Math.hypot(p.x - (B.serraria.x + 18), p.y - (B.serraria.y + 8)) < 18) c = { kind: 'split', label: 'Rachar lenha' };
+    if (!c) { let best = 13, bt = null; for (const tr of TREE_POS) { if (CUT.has(tr.i)) continue; const d = Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2); if (d < best) { best = d; bt = tr; } } if (bt) c = { kind: 'chop', label: 'Derrubar árvore', tree: bt.i, tx: bt.x }; }
+  }
+  const key = c ? c.kind + c.label + (c.tree ?? '') : '';
+  if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + '  [E]'; }
+}
+function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; const c = ctxAct;
+  if (c.kind === 'enter') { sfx.door(); const r = roomOf(c.room); p.room = c.room; p.x = r.spawn.x; p.y = r.spawn.y; target = null; follow(); sendNow(p); return; }
+  if (c.kind === 'exit') { sfx.door(); const r = roomOf(p.room); p.room = ''; p.x = r.outside.x; p.y = r.outside.y; target = null; follow(); sendNow(p); return; }
+  if (c.kind === 'chop' && c.tx !== undefined) p.face = c.tx < p.x ? -1 : 1;
+  doAct(c.kind, c.tree);
+}
+function doAct(kind, tree) {
+  const p = players.get(myId); if (!p) return; const t = performance.now() / 1000; if (p.act && t < p.act.end) return;
+  p.act = { kind, t0: t, end: t + ACT_DUR[kind] }; actSound(kind);
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'act', kind }));
+  if (kind === 'chop') setTimeout(() => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'cut', tree })); sfx.fall(); }, ACT_DUR.chop * 1000);
+}
+function actSound(kind) { if (kind === 'chop' || kind === 'split') { for (let k = 0; k < 4; k++) setTimeout(sfx.chop, 320 + k * 560); } else if (kind === 'drink') sfx.drink(); else if (kind === 'magic') sfx.magic(); }
+function sendNow(p) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: false, room: p.room || '' })); }
+function showWood() { $('wood').textContent = wood; }
+$('actBtn').onclick = () => { sndStart(); doContext(); };
+$('magicBtn').onclick = () => { sndStart(); doAct('magic'); };
+$('muteBtn').onclick = () => { sndStart(); const m = toggleMute(); $('muteBtn').innerHTML = m ? MUTE_OFF : MUTE_ON; $('muteBtn').title = m ? 'Ligar som' : 'Desligar som'; };
+const MUTE_ON = '<svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 4h2v3H1zM3 3h1v5H3zM4 2h1v7H4zM5 1h1v9H5zM7 4h1v3H7zM8 3h1v1H8zM8 7h1v1H8zM9 2h1v1H9zM9 8h1v1H9zM10 3h1v5h-1z"/></svg>';
+const MUTE_OFF = '<svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 4h2v3H1zM3 3h1v5H3zM4 2h1v7H4zM5 1h1v9H5z"/><path fill="#ff8a70" d="M7 3h1v1H7zM8 4h1v1H8zM9 5h1v1H9zM10 6h1v1h-1zM10 3h1v1h-1zM9 4h1v1H9zM8 6h1v1H8zM7 7h1v1H7z"/></svg>';
+$('muteBtn').innerHTML = SND.muted ? MUTE_OFF : MUTE_ON;
 function bubble(text, sx, sy, fs) {
   ctx.font = `700 ${fs}px Pix, monospace`; const maxW = Math.min(cv.width * .6, fs * 16);
   const words = text.split(' '), lines = []; let cur = '';

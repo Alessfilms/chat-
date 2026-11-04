@@ -37,6 +37,9 @@ button.sec{background:#3c5d4a;color:var(--txt)}
 #plist{display:flex;flex-direction:column;gap:2px;padding:6px;max-height:45vh;overflow:auto;pointer-events:auto;min-width:180px}
 #plist .pl{font:700 16px Pix,monospace;background:none;border:0;box-shadow:none;color:var(--txt);text-align:left;padding:7px 8px}
 #plist .pl:hover,#plist .pl:focus-visible{background:#2a4a3d}
+#actbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(66px + env(safe-area-inset-bottom));display:none;gap:8px;z-index:2}
+#actbar .act{font-size:18px;padding:10px 16px;white-space:nowrap}
+#actBtn{background:#ffd84a!important;color:#140e06!important}
 #camctl{position:fixed;right:10px;bottom:calc(76px + env(safe-area-inset-bottom));display:none;flex-direction:column;gap:8px;z-index:2}
 #camctl .hudbtn{width:46px;height:46px;padding:0;font-size:24px;line-height:1}
 #avatar{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(6,11,10,.8)}
@@ -51,7 +54,7 @@ button.sec{background:#3c5d4a;color:var(--txt)}
 .opt.sw.on{outline:3px solid var(--gold);outline-offset:1px}
 @media (max-width:420px){.avgrid{grid-template-columns:1fr}}
 #hud b{color:var(--gold);font-weight:700}
-#chatlog{position:fixed;left:10px;bottom:calc(64px + env(safe-area-inset-bottom));width:min(420px,calc(100% - 20px));display:none;flex-direction:column;gap:4px;pointer-events:none}
+#chatlog{position:fixed;left:10px;bottom:calc(122px + env(safe-area-inset-bottom));width:min(420px,calc(100% - 20px));display:none;flex-direction:column;gap:4px;pointer-events:none}
 #chatlog div{background:rgba(12,20,16,.72);padding:5px 8px;font-size:16px;line-height:1.25;word-wrap:break-word;border-left:3px solid var(--edge)}
 #chatlog b{color:var(--gold)}
 #chatbar{position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));display:none;gap:8px}
@@ -100,7 +103,8 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
   </div>
 </div>
 
-<div id="hud"><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><button class="box hudbtn" id="onlineBtn" type="button">Online: <b id="online">1</b> ▾</button><div id="plist" class="box" hidden></div></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><div class="box" id="nameBox"><button id="nameBtn" type="button" class="link" style="padding:0;font-size:16px;color:#ffd84a">Usar meu @</button><span id="nameForm" hidden style="display:flex;gap:6px;align-items:center"><input id="newName" placeholder="@seu_usuario" maxlength="31" autocapitalize="none" spellcheck="false" style="width:150px;font-size:16px;padding:6px"><button id="nameOk" type="button" style="padding:6px 10px;font-size:16px">OK</button></span></div><button class="box hudbtn" id="avatarBtn" type="button">Meu avatar</button></div></div>
+<div id="hud"><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><button class="box hudbtn" id="onlineBtn" type="button">Online: <b id="online">1</b> ▾</button><div id="plist" class="box" hidden></div></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><div class="box" id="nameBox"><button id="nameBtn" type="button" class="link" style="padding:0;font-size:16px;color:#ffd84a">Usar meu @</button><span id="nameForm" hidden style="display:flex;gap:6px;align-items:center"><input id="newName" placeholder="@seu_usuario" maxlength="31" autocapitalize="none" spellcheck="false" style="width:150px;font-size:16px;padding:6px"><button id="nameOk" type="button" style="padding:6px 10px;font-size:16px">OK</button></span></div><button class="box hudbtn" id="avatarBtn" type="button">Meu avatar</button><div style="display:flex;gap:6px"><div class="box" style="padding:6px 10px;font-size:16px;color:#fff3b0" title="Lenha">Lenha: <b id="wood">0</b></div><button class="box hudbtn" id="muteBtn" type="button" title="Desligar som" style="padding:6px 8px;line-height:0"></button></div></div></div>
+<div id="actbar"><button id="actBtn" type="button" class="box hudbtn act" hidden>Ação</button><button id="magicBtn" type="button" class="box hudbtn act">Magia  [Q]</button></div>
 <div id="camctl"><button id="recenter" type="button" class="box hudbtn" hidden title="Voltar para o meu personagem">◎</button><button id="zin" type="button" class="box hudbtn" title="Aproximar">+</button><button id="zout" type="button" class="box hudbtn" title="Afastar">−</button></div>
 <div id="avatar" hidden><div class="box avbox">
   <h1>SEU AVATAR</h1>
@@ -121,7 +125,8 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 <div id="chatlog"></div>
 <div id="chatbar"><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
 
-<script src="engine.js?v=6"></script>
-<script src="game.js?v=6"></script>
+<script src="engine.js?v=7"></script>
+<script src="life.js?v=7"></script>
+<script src="game.js?v=7"></script>
 </body>
 </html>
