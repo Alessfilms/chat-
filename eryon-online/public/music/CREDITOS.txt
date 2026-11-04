@@ -1,0 +1,12 @@
+Músicas de fundo do Eryon Online — todas CC0 1.0 (domínio público, uso livre inclusive comercial)
+Autor: RandomMind (opengameart.org/users/randommind)
+
+- m0.mp3 — "Medieval: Exploration"   https://opengameart.org/content/medieval-exploration
+- m1.mp3 — "Medieval: Minstrel Dance" https://opengameart.org/content/medieval-minstrel-dance
+- m2.mp3 — "Medieval: The King's Feast" https://opengameart.org/content/medieval-kings-feast
+- m3.mp3 — "Medieval: Market Day"    https://opengameart.org/content/medieval-market-day
+
+Obtidas via GitHub: github.com/endlessm/threadbare (Minstrel Dance, arquivo .license SPDX CC0-1.0)
+e github.com/tunasafa/medieaval-days (assets/music, README com as licenças CC0).
+Convertidas para mono 64 kbps e com volume normalizado.
+https://creativecommons.org/publicdomain/zero/1.0/

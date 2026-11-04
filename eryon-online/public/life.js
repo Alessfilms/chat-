@@ -134,7 +134,7 @@ function drawActFx(x, q, t) {
   if (a.kind === 'drink' && u > 1.2 && u < 2.6) { const y = Math.round(q.y - 24 - (u - 1.2) * 6); x.globalAlpha = clamp(2.6 - u); px(x, P.ink, q.x + 3, y - 1, 13, 7); px(x, '#fff3b0', q.x + 4, y, 11, 5); px(x, '#a83a32', q.x + 6, y + 1, 2, 3); px(x, '#a83a32', q.x + 9, y + 1, 1, 3); px(x, '#a83a32', q.x + 11, y + 1, 2, 3); x.globalAlpha = 1; }
 }
 
-// ---------------------------------------------------------------- som (gerado no navegador, sem arquivos)
+// ---------------------------------------------------------------- som
 const SND = { ctx: null, master: null, music: null, sfx: null, fire: null, muted: false, noise: null, nextBeat: 0, beat: 0, note: 4 };
 try { SND.muted = localStorage.getItem('eryon_mute') === '1'; } catch { }
 // "desbloqueio" do iPhone: um <audio> silencioso tocando coloca o som no modo reprodução,
@@ -160,31 +160,32 @@ function sndStart() {
   SND.sfx = c.createGain(); SND.sfx.gain.value = .35; SND.sfx.connect(SND.master);
   SND.fire = c.createGain(); SND.fire.gain.value = 0; SND.fire.connect(SND.master);
   const n = c.createBuffer(1, c.sampleRate, c.sampleRate), d = n.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; SND.noise = n;
-  // eco para a música (sensação de salão de madeira)
+  // eco (usado pelo alaúde, magia e descobertas)
   SND.echo = c.createDelay(1); SND.echo.delayTime.value = .43; const fb = c.createGain(); fb.gain.value = .35; const ef = c.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 1800;
-  SND.echo.connect(ef); ef.connect(fb); fb.connect(SND.echo); ef.connect(SND.music);
-  // bordão grave (D e A) com respiração lenta
-  const dr = c.createGain(); dr.gain.value = .22; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320; lp.connect(dr); dr.connect(SND.music);
-  for (const f of [73.42, 110, 146.83]) { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = (Math.random() - .5) * 8; const g = c.createGain(); g.gain.value = f > 140 ? .25 : .5; o.connect(g); g.connect(lp); o.start(); }
-  const lfo = c.createOscillator(); lfo.frequency.value = .07; const lg = c.createGain(); lg.gain.value = .08; lfo.connect(lg); lg.connect(dr.gain); lfo.start();
-  SND.nextBeat = c.currentTime + .2; setInterval(musicTick, 100);
+  SND.echo.connect(ef); ef.connect(fb); fb.connect(SND.echo); ef.connect(SND.sfx);
+  startMusic();
   crackleLoop();
 }
 const SCALE = [146.83, 164.81, 174.61, 196, 220, 246.94, 261.63, 293.66, 329.63, 349.23, 392, 440];   // ré dórico
 function pluck(f, when, gain = .3, dur = 1.8) { const c = SND.ctx, o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o2.type = 'sine'; o.frequency.value = f; o2.frequency.value = f * 2.01;
   g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(gain, when + .008); g.gain.exponentialRampToValueAtTime(.0008, when + dur);
-  o.connect(g); o2.connect(g); g.connect(SND.music); g.connect(SND.echo); o.start(when); o2.start(when); o.stop(when + dur + .1); o2.stop(when + dur + .1); }
+  o.connect(g); o2.connect(g); g.connect(SND.sfx); g.connect(SND.echo); o.start(when); o2.start(when); o.stop(when + dur + .1); o2.stop(when + dur + .1); }
 function drum(when, gain) { const c = SND.ctx, o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(95, when); o.frequency.exponentialRampToValueAtTime(48, when + .35);
-  g.gain.setValueAtTime(gain, when); g.gain.exponentialRampToValueAtTime(.001, when + .5); o.connect(g); g.connect(SND.music); o.start(when); o.stop(when + .55); }
-function musicTick() {
-  const c = SND.ctx, beatLen = 60 / 66;
-  while (SND.nextBeat < c.currentTime + .4) {
-    const w = SND.nextBeat, b = SND.beat % 8;
-    if (b === 0) drum(w, .55); if (b === 4) drum(w, .3); if (b === 6 && Math.random() < .5) drum(w + beatLen / 2, .2);
-    if (Math.random() < (b % 2 ? .45 : .8)) { SND.note = clamp(SND.note + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)], 2, SCALE.length - 1); pluck(SCALE[SND.note], w, .28); if (b === 0) pluck(SCALE[Math.max(0, SND.note - 4)] / 2, w, .18, 2.6); }
-    SND.nextBeat += beatLen; SND.beat++;
-  }
+  g.gain.setValueAtTime(gain, when); g.gain.exponentialRampToValueAtTime(.001, when + .5); o.connect(g); g.connect(SND.sfx); o.start(when); o.stop(when + .55); }
+// música medieval de verdade (CC0, RandomMind — ver music/CREDITOS.txt), tocando baixinho em sequência
+const TRACKS = ['music/m0.mp3', 'music/m1.mp3', 'music/m2.mp3', 'music/m3.mp3'];
+let musicEl = null, trackI = Math.floor(Math.random() * TRACKS.length);
+function startMusic() {
+  if (musicEl) return;
+  musicEl = new Audio(); musicEl.setAttribute('playsinline', ''); musicEl.preload = 'auto'; musicEl.crossOrigin = 'anonymous';
+  try { const src = SND.ctx.createMediaElementSource(musicEl); src.connect(SND.music); SND.music.gain.value = .22; }
+  catch { musicEl.volume = .12; }   // sem Web Audio: volume direto no elemento
+  musicEl.onended = () => nextTrack(); musicEl.onerror = () => setTimeout(nextTrack, 3000);
+  nextTrack();
 }
+function nextTrack() { if (!musicEl) return; musicEl.src = TRACKS[trackI++ % TRACKS.length]; musicEl.play().catch(() => {}); }
+// quando volta para a aba ou toca na tela, garante que a música continua
+document.addEventListener('visibilitychange', () => { if (!document.hidden && musicEl && musicEl.paused && musicEl.src) musicEl.play().catch(() => {}); });
 function noiseHit(when, dur, freq, gain, type = 'bandpass', bus = SND.sfx) { const c = SND.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = SND.noise; s.playbackRate.value = .8 + Math.random() * .4;
   f.type = type; f.frequency.value = freq; f.Q.value = 1.2; g.gain.setValueAtTime(gain, when); g.gain.exponentialRampToValueAtTime(.001, when + dur); s.connect(f); f.connect(g); g.connect(bus); s.start(when, Math.random() * .5); s.stop(when + dur + .02); }
 // amostras reais (CC0 / domínio público — ver sfx/CREDITOS.txt)

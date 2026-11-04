@@ -151,7 +151,7 @@ function limited(key, max, ms) { const now = Date.now(); let h = hits.get(key); 
 setInterval(() => { const now = Date.now(); for (const [k, h] of hits) if (h.reset < now) hits.delete(k); }, 60000).unref();
 
 // ---------------------------------------------------------------- HTTP
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.css': 'text/css; charset=utf-8', '.ico': 'image/x-icon' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.css': 'text/css; charset=utf-8', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.txt': 'text/plain; charset=utf-8', '.webp': 'image/webp' };
 const SEC = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY' };
 function send(res, code, obj) { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...SEC }); res.end(JSON.stringify(obj)); }
 function body(req) { return new Promise((ok, bad) => { let s = ''; req.on('data', d => { s += d; if (s.length > 20000) { bad(new Error('grande demais')); req.destroy(); } }); req.on('end', () => { try { ok(s ? JSON.parse(s) : {}); } catch { bad(new Error('json inválido')); } }); }); }
@@ -255,6 +255,19 @@ const server = http.createServer(async (req, res) => {
     let file = p === '/' ? '/index.html' : p === '/admin' ? '/admin.html' : p;
     const full = path.normalize(path.join(PUBLIC, decodeURIComponent(file)));
     if (!full.startsWith(PUBLIC + path.sep)) { res.writeHead(403); return res.end(); }
+    // áudio: suporte a Range (o Safari do iPhone exige para tocar) e cache longo
+    if (/\.(mp3|ogg)$/.test(full)) return fs.stat(full, (e, st) => {
+      if (e || !st.isFile()) { res.writeHead(404, SEC); return res.end('não encontrado'); }
+      const h = { 'Content-Type': TYPES[path.extname(full)], 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=604800', ...SEC };
+      const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+      if (m && (m[1] || m[2])) {
+        let a = m[1] ? +m[1] : st.size - +m[2], b = m[1] && m[2] ? +m[2] : st.size - 1; b = Math.min(b, st.size - 1);
+        if (a < 0 || a > b) { res.writeHead(416, { 'Content-Range': 'bytes */' + st.size, ...SEC }); return res.end(); }
+        res.writeHead(206, { ...h, 'Content-Range': `bytes ${a}-${b}/${st.size}`, 'Content-Length': b - a + 1 });
+        return req.method === 'HEAD' ? res.end() : fs.createReadStream(full, { start: a, end: b }).pipe(res);
+      }
+      res.writeHead(200, { ...h, 'Content-Length': st.size }); return req.method === 'HEAD' ? res.end() : fs.createReadStream(full).pipe(res);
+    });
     fs.readFile(full, (e, d) => {
       if (e) { res.writeHead(404, SEC); return res.end('não encontrado'); }
       res.writeHead(200, { 'Content-Type': TYPES[path.extname(full)] || 'application/octet-stream', 'Cache-Control': full.endsWith('.woff2') ? 'public, max-age=86400' : 'no-cache', ...SEC });
