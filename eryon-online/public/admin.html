@@ -71,6 +71,13 @@ code{background:#060b0a;padding:2px 6px;color:var(--gold);font-size:16px;letter-
     <p id="supL" style="margin:0;color:#98a4ac;font-size:14px"></p>
   </section>
   <section>
+    <label>Aviso em popup (aparece de vez em quando, com X para fechar)</label>
+    <input id="nTitle" placeholder="Título (ex.: AVISO DE ERYON)" style="width:100%;margin-bottom:6px">
+    <textarea id="nText" rows="3" placeholder="Texto do aviso" style="width:100%;font:inherit;background:#0c1410;color:#e8eef0;border:2px solid #2a3a32;padding:8px"></textarea>
+    <div class="row"><label style="font-size:14px">A cada <input id="nEvery" type="number" min="2" max="120" value="10" style="width:70px"> min</label><button class="sm" id="nOn">Salvar e mostrar agora</button><button class="sm" id="nOff">Desligar aviso</button></div>
+    <p class="hint" style="margin:0;color:#98a4ac;font-size:14px">Sem aviso ligado, o jogo mostra sozinho o aviso do Gigante quando houver ataque agendado.</p>
+  </section>
+  <section>
     <label>Evento: O Gigante de Pedra</label>
     <p id="gstat" style="margin:0">Entre com a chave para ver.</p>
     <div class="row"><input id="gAt" type="datetime-local" style="flex:1;min-width:200px"><button class="sm" id="gSched">Agendar</button></div>
@@ -136,6 +143,7 @@ async function loadMod() {
     it.appendChild(row); box.appendChild(it); }
   $('mutedL').textContent = d.muted.length ? 'Silenciados: ' + d.muted.map(m => `@${m.username} (até ${new Date(m.until).toLocaleTimeString()})`).join(', ') : 'Ninguém silenciado.';
   $('supL').textContent = d.supporters.length ? 'Apoiadores: ' + d.supporters.map(u => '@' + u).join(', ') : 'Ainda sem apoiadores.';
+  if (d.notice && !$('nText').value) { $('nTitle').value = d.notice.title || ''; $('nText').value = d.notice.text || ''; $('nEvery').value = d.notice.every || 10; }
   $('supPix').value = d.supportCfg.pix || ''; $('supUrl').value = d.supportCfg.url || '';
   const sl = $('sgL'); sl.innerHTML = ''; for (const sg of d.signs) { const r = el('div', undefined, 'row'); r.append(el('span', `"${sg.text}" em (${sg.x}, ${sg.y})`), btn('Remover', () => call('/api/admin/signdel', { id: sg.id }), 'sm dan')); sl.appendChild(r); }
   const gg = d.giant; if (gg) { $('gstat').textContent = gg.live ? `BATALHA! Gigante ${gg.live.hp}/${gg.live.max} · Cidade ${gg.live.city}%` : gg.state === 'scheduled' ? `Agendado para ${new Date(gg.at).toLocaleString()}` : gg.state === 'done' ? (gg.result === 'won' ? 'Último ataque: Eryon venceu!' : 'Último ataque: a cidade foi danificada') + ` · ${gg.damaged.length} construções danificadas` : 'Nenhum ataque agendado'; if (!$('gAt').value) { const t0 = gg.at && gg.at > Date.now() ? new Date(gg.at) : new Date(Date.now() + 3600e3); const z = new Date(t0 - t0.getTimezoneOffset() * 60000); $('gAt').value = z.toISOString().slice(0, 16); } }
@@ -151,6 +159,8 @@ $('annBtn').onclick = act(() => call('/api/admin/announce', { text: $('annText')
 $('rainBtn').onclick = act(() => call('/api/admin/rain', { lenha: $('rL').value, pedra: $('rP').value, ervas: $('rE').value }), 'Choveu recursos!');
 $('staffOn').onclick = act(() => call('/api/admin/staff', { username: $('staffUser').value, on: true }), 'Marcado como Criador.');
 $('staffOff').onclick = act(() => call('/api/admin/staff', { username: $('staffUser').value, on: false }), 'Removido.');
+$('nOn').onclick = act(() => call('/api/admin/notice', { on: true, now: true, title: $('nTitle').value, text: $('nText').value, every: $('nEvery').value }), 'Aviso ligado e mostrado para todos.');
+$('nOff').onclick = act(() => call('/api/admin/notice', { on: false, title: $('nTitle').value, text: $('nText').value, every: $('nEvery').value }), 'Aviso desligado.');
 $('supCfg').onclick = act(() => call('/api/admin/supportcfg', { pix: $('supPix').value, url: $('supUrl').value }), 'Forma de apoio salva.');
 $('supOn').onclick = act(() => call('/api/admin/supporter', { username: $('supUser').value, on: true }), 'Selo de apoiador dado!');
 $('supThanks').onclick = act(() => call('/api/admin/thanks', { username: $('supUser').value }), 'Agradecimento mostrado para todos online!');

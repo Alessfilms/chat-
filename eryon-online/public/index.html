@@ -156,6 +156,13 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 #nudge{position:fixed;left:10px;bottom:calc(128px + env(safe-area-inset-bottom));z-index:4;max-width:min(300px,calc(100% - 20px));text-align:left;font:700 14px Pix,monospace;padding:9px 12px;background:#2a1410;color:#fff3b0;border:3px solid #0c1410;box-shadow:inset 0 0 0 2px #ffd84a,0 4px 0 rgba(0,0,0,.4)}
 #nudge[hidden]{display:none}#nudge.in{animation:nIn 8s forwards}@keyframes nIn{0%{opacity:0;transform:translateX(-30px)}6%{opacity:1;transform:none}90%{opacity:1}100%{opacity:0}}
 body.clean #nudge{display:none!important}
+#notice{position:fixed;left:50%;top:50%;z-index:9;width:min(330px,calc(100% - 32px));transform:translate(-50%,-50%);text-align:center;font:700 14px Pix,monospace;padding:18px 16px 16px;background:#24120c;color:#fff3b0;border:4px solid #0c1410;box-shadow:inset 0 0 0 3px #ffd84a,0 6px 0 rgba(0,0,0,.45),0 0 40px rgba(255,170,60,.25)}
+#notice[hidden]{display:none}#notice.in{animation:ntIn .45s cubic-bezier(.2,1.6,.4,1)}@keyframes ntIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+#notice h3{margin:6px 0 8px;font-size:18px;color:#ffd84a;letter-spacing:.5px}#notice p{margin:0;line-height:1.45;color:#f4e6d0;font-size:14px;white-space:pre-line}
+#noticeIco{pointer-events:none;font-size:30px;line-height:1;animation:ntPulse 1.2s infinite}@keyframes ntPulse{50%{transform:scale(1.18)}}
+#noticeX{position:absolute;z-index:2;top:6px;right:6px;width:36px;height:36px;font:700 18px Pix,monospace;color:#fff3b0;background:#5a1a12;border:3px solid #0c1410;box-shadow:inset 0 0 0 2px #e04a3a;cursor:pointer;padding:0}
+#noticeGo{margin-top:12px;font:700 14px Pix,monospace;padding:9px 14px;color:#24120c;background:#ffd84a;border:3px solid #0c1410;cursor:pointer}#noticeGo[hidden]{display:none}
+body.clean #notice,body.cine #notice{display:none!important}
 .coins{font:700 16px Pix,monospace;color:#c3cad6}.coins b{color:var(--gold);font-size:20px}
 #econBody h3{margin:8px 0 2px;color:var(--gold);font-size:17px}
 .erow{flex-direction:row!important;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.erow>div:first-child{flex:1;min-width:140px}
@@ -236,6 +243,7 @@ body.clean #giantHud{display:none!important}body.cine #giantHud{display:none!imp
   <div class="mgrid"><button type="button" class="mbtn rep" data-r="palavrões ou ofensa">Palavrões / ofensa</button><button type="button" class="mbtn rep" data-r="assédio">Assédio</button><button type="button" class="mbtn rep" data-r="spam">Spam</button><button type="button" class="mbtn rep" data-r="atrapalhando o jogo">Atrapalhando</button></div>
   <p class="hint">A denúncia vai para o criador. Com 3 denúncias, a pessoa fica sem chat por um tempo.</p></div></div>
 <button id="nudge" type="button" hidden><span></span></button>
+<div id="notice" hidden role="dialog" aria-modal="false" aria-labelledby="noticeT"><button id="noticeX" type="button" aria-label="Fechar aviso">✕</button><div id="noticeIco">⚠</div><h3 id="noticeT"></h3><p id="noticeB"></p><button id="noticeGo" type="button" hidden></button></div>
 <button id="giantHud" type="button" hidden></button>
 <div id="fxToast" hidden><i></i><div><b></b><span></span></div></div>
 <div id="announce" hidden><small>CRIADOR DE ERYON</small><span></span></div>
@@ -283,10 +291,10 @@ body.clean #giantHud{display:none!important}body.cine #giantHud{display:none!imp
 <script src="craft.js?v=60"></script>
 <script src="explore.js?v=60"></script>
 <script src="dragons.js?v=60"></script>
-<script src="features.js?v=61"></script>
+<script src="features.js?v=66"></script>
 <script src="castle.js?v=64"></script>
 <script src="economy.js?v=62"></script>
 <script src="giant.js?v=64"></script>
-<script src="game.js?v=64"></script>
+<script src="game.js?v=65"></script>
 </body>
 </html>

@@ -27,6 +27,7 @@ function save() { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(
 function initDb() {
   db.users ||= {}; db.sessions ||= {}; db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
   db.decor ||= []; db.nextDecor ||= 1; db.firsts ||= {};
+  db.notice ||= { on: false, title: '', text: '', every: 10 };
   db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
   db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {}; db.animals ||= []; db.nextAnimal ||= 1;
   db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= [];
@@ -263,7 +264,7 @@ const server = http.createServer(async (req, res) => {
         return send(res, 200, { ok: true, inv });
       }
       if (p === '/api/admin/reports') { const by = {}; for (const r of db.reports) (by[r.target] ||= []).push(r);
-        return send(res, 200, { reports: db.reports.slice(-100).reverse(), muted: Object.entries(db.mutes).filter(([, t]) => t > Date.now()).map(([u, t]) => ({ username: u, until: t })), supporters: Object.entries(db.users).filter(([, r]) => r.sup).map(([u]) => u), staff: [...new Set([...Object.keys(db.staff), ...CREATORS])], signs: db.signs, supportCfg: db.supportCfg || { url: SUPPORT_URL, pix: PIX_KEY }, giant: giantPub(), castle: { pedra: db.castle.pedra, lenha: db.castle.lenha, stage: stageIdx(), stages: STAGES.length, name: (STAGES[stageIdx()] || { name: 'Pronto' }).name, top: Object.entries(db.castle.by).sort((a, b) => b[1] - a[1]).slice(0, 10) }, online: [...clients].map(c => ({ username: c.user, x: Math.round(c.x), y: Math.round(c.y) })) }); }
+        return send(res, 200, { notice: db.notice, reports: db.reports.slice(-100).reverse(), muted: Object.entries(db.mutes).filter(([, t]) => t > Date.now()).map(([u, t]) => ({ username: u, until: t })), supporters: Object.entries(db.users).filter(([, r]) => r.sup).map(([u]) => u), staff: [...new Set([...Object.keys(db.staff), ...CREATORS])], signs: db.signs, supportCfg: db.supportCfg || { url: SUPPORT_URL, pix: PIX_KEY }, giant: giantPub(), castle: { pedra: db.castle.pedra, lenha: db.castle.lenha, stage: stageIdx(), stages: STAGES.length, name: (STAGES[stageIdx()] || { name: 'Pronto' }).name, top: Object.entries(db.castle.by).sort((a, b) => b[1] - a[1]).slice(0, 10) }, online: [...clients].map(c => ({ username: c.user, x: Math.round(c.x), y: Math.round(c.y) })) }); }
       if (p === '/api/admin/mute' && req.method === 'POST') { const b = await body(req), u = norm(b.username), min = Math.max(0, Math.min(10080, Number(b.minutes) || 0)); if (!db.users[u]) return send(res, 404, { error: 'Esse @ não existe.' }); if (min) mute(u, min, 'pelo criador'); else { delete db.mutes[u]; save(); } return send(res, 200, { ok: true }); }
       if (p === '/api/admin/kick' && req.method === 'POST') { const b = await body(req), u = norm(b.username); let n = 0; for (const c of clients) if (c.user === u) { c.ws.close(4003, 'expulso'); n++; } return send(res, 200, { ok: true, kicked: n }); }
       if (p === '/api/admin/ban' && req.method === 'POST') { const b = await body(req), u = norm(b.username); if (!db.users[u]) return send(res, 404, { error: 'Esse @ não existe.' }); db.users[u].removed = true; db.users[u].v = (db.users[u].v || 0) + 1; for (const t in db.sessions) if (db.sessions[t] === u) delete db.sessions[t]; for (const c of clients) if (c.user === u) c.ws.close(4001, 'banido'); save(); return send(res, 200, { ok: true }); }
@@ -290,6 +291,9 @@ const server = http.createServer(async (req, res) => {
         else if (b.action === 'cancel') { if (G) { G = null; } db.giant.state = 'none'; all({ t: 'announce', from: 'ALERTA DE ERYON', text: 'O gigante voltou a dormir... por enquanto.' }); }
         else if (b.action === 'repair') db.giant.damaged = [];
         save(); all({ t: 'giant', ...giantPub() }); return send(res, 200, { ok: true, giant: giantPub() }); }
+      if (p === '/api/admin/notice' && req.method === 'POST') { const b = await body(req);   // aviso em popup que aparece de vez em quando
+        db.notice = { on: !!b.on, title: String(b.title || '').trim().slice(0, 60), text: String(b.text || '').trim().slice(0, 400), every: Math.max(2, Math.min(120, Number(b.every) || 10)) };
+        if (db.notice.on && !db.notice.text) return send(res, 400, { error: 'Escreva o texto do aviso.' }); save(); all({ t: 'notice', notice: db.notice, now: !!b.now }); return send(res, 200, { ok: true }); }
       if (p === '/api/admin/supportcfg' && req.method === 'POST') { const b = await body(req), url = String(b.url || '').trim().slice(0, 200), pix = String(b.pix || '').trim().slice(0, 120);
         if (url && !/^https:\/\/[^\s<>"']+$/.test(url)) return send(res, 400, { error: 'O link precisa começar com https://' }); db.supportCfg = { url, pix }; save(); return send(res, 200, { ok: true }); }
       if (p === '/api/admin/thanks' && req.method === 'POST') { const b = await body(req), u = norm(b.username), r = db.users[u]; if (!r || !r.sup) return send(res, 400, { error: 'Esse @ ainda não tem o selo de apoiador.' }); all({ t: 'thanks', username: u, look: r.look || null }); return send(res, 200, { ok: true }); }
@@ -585,7 +589,7 @@ wss.on('connection', (ws, req) => {
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c); if (clients.size > DIAG.peak) { DIAG.peak = clients.size; DIAG.peakAt = Date.now(); }
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), giant: giantPub(), lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), giant: giantPub(), notice: db.notice, lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
       all({ t: 'join', p: pub(c) }, c); sendProg(c); out(ws, { t: 'perk', perk: perkFor(u) });
       return;
     }

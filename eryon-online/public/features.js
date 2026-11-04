@@ -37,6 +37,7 @@ function onFeatureMsg(m) {
   if (m.t === 'builders') { const L = m.list.map(u => u === me ? 'você' : '@' + u), txt = L.length === 1 ? L[0] : L.slice(0, -1).join(', ') + ' e ' + L[L.length - 1];
     fxToast(`${txt}${m.more ? ' e mais ' + m.more : ''} ${L.length + m.more > 1 ? 'estão' : 'está'} construindo o castelo!`, 'Venha ajudar: pedreira ao sul da vila', '#ffd84a', '♜'); return true; }
   if (m.t === 'thanks') { showThanks(m.username, m.look); return true; }
+  if (m.t === 'notice') { NOTICE.cfg = m.notice || null; if (m.now) showNotice(true); return true; }
   if (m.t === 'supnudge') { showNudge(m.supporters || []); return true; }
   if (m.t === 'tp') { const p = players.get(myId); if (p) { p.x = m.x; p.y = m.y; p.room = ''; target = null; follow(); fxToast('Whoosh!', 'O portal te levou de volta para a vila', '#d0a0ff', '✦'); } return true; }
   if (m.t === 'perk') { try { localStorage.setItem('eryon_perk', JSON.stringify(m.perk)); } catch { }
@@ -265,3 +266,29 @@ function toggleBalloon() { const p = players.get(myId); if (!p) return; const fa
   else { p.fly = true; target = null; follow(); if (!fairy) setZoom(zoomTarget * .72); fxToast(fairy ? 'Voando com as asas!' : 'Voando por Eryon!', fairy ? 'Passe por cima de árvores, rio e lago' : 'Ande para qualquer lado: o balão passa por cima de tudo', fairy ? '#f6b6d8' : '#f2a04a', fairy ? '✦' : '◓'); play('whoosh', .5, fairy ? 1.6 : .6); }
   updBalloonBtn(); skillLabel(); }
 addEventListener('DOMContentLoaded', () => { const b = $('balloonBtn'); if (b) b.onclick = () => { sndStart(); toggleBalloon(); }; });
+
+// ---------- AVISO EM POPUP (com X): aparece ao entrar e de vez em quando
+// Usa o aviso escrito no painel do admin; sem ele, avisa sozinho do ataque do Gigante agendado.
+const NOTICE = { cfg: null, last: 0 };
+try { NOTICE.last = Number(localStorage.getItem('eryon_notice_t')) || 0; } catch (e) {}
+function noticeContent() {
+  const c = NOTICE.cfg;
+  if (c && c.on && c.text) return { key: 'adm:' + c.title + c.text, ico: '📢', title: c.title || 'AVISO DE ERYON', text: c.text, every: c.every || 10 };
+  if (typeof GIANT !== 'undefined' && !GIANT.live && GIANT.state === 'scheduled' && GIANT.at > Date.now() && GIANT.at - Date.now() < 36 * 3600e3) {
+    const hh = new Date(GIANT.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }), hoje = new Date(GIANT.at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) === new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    return { key: 'giant:' + GIANT.at, ico: '⚠', title: `O GIGANTE ATACA ${hoje ? 'HOJE' : 'AMANHÃ'} ÀS ${hh}!`, text: `Faltam ${fmtLeft(GIANT.at - Date.now())}.\nCrie lanças e catapultas, vire Guarda do Reino e defenda Eryon!\nSe ninguém lutar, ele destrói a cidade e vai embora.`, every: 10, go: 'Preparar armas', fn: () => { closePanels(); openPanel('craft'); } };
+  }
+  return null;
+}
+function showNotice(force) {
+  const el = $('notice'), n = noticeContent(); if (!el || !n || !me) return;
+  if (!force && Date.now() - NOTICE.last < n.every * 60000) return;
+  const at = $('atCard'), av = $('avatar'); if (!force && ((at && !at.hidden) || (av && !av.hidden) || (GIANT && GIANT.live))) return;
+  $('noticeIco').textContent = n.ico; $('noticeT').textContent = n.title; $('noticeB').textContent = n.text;
+  const go = $('noticeGo'); go.hidden = !n.go; if (n.go) { go.textContent = n.go; go.onclick = () => { hideNotice(); n.fn(); }; }
+  NOTICE.last = Date.now(); try { localStorage.setItem('eryon_notice_t', NOTICE.last); } catch (e) {}
+  el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); if (typeof play === 'function') try { play('pop', .5); } catch (e) {}
+}
+function hideNotice() { const el = $('notice'); if (el) el.hidden = true; }
+addEventListener('DOMContentLoaded', () => { const x = $('noticeX'); if (x) x.onclick = hideNotice; addEventListener('keydown', e => { if (e.key === 'Escape') hideNotice(); }); });
+setTimeout(() => showNotice(), 6000); setInterval(() => showNotice(), 20000);
