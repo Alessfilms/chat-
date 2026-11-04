@@ -11,5 +11,5 @@ wait
 python3 sfx_ep3.py "$FR/sfx.wav"
 ffmpeg -y -loglevel error -framerate $FPS -i "$FR/f%05d.jpg" -i narration.mp3 -i "$FR/sfx.wav" \
   -filter_complex "[1:a]aformat=channel_layouts=stereo,aresample=48000[v];[2:a]volume=0.34[b];[v][b]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]" \
-  -map 0:v -map "[a]" -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p -r $FPS -c:a aac -b:a 192k -ar 48000 -movflags +faststart -t "$DUR" "$OUT"
+  -map 0:v -map "[a]" -c:v libx264 -preset slow -crf 25 -tune animation -pix_fmt yuv420p -r $FPS -c:a aac -b:a 192k -ar 48000 -movflags +faststart -t "$DUR" "$OUT"
 echo "OK -> $OUT ($N quadros)"
