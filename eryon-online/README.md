@@ -90,6 +90,19 @@ Para tudo que a comunidade constrói ficar guardado para sempre, ligue o Upstash
 O servidor carrega o mundo ao ligar, salva as mudanças a cada 8 segundos e salva tudo antes de desligar.
 (Alternativa paga: um Disk no Render montado em `/data` com `DATA_DIR=/data`.)
 
+## Comunidade, moderação e apoio (painel /admin)
+
+- **Moderação:** palavrões viram `***`, telefones e links são escondidos (protege a galera mais nova).
+  Quem insiste 3 vezes fica 10 min sem chat. Qualquer jogador pode **denunciar** (lista de quem está online → Denunciar);
+  com 3 denúncias a pessoa fica 15 min sem chat. No `/admin` você vê as denúncias com o que a pessoa falou e pode
+  silenciar, expulsar, banir ou dispensar.
+- **Missões do dia, nível e conquistas:** 3 missões novas por dia para cada jogador, XP, nível ao lado do nome e 12 conquistas.
+- **Tutorial:** aparece na primeira vez (e em Menu → Como jogar).
+- **Eventos ao vivo:** no `/admin` → anúncio na tela de todos, chuva de recursos para quem está online, e marcar o seu @ como Criador ♛.
+- **Apoiadores:** coloque sua chave Pix e/ou link (LivePix, Apoia.se) no `/admin`. Quem apoiar te manda o @ e você dá o selo ★:
+  nome dourado e um bichinho que segue o personagem (gatinho, raposa, dragãozinho ou coruja). Nada de vantagem no jogo.
+- **Placas patrocinadas:** escreva o texto, informe o @ de alguém online (pode ser você) e a placa aparece do lado da pessoa.
+
 ## Rodar no seu computador
 
 ```bash

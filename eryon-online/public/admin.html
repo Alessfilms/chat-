@@ -51,6 +51,31 @@ code{background:#060b0a;padding:2px 6px;color:var(--gold);font-size:16px;letter-
     <p class="hint" style="margin:0;color:#98a4ac;font-size:14px">Lenha · Pedra · Ervas</p>
   </section>
   <section>
+    <label>Moderação: denúncias</label>
+    <div id="reps"><p class="hint" style="margin:0;color:#98a4ac">Entre com a chave para ver.</p></div>
+    <div class="row"><input id="mUser" placeholder="@usuario" style="flex:1;min-width:140px"><button class="sm" data-mute="30">Silenciar 30 min</button><button class="sm" data-mute="1440">Silenciar 1 dia</button><button class="sm" data-mute="0">Tirar silêncio</button><button class="sm" id="kickBtn">Expulsar agora</button><button class="sm dan" id="banBtn">Banir</button><button class="sm" id="unbanBtn">Desbanir</button></div>
+    <p id="mutedL" style="margin:0;color:#98a4ac;font-size:14px"></p>
+  </section>
+  <section>
+    <label>Eventos ao vivo</label>
+    <div class="row"><input id="annText" maxlength="140" placeholder="Ex.: Festa na praça às 20h! Todo mundo na fogueira" style="flex:1;min-width:200px"><button id="annBtn">Anunciar</button></div>
+    <div class="row"><span>Chuva de recursos para todos online:</span><input id="rL" type="number" min="0" max="200" value="10" style="width:70px" aria-label="Lenha"><input id="rP" type="number" min="0" max="200" value="5" style="width:70px" aria-label="Pedra"><input id="rE" type="number" min="0" max="200" value="5" style="width:70px" aria-label="Ervas"><button id="rainBtn">Fazer chover</button></div>
+    <div class="row"><input id="staffUser" placeholder="seu @ no jogo" style="flex:1;min-width:140px"><button class="sm" id="staffOn">Marcar como Criador ♛</button><button class="sm" id="staffOff">Tirar</button></div>
+  </section>
+  <section>
+    <label>Apoiadores (selo ★ + bichinho)</label>
+    <div class="row"><input id="supPix" placeholder="Sua chave Pix (aparece no jogo)" style="flex:1;min-width:200px"></div>
+    <div class="row"><input id="supUrl" placeholder="Link de apoio (LivePix, Apoia.se...) https://" style="flex:1;min-width:200px"><button class="sm" id="supCfg">Salvar forma de apoio</button></div>
+    <div class="row"><input id="supUser" placeholder="@de quem apoiou" style="flex:1;min-width:140px"><button class="sm" id="supOn">Dar selo de apoiador</button><button class="sm" id="supOff">Tirar selo</button></div>
+    <p id="supL" style="margin:0;color:#98a4ac;font-size:14px"></p>
+  </section>
+  <section>
+    <label>Placas patrocinadas</label>
+    <div class="row"><input id="sgText" maxlength="80" placeholder="Ex.: Padaria do Zé · Rua 7, 120" style="flex:1;min-width:200px"><input id="sgColor" type="color" value="#ffd84a" aria-label="Cor da placa" style="width:52px;padding:2px"></div>
+    <div class="row"><input id="sgUser" placeholder="@ de quem está online (a placa aparece do lado dele)" style="flex:1;min-width:200px"><button class="sm" id="sgBtn">Colocar placa</button></div>
+    <div id="sgL" style="font-size:14px"></div>
+  </section>
+  <section>
     <label>Moradores liberados (<span id="count">0</span>)</label>
     <div class="tbl"><table><thead><tr><th>@</th><th>Código</th><th>Status</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="4">Entre com a chave para ver a lista.</td></tr></tbody></table></div>
   </section>
@@ -76,9 +101,42 @@ function render() {
   }
 }
 async function copy(text) { try { await navigator.clipboard.writeText(text); $('msg').textContent = 'Copiado!'; } catch { $('msg').textContent = text; } }
-$('load').onclick = async () => { try { const d = await call('/api/admin/list'); users = d.users; render(); const ig = d.instagram || {}; $('ig').textContent = !ig.on ? 'Desligada: configure IG_ACCESS_TOKEN no Render (veja o README). Enquanto isso, use os códigos abaixo.' : ig.error ? 'Ligada, mas com erro: ' + ig.error : `Ligada. Comentários lidos: ${ig.comments}. Post: ${ig.postUrl || 'últimos 3 posts'}`; const st = d.storage || {}; $('mem').textContent = st.permanent ? `Permanente (Upstash) ✓ — ${st.houses} construções, ${st.decor} decorações guardadas${st.lastSave ? '. Último salvamento: ' + new Date(st.lastSave).toLocaleTimeString() : ''}` : st.configured ? 'Upstash configurado mas com erro: ' + (st.error || 'sem conexão') : 'TEMPORÁRIA: configure UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN no Render (veja o README), senão as construções somem quando o servidor reinicia.'; $('msg').textContent = 'Conectado.'; try { sessionStorage.setItem('k', $('key').value); } catch { } } catch (e) { $('msg').textContent = e.message; } };
+$('load').onclick = async () => { try { const d = await call('/api/admin/list'); users = d.users; render(); const ig = d.instagram || {}; $('ig').textContent = !ig.on ? 'Desligada: configure IG_ACCESS_TOKEN no Render (veja o README). Enquanto isso, use os códigos abaixo.' : ig.error ? 'Ligada, mas com erro: ' + ig.error : `Ligada. Comentários lidos: ${ig.comments}. Post: ${ig.postUrl || 'últimos 3 posts'}`; const st = d.storage || {}; $('mem').textContent = st.permanent ? `Permanente (Upstash) ✓ — ${st.houses} construções, ${st.decor} decorações guardadas${st.lastSave ? '. Último salvamento: ' + new Date(st.lastSave).toLocaleTimeString() : ''}` : st.configured ? 'Upstash configurado mas com erro: ' + (st.error || 'sem conexão') : 'TEMPORÁRIA: configure UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN no Render (veja o README), senão as construções somem quando o servidor reinicia.'; $('msg').textContent = 'Conectado.'; loadMod().catch(() => {}); try { sessionStorage.setItem('k', $('key').value); } catch { } } catch (e) { $('msg').textContent = e.message; } };
 $('add').onclick = async () => { try { const d = await call('/api/admin/add', { usernames: $('list').value }); users = d.users; render(); $('list').value = ''; $('msg').textContent = `${d.added.length} liberado(s).` + (d.invalid.length ? ` Inválidos: ${d.invalid.join(', ')}` : ''); } catch (e) { $('msg').textContent = e.message; } };
 $('gBtn').onclick = async () => { try { await call('/api/admin/give', { username: $('gUser').value, lenha: $('gL').value, pedra: $('gP').value, ervas: $('gE').value }); $('msg').textContent = 'Recursos enviados!'; } catch (e) { $('msg').textContent = e.message; } };
+
+const fmt = t => new Date(t).toLocaleString();
+const el = (tag, txt, cls) => { const e = document.createElement(tag); if (txt !== undefined) e.textContent = txt; if (cls) e.className = cls; return e; };
+const btn = (txt, fn, cls = 'sm') => { const b = el('button', txt, cls); b.onclick = async () => { try { await fn(); await loadMod(); } catch (e) { $('msg').textContent = e.message; } }; return b; };
+async function loadMod() {
+  const d = await call('/api/admin/reports'), box = $('reps'); box.innerHTML = '';
+  if (!d.reports.length) box.appendChild(el('p', 'Nenhuma denúncia. Comunidade tranquila!', 'hint'));
+  for (const r of d.reports.slice(0, 40)) { const it = el('div'); it.style.cssText = 'padding:8px;background:#0c1410;border:2px solid #2a4a3d;margin-bottom:6px';
+    it.appendChild(el('b', `@${r.target}`)); it.appendChild(el('span', ` — ${r.reason || 'sem motivo'} (por @${r.by}, ${fmt(r.ts)})`));
+    if (r.said && r.said.length) { const q = el('div', 'Falou: ' + r.said.join(' | ')); q.style.cssText = 'color:#98a4ac;font-size:13px;white-space:normal'; it.appendChild(q); }
+    const row = el('div', undefined, 'row'); row.style.marginTop = '6px';
+    row.append(btn('Silenciar 30 min', () => call('/api/admin/mute', { username: r.target, minutes: 30 })), btn('Expulsar', () => call('/api/admin/kick', { username: r.target })), btn('Banir', () => call('/api/admin/ban', { username: r.target }), 'sm dan'), btn('Dispensar', () => call('/api/admin/dismiss', { id: r.id })));
+    it.appendChild(row); box.appendChild(it); }
+  $('mutedL').textContent = d.muted.length ? 'Silenciados: ' + d.muted.map(m => `@${m.username} (até ${new Date(m.until).toLocaleTimeString()})`).join(', ') : 'Ninguém silenciado.';
+  $('supL').textContent = d.supporters.length ? 'Apoiadores: ' + d.supporters.map(u => '@' + u).join(', ') : 'Ainda sem apoiadores.';
+  $('supPix').value = d.supportCfg.pix || ''; $('supUrl').value = d.supportCfg.url || '';
+  const sl = $('sgL'); sl.innerHTML = ''; for (const sg of d.signs) { const r = el('div', undefined, 'row'); r.append(el('span', `"${sg.text}" em (${sg.x}, ${sg.y})`), btn('Remover', () => call('/api/admin/signdel', { id: sg.id }), 'sm dan')); sl.appendChild(r); }
+  if (d.staff.length) $('staffUser').placeholder = 'Criador: ' + d.staff.map(u => '@' + u).join(', ');
+}
+const act = (fn, ok) => async () => { try { await fn(); $('msg').textContent = ok; await loadMod(); } catch (e) { $('msg').textContent = e.message; } };
+for (const b of document.querySelectorAll('[data-mute]')) b.onclick = act(() => call('/api/admin/mute', { username: $('mUser').value, minutes: Number(b.dataset.mute) }), 'Feito.');
+$('kickBtn').onclick = act(() => call('/api/admin/kick', { username: $('mUser').value }), 'Expulso.');
+$('banBtn').onclick = act(() => call('/api/admin/ban', { username: $('mUser').value }), 'Banido.');
+$('unbanBtn').onclick = act(() => call('/api/admin/unban', { username: $('mUser').value }), 'Desbanido.');
+$('annBtn').onclick = act(() => call('/api/admin/announce', { text: $('annText').value }), 'Anúncio enviado!');
+$('rainBtn').onclick = act(() => call('/api/admin/rain', { lenha: $('rL').value, pedra: $('rP').value, ervas: $('rE').value }), 'Choveu recursos!');
+$('staffOn').onclick = act(() => call('/api/admin/staff', { username: $('staffUser').value, on: true }), 'Marcado como Criador.');
+$('staffOff').onclick = act(() => call('/api/admin/staff', { username: $('staffUser').value, on: false }), 'Removido.');
+$('supCfg').onclick = act(() => call('/api/admin/supportcfg', { pix: $('supPix').value, url: $('supUrl').value }), 'Forma de apoio salva.');
+$('supOn').onclick = act(() => call('/api/admin/supporter', { username: $('supUser').value, on: true }), 'Selo de apoiador dado!');
+$('supOff').onclick = act(() => call('/api/admin/supporter', { username: $('supUser').value, on: false }), 'Selo removido.');
+$('sgBtn').onclick = act(() => call('/api/admin/sign', { text: $('sgText').value, username: $('sgUser').value, color: $('sgColor').value }), 'Placa colocada!');
+
 $('copyAll').onclick = () => copy(users.map(msgFor).join('\n\n'));
 try { const k = sessionStorage.getItem('k'); if (k) { $('key').value = k; $('load').click(); } } catch { }
 </script>

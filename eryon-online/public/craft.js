@@ -139,7 +139,7 @@ function renderCraft() {
   }
 }
 function openPanel(id) { const was = !$(id).hidden; closePanels(); if (was) return; $(id).hidden = false; if (id === 'bag') renderBag(); else renderCraft(); }
-function closePanels() { if ($('menu')) $('menu').hidden = true; $('bag').hidden = true; $('craft').hidden = true; if ($('buildPanel')) $('buildPanel').hidden = true; if ($('mapPanel')) $('mapPanel').hidden = true; }
+function closePanels() { if ($('menu')) $('menu').hidden = true; $('bag').hidden = true; $('craft').hidden = true; if ($('buildPanel')) $('buildPanel').hidden = true; if ($('mapPanel')) $('mapPanel').hidden = true; for (const id of ['questPanel', 'supPanel', 'repPanel']) if ($(id)) $(id).hidden = true; }
 function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
 function setInv(inv) { INV = { lenha: 0, pedra: 0, ervas: 0, ...inv }; wood = INV.lenha || 0; showWood(); if (!$('bag').hidden) renderBag(); if (!$('craft').hidden) renderCraft(); }
 

@@ -173,7 +173,7 @@ const server = http.createServer(async (req, res) => {
       const tok = newToken(); db.sessions[tok] = u; rec.lastLogin = Date.now(); save();
       return send(res, 200, { token: tok, username: u, look: rec.look || null });
     }
-    if (p === '/api/config') return send(res, 200, { open: OPEN, verify: igOn(), postUrl: IG_POST_URL });
+    if (p === '/api/config') return send(res, 200, { open: OPEN, verify: igOn(), postUrl: IG_POST_URL, support: { url: (db.supportCfg && db.supportCfg.url) || SUPPORT_URL, pix: (db.supportCfg && db.supportCfg.pix) || PIX_KEY } });
     if (p === '/api/join' && req.method === 'POST') {
       if (!OPEN) return send(res, 403, { error: 'A entrada livre está desligada.' });
       if (limited('join:' + ipOf(req), 20, 10 * 60000)) return send(res, 429, { error: 'Muitas tentativas. Espere alguns minutos.' });
@@ -217,7 +217,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/look' && req.method === 'POST') {
       const b = await body(req), u = userBySession(b.token);
       if (!u || !db.users[u]) return send(res, 401, { error: 'sessão expirada' });
-      const old = db.users[u].look || {}; db.users[u].look = { ...cleanLook(b.look), ...(old.equip ? { equip: old.equip, equipTool: old.equipTool } : {}) }; save();
+      const old = db.users[u].look || {}; db.users[u].look = { ...cleanLook(b.look), ...(old.equip ? { equip: old.equip, equipTool: old.equipTool } : {}), ...(old.pet ? { pet: old.pet } : {}) }; save();
       for (const c of clients) if (c.user === u) all({ t: 'look', id: c.id, look: db.users[u].look });
       return send(res, 200, { ok: true, look: db.users[u].look });
     }
@@ -245,6 +245,29 @@ const server = http.createServer(async (req, res) => {
         for (const c of clients) if (c.user === u) { sendInv(c); note(c, 'Você recebeu recursos do criador de Eryon!'); }
         return send(res, 200, { ok: true, inv });
       }
+      if (p === '/api/admin/reports') { const by = {}; for (const r of db.reports) (by[r.target] ||= []).push(r);
+        return send(res, 200, { reports: db.reports.slice(-100).reverse(), muted: Object.entries(db.mutes).filter(([, t]) => t > Date.now()).map(([u, t]) => ({ username: u, until: t })), supporters: Object.entries(db.users).filter(([, r]) => r.sup).map(([u]) => u), staff: Object.keys(db.staff), signs: db.signs, supportCfg: db.supportCfg || { url: SUPPORT_URL, pix: PIX_KEY }, online: [...clients].map(c => ({ username: c.user, x: Math.round(c.x), y: Math.round(c.y) })) }); }
+      if (p === '/api/admin/mute' && req.method === 'POST') { const b = await body(req), u = norm(b.username), min = Math.max(0, Math.min(10080, Number(b.minutes) || 0)); if (!db.users[u]) return send(res, 404, { error: 'Esse @ não existe.' }); if (min) mute(u, min, 'pelo criador'); else { delete db.mutes[u]; save(); } return send(res, 200, { ok: true }); }
+      if (p === '/api/admin/kick' && req.method === 'POST') { const b = await body(req), u = norm(b.username); let n = 0; for (const c of clients) if (c.user === u) { c.ws.close(4003, 'expulso'); n++; } return send(res, 200, { ok: true, kicked: n }); }
+      if (p === '/api/admin/ban' && req.method === 'POST') { const b = await body(req), u = norm(b.username); if (!db.users[u]) return send(res, 404, { error: 'Esse @ não existe.' }); db.users[u].removed = true; db.users[u].v = (db.users[u].v || 0) + 1; for (const t in db.sessions) if (db.sessions[t] === u) delete db.sessions[t]; for (const c of clients) if (c.user === u) c.ws.close(4001, 'banido'); save(); return send(res, 200, { ok: true }); }
+      if (p === '/api/admin/unban' && req.method === 'POST') { const b = await body(req), u = norm(b.username); if (db.users[u]) { db.users[u].removed = false; save(); } return send(res, 200, { ok: true }); }
+      if (p === '/api/admin/dismiss' && req.method === 'POST') { const b = await body(req); db.reports = db.reports.filter(r => b.all ? r.target !== b.target : r.id !== b.id); save(); return send(res, 200, { ok: true }); }
+      if (p === '/api/admin/announce' && req.method === 'POST') { const b = await body(req), text = String(b.text || '').trim().slice(0, 140); if (!text) return send(res, 400, { error: 'Escreva o anúncio.' }); all({ t: 'announce', text }); const msg = { t: 'chat', id: 0, username: 'Criador de Eryon', text, ts: Date.now(), badge: 'criador' }; chatLog.push(msg); all(msg); return send(res, 200, { ok: true, online: clients.size }); }
+      if (p === '/api/admin/rain' && req.method === 'POST') { const b = await body(req), g = {}; for (const k of ['lenha', 'pedra', 'ervas']) g[k] = Math.max(0, Math.min(200, Math.floor(Number(b[k]) || 0)));
+        for (const c of clients) { const r = db.users[c.user]; if (!r) continue; const inv = invOf(r); for (const k in g) inv[k] = (inv[k] || 0) + g[k]; sendInv(c); } save();
+        all({ t: 'rain', gift: g }); return send(res, 200, { ok: true, online: clients.size }); }
+      if (p === '/api/admin/supporter' && req.method === 'POST') { const b = await body(req), u = norm(b.username), r = db.users[u]; if (!r) return send(res, 404, { error: 'Esse @ ainda não entrou em Eryon.' });
+        r.sup = !!b.on; if (!r.sup && r.look) delete r.look.pet; save();
+        for (const c of clients) if (c.user === u) { c.dirty = true; all({ t: 'badge', id: c.id, badge: badgeOf(u) }); if (r.sup) out(c.ws, { t: 'supporter' }); if (r.look) all({ t: 'look', id: c.id, look: r.look }); }
+        return send(res, 200, { ok: true }); }
+      if (p === '/api/admin/supportcfg' && req.method === 'POST') { const b = await body(req), url = String(b.url || '').trim().slice(0, 200), pix = String(b.pix || '').trim().slice(0, 120);
+        if (url && !/^https:\/\/[^\s<>"']+$/.test(url)) return send(res, 400, { error: 'O link precisa começar com https://' }); db.supportCfg = { url, pix }; save(); return send(res, 200, { ok: true }); }
+      if (p === '/api/admin/staff' && req.method === 'POST') { const b = await body(req), u = norm(b.username); if (!validUser(u)) return send(res, 400, { error: '@ inválido' }); if (b.on) db.staff[u] = true; else delete db.staff[u]; save();
+        for (const c of clients) if (c.user === u) all({ t: 'badge', id: c.id, badge: badgeOf(u) }); return send(res, 200, { ok: true }); }
+      if (p === '/api/admin/sign' && req.method === 'POST') { const b = await body(req), text = String(b.text || '').trim().slice(0, 80), u = norm(b.username); const at = [...clients].find(c => c.user === u);
+        if (!text) return send(res, 400, { error: 'Escreva o texto da placa.' }); if (!at) return send(res, 404, { error: 'Esse @ precisa estar online: a placa aparece do lado dele.' }); if (at.room) return send(res, 400, { error: 'A pessoa precisa estar do lado de fora.' });
+        db.signs.push({ id: db.nextSign++, text, x: Math.round(at.x + 14), y: Math.round(at.y), color: /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#ffd84a' }); save(); all({ t: 'signs', list: db.signs }); return send(res, 200, { ok: true, signs: db.signs }); }
+      if (p === '/api/admin/signdel' && req.method === 'POST') { const b = await body(req); db.signs = db.signs.filter(s => s.id !== Number(b.id)); save(); all({ t: 'signs', list: db.signs }); return send(res, 200, { ok: true, signs: db.signs }); }
       if (p === '/api/admin/newcode' && req.method === 'POST') {
         const b = await body(req), u = norm(b.username); if (!db.users[u]) return send(res, 404, { error: 'não encontrado' });
         db.users[u].v = (db.users[u].v || 0) + 1; for (const t in db.sessions) if (db.sessions[t] === u) delete db.sessions[t]; save(); return send(res, 200, { users: listUsers() });
@@ -285,7 +308,7 @@ let nextId = 1;
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 const out = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
 const all = (m, except) => { const s = JSON.stringify(m); for (const c of clients) if (c !== except && c.ws.readyState === 1) c.ws.send(s); };
-const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry });
+const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, lv: levelOf(db.users[c.user]?.xp || 0), badge: badgeOf(c.user) });
 const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', cost: { lenha: 14, pedra: 4 } }, mercado: { name: 'Mercado', cost: { lenha: 12, pedra: 4, ervas: 2 } }, hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 } },
   escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 } };
 const ROOM_OK = /^(|taverna|gruta|abismo|casa_[1-9]|h_[0-9]{1,6})$/;
@@ -311,6 +334,88 @@ const depleted = new Map();      // id do recurso (r12 / h3) -> volta a nascer e
 db.decor ||= []; db.nextDecor ||= 1;
 setInterval(() => { const n = Date.now(); let ch = false; for (const [i, t] of depleted) if (t < n) { depleted.delete(i); ch = true; } if (ch) all({ t: 'nodes', dep: [...depleted.keys()] }); }, 5000).unref();
 
+// =====================================================================
+// MODERAÇÃO: filtro de palavrões, bloqueio de telefone/links, silenciar, denúncias
+// =====================================================================
+db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
+const BAD = ['porra', 'caralho', 'krl', 'crl', 'merda', 'puta', 'puto', 'putaria', 'putinha', 'buceta', 'boceta', 'bct', 'foder', 'foda', 'fodase', 'fudido', 'fdp', 'pqp', 'vsf', 'vtnc', 'tnc', 'arrombado', 'arrombada',
+  'viado', 'viadinho', 'traveco', 'sapatao', 'corno', 'cuzao', 'cuzinho', 'desgracado', 'desgracada', 'piroca', 'xoxota', 'xereca', 'xota', 'punheta', 'siririca', 'gozar', 'gozei', 'porno', 'nude', 'nudes',
+  'otario', 'otaria', 'retardado', 'retardada', 'mongol', 'babaca', 'escroto', 'escrota', 'vagabundo', 'vagabunda', 'piranha', 'vadia', 'estupro', 'estuprar', 'nazista', 'hitler', 'suicidio', 'penis', 'vagina', 'sexo', 'transar', 'safada', 'safado', 'cacete', 'kct', 'bosta'];
+const BAD_EXACT = new Set(['cu', 'cus', 'fds', 'vtc', 'cuu', 'krlh', 'pnc', 'bicha', 'bichas', 'rola', 'pinto', 'macaca', 'pau no cu', 'gozo']);
+const normWord = w => w.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/0/g, 'o').replace(/[1!|]/g, 'i').replace(/3/g, 'e').replace(/[4@]/g, 'a').replace(/[5$]/g, 's').replace(/7/g, 't').replace(/[^a-z]/g, '').replace(/(.)\1+/g, '$1');
+const BAD_N = [...new Set(BAD.map(normWord))], BAD_EXACT_N = new Set([...BAD_EXACT].map(normWord));
+function censor(text) {
+  let t = text
+    .replace(/(?:\+?\d[\s.\-()]*){8,}/g, m => '*'.repeat(Math.min(10, m.trim().length)) + (/\s$/.test(m) ? ' ' : ''))                                   // telefones
+    .replace(/\b(?:https?:\/\/|www\.)\S+|\b\S+\.(?:com|net|org|br|io|gg|me|xyz|ly)(?:\/\S*)?/gi, '[link]')             // links
+    .replace(/\S+@\S+\.\S+/g, '[email]');
+  let bad = false;
+  t = t.split(/(\s+)/).map(w => { if (/^\s+$/.test(w)) return w; const n = normWord(w); if (!n) return w;
+    if (BAD_EXACT_N.has(n) || BAD_N.some(b => n === b || (b.length >= 4 && n.startsWith(b)) || (b.length >= 6 && n.includes(b)))) { bad = true; return '*'.repeat(Math.max(3, Math.min(8, w.length))); } return w; }).join('');
+  return { text: t, bad };
+}
+const mutedFor = u => { const until = db.mutes[u] || 0; if (until && until < Date.now()) { delete db.mutes[u]; return 0; } return until; };
+function mute(u, minutes, why) { db.mutes[u] = Date.now() + minutes * 60000; save(); for (const c of clients) if (c.user === u) note(c, `Você foi silenciado por ${minutes} min${why ? ' (' + why + ')' : ''}. Seja gentil em Eryon!`); }
+
+// =====================================================================
+// PROGRESSO: XP, nível, missões do dia e conquistas
+// =====================================================================
+const MISSIONS = [
+  { id: 'cut', text: 'Derrube 5 árvores', n: 5, xp: 40, rew: { lenha: 6 } },
+  { id: 'mine', text: 'Quebre 4 pedras', n: 4, xp: 40, rew: { pedra: 4 } },
+  { id: 'herb', text: 'Colha ervas 4 vezes', n: 4, xp: 35, rew: { ervas: 4 } },
+  { id: 'craft', text: 'Crie 2 itens', n: 2, xp: 50, rew: { lenha: 4, pedra: 2 } },
+  { id: 'chat', text: 'Mande 3 mensagens no chat', n: 3, xp: 20, rew: { ervas: 2 } },
+  { id: 'split', text: 'Rache lenha 5 vezes', n: 5, xp: 30, rew: { lenha: 5 } },
+  { id: 'place', text: 'Construa ou coloque 1 coisa', n: 1, xp: 45, rew: { pedra: 3 } },
+  { id: 'give', text: 'Dê um item para alguém', n: 1, xp: 40, rew: { ervas: 3 } },
+  { id: 'visit', text: 'Visite 2 lugares do mapa', n: 2, xp: 45, rew: { lenha: 3, pedra: 3 } },
+  { id: 'eat', text: 'Coma ou beba algo', n: 1, xp: 20, rew: { ervas: 2 } },
+];
+const ACH = {
+  primeira_arvore: { name: 'Primeiro tronco', desc: 'Derrube sua primeira árvore', test: r => (r.tot.cut || 0) >= 1 },
+  lenhador: { name: 'Lenhador de verdade', desc: 'Derrube 100 árvores', test: r => (r.tot.cut || 0) >= 100 },
+  minerador: { name: 'Mão de pedra', desc: 'Quebre 50 pedras', test: r => (r.tot.mine || 0) >= 50 },
+  artesao: { name: 'Artesão', desc: 'Crie 20 itens', test: r => (r.tot.craft || 0) >= 20 },
+  construtor: { name: 'Primeiro teto', desc: 'Faça sua primeira construção', test: r => (r.tot.build || 0) >= 1 },
+  arquiteto: { name: 'Arquiteto', desc: 'Faça 5 construções', test: r => (r.tot.build || 0) >= 5 },
+  explorador: { name: 'Explorador', desc: 'Descubra os 8 lugares secretos', test: r => (r.found || []).length >= 8 },
+  social: { name: 'Boa prosa', desc: 'Mande 50 mensagens', test: r => (r.tot.chat || 0) >= 50 },
+  generoso: { name: 'Coração de ouro', desc: 'Dê 10 itens', test: r => (r.tot.give || 0) >= 10 },
+  dedicado: { name: 'Dedicado', desc: 'Complete 10 missões', test: r => (r.tot.missions || 0) >= 10 },
+  nivel5: { name: 'Veterano', desc: 'Chegue ao nível 5', test: r => levelOf(r.xp || 0) >= 5 },
+  nivel10: { name: 'Lenda de Eryon', desc: 'Chegue ao nível 10', test: r => levelOf(r.xp || 0) >= 10 },
+};
+const levelOf = xp => Math.floor(Math.sqrt(xp / 40)) + 1, xpFor = lv => (lv - 1) * (lv - 1) * 40;
+const today = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);   // dia no horário de Brasília
+function missionsFor(u, d) { const h = crypto.createHash('sha256').update(u + ':' + d).digest(), idx = [], pool = MISSIONS.map((_, i) => i); for (let i = 0; idx.length < 3; i++) idx.push(pool.splice(h[i] % pool.length, 1)[0]); return idx.map(i => MISSIONS[i]); }
+function dailyOf(r, u) { const d = today(); if (!r.daily || r.daily.d !== d) r.daily = { d, c: {}, done: [] }; return r.daily; }
+function progOf(r, u) { const dl = dailyOf(r, u), xp = r.xp || 0, lv = levelOf(xp);
+  return { xp, lv, cur: xpFor(lv), next: xpFor(lv + 1), missions: missionsFor(u, dl.d).map(m => ({ id: m.id, text: m.text, n: m.n, have: Math.min(m.n, dl.c[m.id] || 0), done: dl.done.includes(m.id), xp: m.xp, rew: m.rew })), ach: r.ach || [], achAll: Object.entries(ACH).map(([id, a]) => ({ id, name: a.name, desc: a.desc })) }; }
+const sendProg = c => { const r = db.users[c.user]; if (r) out(c.ws, { t: 'prog', ...progOf(r, c.user) }); };
+function addXp(c, n) { const r = db.users[c.user]; if (!r) return; const before = levelOf(r.xp || 0); r.xp = (r.xp || 0) + n; const after = levelOf(r.xp);
+  if (after > before) { all({ t: 'chat', id: c.id, username: c.user, text: `subiu para o nível ${after}!`, ts: Date.now() }); out(c.ws, { t: 'levelup', lv: after }); all({ t: 'lv', id: c.id, lv: after }); } }
+function track(c, kind, n = 1) {
+  const r = db.users[c.user]; if (!r) return; r.tot ||= {}; r.tot[kind] = (r.tot[kind] || 0) + n;
+  const dl = dailyOf(r, c.user); dl.c[kind] = (dl.c[kind] || 0) + n;
+  const xpBase = { cut: 3, mine: 3, herb: 2, craft: 6, build: 25, place: 4, split: 1, give: 5, chat: 0, visit: 5, eat: 1 }[kind] || 0; if (xpBase) addXp(c, xpBase * n);
+  for (const m of missionsFor(c.user, dl.d)) if (m.id === kind && !dl.done.includes(m.id) && dl.c[kind] >= m.n) {
+    dl.done.push(m.id); r.tot.missions = (r.tot.missions || 0) + 1; const inv = invOf(r); for (const [k, v] of Object.entries(m.rew)) inv[k] = (inv[k] || 0) + v; addXp(c, m.xp);
+    out(c.ws, { t: 'mission', text: m.text, xp: m.xp, rew: m.rew }); sendInv(c);
+    if (dl.done.length === 3) { addXp(c, 60); out(c.ws, { t: 'mission', text: 'Todas as missões do dia!', xp: 60, rew: {} }); }
+  }
+  r.ach ||= []; for (const [id, a] of Object.entries(ACH)) if (!r.ach.includes(id) && a.test(r)) { r.ach.push(id); out(c.ws, { t: 'ach', id, name: a.name, desc: a.desc }); all({ t: 'chat', id: c.id, username: c.user, text: `ganhou a conquista "${a.name}"!`, ts: Date.now() }, c); }
+  save(); sendProg(c);
+}
+const LM_POS = { costela: [170, 1060], ruinas: [520, 400], torre: [290, 118], caverna: [92, 812], buraco: [575, 1110], circulo: [610, 880], arvore: [110, 340], poco: [630, 120] };
+
+// =====================================================================
+// APOIADORES, BICHINHOS, CRIADOR e PLACAS PATROCINADAS
+// =====================================================================
+const PETS = new Set(['gato', 'raposa', 'dragao', 'coruja']);
+const SUPPORT_URL = process.env.SUPPORT_URL || '', PIX_KEY = process.env.PIX_KEY || '';
+const badgeOf = u => { const r = db.users[u] || {}; return db.staff[u] ? 'criador' : r.sup ? 'apoiador' : ''; };
+
 wss.on('connection', (ws, req) => {
   if (limited('ws:' + ipOf(req), 30, 60000)) return ws.close(4029, 'muitas conexões');
   let c = null;
@@ -325,8 +430,8 @@ wss.on('connection', (ws, req) => {
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c);
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
-      all({ t: 'join', p: pub(c) }, c);
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
+      all({ t: 'join', p: pub(c) }, c); sendProg(c);
       return;
     }
     if (m.t === 'move') {
@@ -342,32 +447,34 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'act') {
       const now = Date.now(); if (!ACTS.has(m.kind) || now - (c.lastAct || 0) < 1500) return; c.lastAct = now;
       all({ t: 'act', id: c.id, kind: m.kind }, c);
-      if (m.kind === 'split') addWood(c, 1);
+      if (m.kind === 'eat' && lunchState && lunchState.until > now && !c.ateLunch) { c.ateLunch = lunchState.until; track(c, 'eat'); }
+      if (m.kind === 'split') { addWood(c, 1); track(c, 'split'); }
     } else if (m.t === 'cut') {
       const i = Number(m.tree), now = Date.now();
       if (!Number.isInteger(i) || i < 0 || i > 5000 || cutTrees.has(i) || now - (c.lastCut || 0) < 2000) return; c.lastCut = now;
-      cutTrees.set(i, now + 5 * 60000); all({ t: 'trees', cut: cutList() }); addWood(c, 3);
+      cutTrees.set(i, now + 5 * 60000); all({ t: 'trees', cut: cutList() }); addWood(c, 3); track(c, 'cut');
     } else if (m.t === 'gather') {
       const now = Date.now(), id = String(m.id || ''), r = db.users[c.user];
       if (!r || !/^([rh][0-9]{1,3}|[gamn][0-9])$/.test(id) || depleted.has(id) || now - (c.lastGather || 0) < 1500) return; c.lastGather = now;
       const stone = id[0] === 'r' || id[0] === 'g' || id[0] === 'a';
       depleted.set(id, now + (stone ? 6 : 3) * 60000); all({ t: 'nodes', dep: [...depleted.keys()] });
-      if (stone) addRes(c, 'pedra', (id[0] === 'r' ? 2 : 3) + (invOf(r).picareta ? 1 : 0)); else addRes(c, 'ervas', id[0] === 'h' ? 2 : 3);
+      if (stone) addRes(c, 'pedra', (id[0] === 'r' ? 2 : 3) + (invOf(r).picareta ? 1 : 0)); else addRes(c, 'ervas', id[0] === 'h' ? 2 : 3); track(c, stone ? 'mine' : 'herb');
     } else if (m.t === 'discover') {
       const r = db.users[c.user], id = String(m.id || ''); if (!r || !LANDMARK_NAMES[id]) return;
       r.found ||= []; if (r.found.includes(id)) return; r.found.push(id); db.firsts ||= {};
       const first = !db.firsts[id]; if (first) db.firsts[id] = c.user; save();
       all({ t: 'chat', id: c.id, username: c.user, text: `descobriu ${LANDMARK_NAMES[id]}!` + (first ? ' (primeira pessoa de Eryon!)' : ''), ts: Date.now() });
+      addXp(c, 30); track(c, 'visit');
     } else if (m.t === 'craft') {
       const rc = RBY[m.id], r = db.users[c.user], now = Date.now(); if (!rc || !r || now - (c.lastCraft || 0) < 1200) return; c.lastCraft = now;
       if (!r.look || r.look.cls !== rc.cls) return note(c, 'Só o ' + rc.cls + ' sabe criar isso.');
       if (rc.where) { const b = WB[rc.where === 'forja' ? 'forja' : 'cozinha']; if (c.room || !b || Math.hypot(c.x - b.x, c.y - b.y) > (rc.where === 'forja' ? 55 : 46)) return note(c, rc.where === 'forja' ? 'Vá até a forja para forjar.' : 'Vá até a cozinha para cozinhar.'); }
       if (!pay(r, rc.cost)) { sendInv(c); return note(c, 'Faltam recursos.'); }
       const inv = invOf(r); inv[rc.id] = Math.min(999, (inv[rc.id] || 0) + (rc.make || 1)); save(); sendInv(c);
-      note(c, `Você criou: ${rc.name}${rc.make ? ' ×' + rc.make : ''}`);
+      note(c, `Você criou: ${rc.name}${rc.make ? ' ×' + rc.make : ''}`); track(c, 'craft');
     } else if (m.t === 'use') {
       const rc = RBY[m.id], r = db.users[c.user]; if (!rc || !r || rc.type !== 'food' || !(invOf(r)[rc.id] > 0)) return;
-      invOf(r)[rc.id]--; save(); sendInv(c); all({ t: 'act', id: c.id, kind: rc.id === 'pocao' ? 'heal' : 'drink' }, c);
+      invOf(r)[rc.id]--; save(); sendInv(c); all({ t: 'act', id: c.id, kind: rc.id === 'pocao' ? 'heal' : 'drink' }, c); track(c, 'eat');
     } else if (m.t === 'equip') {
       const r = db.users[c.user]; if (!r) return; const look = r.look || (r.look = {});
       if (m.id === null) { delete look.equip; delete look.equipTool; }
@@ -378,12 +485,12 @@ wss.on('connection', (ws, req) => {
       if ((to.room || '') !== (c.room || '') || Math.hypot(to.x - c.x, to.y - c.y) > 60) return note(c, 'Chegue mais perto da pessoa.');
       const r2 = db.users[to.user]; if (!r2) return; invOf(r)[rc.id]--; const inv2 = invOf(r2); inv2[rc.id] = (inv2[rc.id] || 0) + 1;
       if (r.look && r.look.equip === rc.id && !invOf(r)[rc.id]) { delete r.look.equip; delete r.look.equipTool; all({ t: 'look', id: c.id, look: r.look }); }
-      save(); sendInv(c); sendInv(to); note(to, `@${c.user} te deu: ${rc.name}`); note(c, `Você deu ${rc.name} para @${to.user}`);
+      save(); sendInv(c); sendInv(to); note(to, `@${c.user} te deu: ${rc.name}`); note(c, `Você deu ${rc.name} para @${to.user}`); track(c, 'give');
     } else if (m.t === 'place') {
       const rc = RBY[m.id], r = db.users[c.user], X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!rc || !r || rc.type !== 'decor' || c.room || !(invOf(r)[rc.id] > 0)) return;
       if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
       if (db.decor.filter(d => d.owner === c.user).length >= 30) return note(c, 'Você já colocou 30 objetos. Recolha algum antes.');
-      invOf(r)[rc.id]--; db.decor.push({ id: db.nextDecor++, kind: rc.id, x: X, y: Y, owner: c.user, ...(m.rot ? { rot: 1 } : {}) }); save(); sendInv(c); all({ t: 'decor', list: db.decor });
+      track(c, 'place'); invOf(r)[rc.id]--; db.decor.push({ id: db.nextDecor++, kind: rc.id, x: X, y: Y, owner: c.user, ...(m.rot ? { rot: 1 } : {}) }); save(); sendInv(c); all({ t: 'decor', list: db.decor });
     } else if (m.t === 'move') {      // mudar um objeto seu de lugar (ex.: cercas)
       const d = db.decor.find(d => d.id === Number(m.id)), X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!d || d.owner !== c.user || c.room) return;
       if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
@@ -400,7 +507,7 @@ wss.on('connection', (ws, req) => {
       if (Math.abs(c.y - riverY(X)) > 45 || Math.abs(c.x - X) > 45) return note(c, 'Chegue mais perto do rio.');
       invOf(r).lenha -= bcost; sendInv(c);
       db.bridges.push({ id: db.nextBridge++, x: X, owner: c.user, t: now }); save();
-      all({ t: 'bridges', list: db.bridges }); all({ t: 'chat', id: c.id, username: c.user, text: 'construiu uma ponte sobre o rio!', ts: now });
+      all({ t: 'bridges', list: db.bridges }); all({ t: 'chat', id: c.id, username: c.user, text: 'construiu uma ponte sobre o rio!', ts: now }); track(c, 'place');
     } else if (m.t === 'lunch') {
       const now = Date.now(); if (now - (c.lastLunch || 0) < 60000 || c.room) return; c.lastLunch = now;
       lunchState = { username: c.user, until: now + 120000 };
@@ -415,15 +522,34 @@ wss.on('connection', (ws, req) => {
       if (Math.hypot(X - c.x, Y - c.y) > 60) return note(c, 'Chegue mais perto do lugar.');
       if (db.houses.some(h => Math.abs(h.x - X) < 36 && Math.abs(h.y - Y) < 30)) return note(c, 'Muito perto de outra construção.');
       if (!pay(r, cost)) { sendInv(c); return note(c, 'Faltam recursos para ' + BT[type].name + '.'); } sendInv(c);
-      db.houses.push({ id: db.nextHouse++, type, x: X, y: Y, owner: c.user, roof: crypto.randomInt(6), t: now }); save();
+      db.houses.push({ id: db.nextHouse++, type, x: X, y: Y, owner: c.user, roof: crypto.randomInt(6), t: now }); save(); track(c, 'build'); track(c, 'place');
       all({ t: 'houses', list: db.houses }); all({ t: 'chat', id: c.id, username: c.user, text: type === 'casa' ? 'construiu uma casa nova em Eryon!' : `construiu ${type === 'prefeitura' ? 'a Prefeitura' : 'um(a) ' + BT[type].name} em Eryon!`, ts: now });
     } else if (m.t === 'chat') {
       const now = Date.now(); if (now - c.lastChat < 1200) return; c.lastChat = now;
-      const text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
-      if (!text) return;
-      const msg = { t: 'chat', id: c.id, username: c.user, text, ts: now };
+      const until = mutedFor(c.user); if (until) return note(c, `Você está silenciado por mais ${Math.ceil((until - now) / 60000)} min.`);
+      const raw = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+      if (!raw) return;
+      if (raw.toLowerCase() === c.lastText && now - (c.lastTextAt || 0) < 15000) return note(c, 'Mensagem repetida.'); c.lastText = raw.toLowerCase(); c.lastTextAt = now;
+      const { text, bad } = censor(raw);
+      if (bad) { c.strikes = (c.strikes || 0) + 1; if (c.strikes >= 3) { c.strikes = 0; mute(c.user, 10, 'palavrões'); } else note(c, 'Ops! Palavras feias viram ***. Na 3ª vez você fica 10 min sem chat.'); }
+      const msg = { t: 'chat', id: c.id, username: c.user, text, ts: now, badge: badgeOf(c.user) };
       chatLog.push(msg); if (chatLog.length > 60) chatLog.shift();
-      all(msg);
+      (c.said ||= []).push(text); if (c.said.length > 10) c.said.shift();
+      all(msg); if (!bad) track(c, 'chat');
+    } else if (m.t === 'report') {
+      const now = Date.now(), to = [...clients].find(o => o.id === Number(m.id)); if (!to || to === c || now - (c.lastReport || 0) < 30000) return; c.lastReport = now;
+      const reason = String(m.reason || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 140);
+      db.reports.push({ id: crypto.randomBytes(5).toString('hex'), by: c.user, target: to.user, reason, ts: now, said: (to.said || []).slice(-8) }); if (db.reports.length > 300) db.reports.shift();
+      const recent = new Set(db.reports.filter(r => r.target === to.user && now - r.ts < 30 * 60000).map(r => r.by));
+      if (recent.size >= 3 && !mutedFor(to.user)) mute(to.user, 15, 'várias denúncias');
+      save(); note(c, `Obrigado! A denúncia de @${to.user} foi enviada para o criador.`);
+    } else if (m.t === 'visit') {
+      const id = String(m.id || ''), lp = LM_POS[id], r = db.users[c.user]; if (!lp || !r || c.room || Math.hypot(c.x - lp[0], c.y - lp[1]) > 70) return;
+      const dl = dailyOf(r, c.user); dl.v ||= []; if (dl.v.includes(id)) return; dl.v.push(id); track(c, 'visit');
+    } else if (m.t === 'pet') {
+      const r = db.users[c.user]; if (!r) return; const look = r.look || (r.look = {}); const pet = String(m.pet || '');
+      if (!pet) delete look.pet; else { if (!PETS.has(pet)) return; if (!r.sup && !db.staff[c.user]) return note(c, 'Bichinhos são um presente para apoiadores de Eryon ♥'); look.pet = pet; }
+      save(); all({ t: 'look', id: c.id, look });
     }
   });
   ws.on('close', () => { clearTimeout(timer); if (!c) return; clients.delete(c); const rec = db.users[c.user]; if (rec) { rec.x = Math.round(c.x); rec.y = Math.round(c.y); save(); } all({ t: 'leave', id: c.id }); });
