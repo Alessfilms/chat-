@@ -502,6 +502,7 @@ const BASE_BUILDINGS = ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_
 let G = null;
 function giantBuildings() { const L = BASE_BUILDINGS.filter(id => WB[id]).map(id => ({ id, x: WB[id].x, y: WB[id].y })); for (const h of db.houses) L.push({ id: 'h_' + h.id, x: h.x, y: h.y }); return L; }
 const giantPub = () => ({ at: db.giant.at, state: db.giant.state, result: db.giant.result || '', damaged: db.giant.damaged || [], live: G ? { kind: G.kind || 'pedra', x: Math.round(G.x), y: Math.round(G.y), hp: Math.ceil(G.hp), max: G.max, city: G.city, phase: G.phase, face: G.face, engaged: G.engaged } : null });
+const FERA_ONCE = 'fera-2026-11-04', FERA_UNTIL = Date.UTC(2026, 10, 5, 2, 59, 0), BOOT_T = Date.now();
 const GSPD = () => GIANT_SPEED * (G && G.kind === 'fogo' ? 1.35 : 1);
 const GNAME = k => k === 'fogo' ? 'a Fera de Fogo' : 'o gigante';
 function startGiant(kind = 'pedra') {
@@ -533,6 +534,8 @@ function hurtGiant(c, d, kind) { if (!G || d <= 0 || G.phase === 'leave') return
 setInterval(() => {
   const now = Date.now();
   if (db.giant && db.giant.state === 'scheduled' && db.giant.at && now >= db.giant.at) startGiant();
+  // lançamento único da Fera de Fogo pedido para hoje: entra 90 s depois do servidor ligar (só uma vez, até 23:59 de Brasília)
+  if (!G && db.fireOnce !== FERA_ONCE && now < FERA_UNTIL && now - BOOT_T > (Number(process.env.FERA_DELAY) || 90000) && db.giant.state !== 'battle') { db.fireOnce = FERA_ONCE; save(); startGiant('fogo'); }
   if (db.giant && db.giant.state === 'done' && db.giant.result === 'lost' && db.giant.damaged.length && now - (db.giant.endedAt || 0) > 12 * 3600e3) { db.giant.damaged = []; save(); all({ t: 'giant', ...giantPub() }); }
   if (!G) return;
   // ninguém lutou: depois de destruir, ele vai embora andando para o leste
