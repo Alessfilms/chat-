@@ -30,7 +30,7 @@ function initDb() {
   db.notice ||= { on: false, title: '', text: '', every: 10 };
   db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
   db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {}; db.animals ||= []; db.nextAnimal ||= 1;
-  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; db.giant.burned ||= []; db.giant.rebuild ||= {};
+  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; if (db.king === undefined) db.king = 'emanuel01.f'; db.giant.burned ||= []; db.giant.rebuild ||= {};
   if (db.giant.state === 'battle') db.giant.state = 'scheduled', db.giant.at = Date.now() + 60000;   // reiniciou no meio da batalha: recomeça em 1 min
   for (const r of Object.values(db.users)) if (r && typeof r === 'object') { if (r.tot && typeof r.tot !== 'object') r.tot = {}; }
 }
@@ -291,6 +291,8 @@ const server = http.createServer(async (req, res) => {
         else if (b.action === 'cancel') { const resume = G && G.resume > Date.now() ? G.resume : 0, fogo = G && G.kind === 'fogo', drg = G && G.kind === 'dragao'; G = null; if (resume) { db.giant.state = 'scheduled'; db.giant.at = resume; } else db.giant.state = 'none'; all({ t: 'announce', from: 'ALERTA DE ERYON', text: drg ? 'O Dragão voou para longe... por enquanto.' : fogo ? 'A Fera de Fogo voltou para o vulcão... por enquanto.' : 'O gigante voltou a dormir... por enquanto.' }); }
         else if (b.action === 'repair') { db.giant.damaged = []; if (b.all) { db.giant.burned = []; db.giant.rebuild = {}; } }
         save(); all({ t: 'giant', ...giantPub() }); return send(res, 200, { ok: true, giant: giantPub() }); }
+      if (p === '/api/admin/king' && req.method === 'POST') { const b = await body(req), u = norm(b.username); if (u && !validUser(u)) return send(res, 400, { error: '@ inválido' });
+        db.king = u; save(); all({ t: 'king', username: u, crowned: !!u }); return send(res, 200, { ok: true }); }
       if (p === '/api/admin/notice' && req.method === 'POST') { const b = await body(req);   // aviso em popup que aparece de vez em quando
         db.notice = { on: !!b.on, title: String(b.title || '').trim().slice(0, 60), text: String(b.text || '').trim().slice(0, 400), every: Math.max(2, Math.min(120, Number(b.every) || 10)) };
         if (db.notice.on && !db.notice.text) return send(res, 400, { error: 'Escreva o texto do aviso.' }); save(); all({ t: 'notice', notice: db.notice, now: !!b.now }); return send(res, 200, { ok: true }); }
@@ -343,7 +345,8 @@ let nextId = 1;
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 const out = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
 const all = (m, except) => { const s = JSON.stringify(m); for (const c of clients) if (c !== except && c.ws.readyState === 1) c.ws.send(s); };
-const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, lv: levelOf(db.users[c.user]?.xp || 0), badge: badgeOf(c.user), fly: !!c.fly });
+let kingSeenT = 0;
+const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, lv: levelOf(db.users[c.user]?.xp || 0), badge: badgeOf(c.user), king: !!db.king && c.user === db.king, fly: !!c.fly });
 const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', cost: { lenha: 14, pedra: 4 } }, mercado: { name: 'Mercado', cost: { lenha: 12, pedra: 4, ervas: 2 } }, hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 } },
   escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 },
   cabana: { name: 'Cabana', cost: { lenha: 8 } }, casarao: { name: 'Casarão', cost: { lenha: 18, pedra: 8 } }, celeiro: { name: 'Celeiro', cost: { lenha: 14, pedra: 2 } }, torre_vigia: { name: 'Torre de vigia', cost: { lenha: 6, pedra: 14 } }, moinho: { name: 'Moinho', cost: { lenha: 12, pedra: 10 } } };
@@ -549,6 +552,7 @@ function hurtGiant(c, d, kind) { if (!G || d <= 0 || G.phase === 'leave') return
 setInterval(() => {
   const now = Date.now();
   if (db.giant && db.giant.state === 'scheduled' && db.giant.at && now >= db.giant.at) startGiant();
+  if (db.king && db.kingAnnounced !== db.king && now - BOOT_T > 20000 && clients.size) { db.kingAnnounced = db.king; save(); all({ t: 'king', username: db.king, crowned: true }); all({ t: 'announce', from: '👑 REINO DE ERYON', text: `@${db.king} foi coroado REI DO CASTELO DE ERYON! Vida longa ao Rei!` }); const km = { t: 'chat', id: 0, username: 'Eryon', text: `👑 @${db.king} agora é o Rei do Castelo de Eryon!`, ts: Date.now(), badge: 'criador' }; chatLog.push(km); all(km); }
   // lançamento único da Fera de Fogo pedido para hoje: entra 90 s depois do servidor ligar (só uma vez, até 23:59 de Brasília)
   if (!G && db.fireOnce !== DRAGAO_ONCE && now < FERA_UNTIL && now - BOOT_T > (Number(process.env.FERA_DELAY) || 90000) && db.giant.state !== 'battle') { db.fireOnce = DRAGAO_ONCE; save(); startGiant('dragao'); }
   if (db.giant && db.giant.state === 'done' && db.giant.result === 'lost' && db.giant.damaged.length && now - (db.giant.endedAt || 0) > 12 * 3600e3) { db.giant.damaged = []; save(); all({ t: 'giant', ...giantPub() }); }
@@ -613,8 +617,9 @@ wss.on('connection', (ws, req) => {
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c); if (clients.size > DIAG.peak) { DIAG.peak = clients.size; DIAG.peakAt = Date.now(); }
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), giant: giantPub(), notice: db.notice, lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), giant: giantPub(), notice: db.notice, king: db.king || '', lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
       all({ t: 'join', p: pub(c) }, c); sendProg(c); out(ws, { t: 'perk', perk: perkFor(u) });
+      if (db.king && u === db.king && Date.now() - (kingSeenT || 0) > 10 * 60000) { kingSeenT = Date.now(); setTimeout(() => all({ t: 'announce', from: '👑 REINO DE ERYON', text: `O Rei @${u} chegou! Todos saúdem o Rei do Castelo de Eryon!` }), 1500); }
       return;
     }
     if (m.t === 'move') {
@@ -726,7 +731,7 @@ wss.on('connection', (ws, req) => {
       if (raw.toLowerCase() === c.lastText && now - (c.lastTextAt || 0) < 15000) return note(c, 'Mensagem repetida.'); c.lastText = raw.toLowerCase(); c.lastTextAt = now;
       const { text, bad } = censor(raw);
       if (bad) { c.strikes = (c.strikes || 0) + 1; if (c.strikes >= 3) { c.strikes = 0; mute(c.user, 10, 'palavrões'); } else note(c, 'Ops! Palavras feias viram ***. Na 3ª vez você fica 10 min sem chat.'); }
-      const msg = { t: 'chat', id: c.id, username: c.user, text, ts: now, badge: badgeOf(c.user) };
+      const msg = { t: 'chat', id: c.id, username: c.user, text, ts: now, badge: badgeOf(c.user), king: !!db.king && c.user === db.king };
       chatLog.push(msg); if (chatLog.length > 60) chatLog.shift();
       (c.said ||= []).push(text); if (c.said.length > 10) c.said.shift();
       all(msg); if (!bad) track(c, 'chat');

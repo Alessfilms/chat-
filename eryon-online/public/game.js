@@ -27,12 +27,14 @@ const HATS = [['', 'Nenhum'], ['palha', 'Palha'], ['bone', 'Boné'], ['chef', 'C
 const CAPES = ['', '#4e6c4a', '#1d3550', '#a83a32', '#6e4a8a'];
 const shade = h => { const [r, g, b] = hex(h); return '#' + [r, g, b].map(v => Math.round(v * .6).toString(16).padStart(2, '0')).join(''); };
 const builders = new Map();
+let KING = '';
 function charFor(username, look) {
-  const key = username + JSON.stringify(look || {});
+  const isK = !!KING && username === KING, key = username + (isK ? '#rei' : '') + JSON.stringify(look || {});
   if (!builders.has(key)) {
     const l = look || {};
     const sp = NAMED[username] || { hair: l.hair || HAIRS[0], shirt: l.shirt || SHIRTS[1], shirtD: shade(l.shirt || SHIRTS[1]), pants: l.pants || PANTS[0], longHair: !!l.longHair,
-      skin: l.skin || SKINS[0], skinD: shade(l.skin || SKINS[0]), beard: l.beard ? (l.hair || HAIRS[0]) : undefined, hat: l.hat || undefined, elfEars: !!l.elfEars, cape: l.cape || undefined, wings: l.cls === 'fada' };
+      skin: l.skin || SKINS[0], skinD: shade(l.skin || SKINS[0]), beard: l.beard ? (l.hair || HAIRS[0]) : undefined, hat: l.hat || undefined, elfEars: !!l.elfEars, cape: isK ? (l.cape || '#a83a32') : l.cape || undefined, wings: l.cls === 'fada' };
+    if (isK) { sp.crown = true; sp.hat = undefined; }
     builders.set(key, charBuilder(sp));
   }
   return builders.get(key);
@@ -457,7 +459,7 @@ function connect() {
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, perk: readPerk() }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
     if (onFeatureMsg(m)) return;
-    if (m.t === 'welcome') { if (m.giant) setTimeout(() => onGiantMsg({ t: 'giant', ...m.giant }), 0); NOTICE.cfg = m.notice || null; if (!connect.told) { connect.told = 1; diag('connected'); } setTimeout(skillLabel, 0); SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { KING = m.king || ''; setTimeout(() => kingWelcome(), 3500); if (m.giant) setTimeout(() => onGiantMsg({ t: 'giant', ...m.giant }), 0); NOTICE.cfg = m.notice || null; if (!connect.told) { connect.told = 1; diag('connected'); } setTimeout(skillLabel, 0); SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
     else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; p.fly = !!s.fly; } } }
@@ -478,7 +480,7 @@ function connect() {
   ws.onclose = ev => { if (ev.code === 4001) { store.del('eryon_token'); location.reload(); return; } if (ev.code === 4002) { sys('Você entrou em outro aparelho.'); return; } if (ev.code === 4003) { sys('Você foi retirado de Eryon pelo criador. Recarregue a página para voltar.'); return; } const wait = reconnectNow ? 50 : 2000; reconnectNow = false; setTimeout(connect, wait); };
 }
 function addPlayer(p, mine) { players.set(p.id, { ...p, room: p.room || '', ph: p.id % 97, tx: p.x, ty: p.y, mine: !!mine, ch: charFor(p.username, p.look) }); }
-function logChat(m) { const d = document.createElement('div'); const b = document.createElement('b'); b.textContent = (m.badge === 'criador' ? '♛ ' : m.badge === 'apoiador' ? '★ ' : '') + (m.id === 0 ? m.username : '@' + m.username) + ': '; if (m.badge) b.style.color = m.badge === 'criador' ? '#ff9a3a' : '#ffd84a'; d.appendChild(b); d.appendChild(document.createTextNode(m.text)); pushLog(d); }
+function logChat(m) { const d = document.createElement('div'); const b = document.createElement('b'); b.textContent = (m.king ? '👑 ' : m.badge === 'criador' ? '♛ ' : m.badge === 'apoiador' ? '★ ' : '') + (m.id === 0 ? m.username : '@' + m.username) + ': '; if (m.badge) b.style.color = m.badge === 'criador' ? '#ff9a3a' : '#ffd84a'; d.appendChild(b); d.appendChild(document.createTextNode(m.text)); pushLog(d); }
 function sys(t) { const d = document.createElement('div'); d.style.color = '#9ff3ff'; d.textContent = t; pushLog(d); }
 function pushLog(d) { const l = $('chatlog'); l.appendChild(d); while (l.children.length > 6) l.firstChild.remove(); setTimeout(() => { d.style.transition = 'opacity 1s'; d.style.opacity = '0'; setTimeout(() => d.remove(), 1000); }, 15000); }
 function sendChat() { const t = $('msg').value.trim(); if (!t || !ws || ws.readyState !== 1) return; ws.send(JSON.stringify({ t: 'chat', text: t })); $('msg').value = ''; $('msg').blur(); }
@@ -516,7 +518,7 @@ $('recenter').onclick = follow; $('zin').onclick = () => zoomStepBtn(1); $('zout
 // lista de quem está online
 $('onlineBtn').onclick = () => { const l = $('plist'); l.hidden = !l.hidden; if (!l.hidden) renderList(); };
 function renderList() { const l = $('plist'); l.innerHTML = ''; const arr = [...players.values()].sort((a, b) => (b.mine - a.mine) || a.username.localeCompare(b.username));
-  for (const q of arr) { const row = document.createElement('div'); row.className = 'plrow'; const b = document.createElement('button'); b.type = 'button'; b.className = 'pl'; b.textContent = (q.badge === 'apoiador' ? '★ ' : q.badge === 'criador' ? '♛ ' : '') + '@' + q.username + (q.lv ? ' · Nv ' + q.lv : '') + (q.mine ? ' (você)' : '');
+  for (const q of arr) { const row = document.createElement('div'); row.className = 'plrow'; const b = document.createElement('button'); b.type = 'button'; b.className = 'pl'; b.textContent = (KING && q.username === KING ? '👑 ' : '') + (q.badge === 'apoiador' ? '★ ' : q.badge === 'criador' ? '♛ ' : '') + '@' + q.username + (q.lv ? ' · Nv ' + q.lv : '') + (q.mine ? ' (você)' : '');
     b.onclick = () => { if (q.mine) follow(); else { cam.mode = 'watch'; cam.watch = q.id; showRecenter(); } $('plist').hidden = true; }; row.appendChild(b);
     if (!q.mine) { const r = document.createElement('button'); r.type = 'button'; r.className = 'repb'; r.textContent = 'Denunciar'; r.onclick = () => { $('plist').hidden = true; openReport(q); }; row.appendChild(r); }
     l.appendChild(row); } }
@@ -653,8 +655,8 @@ function draw(t, p) {
     const sx = Math.round((q.x - L) * S), sy = Math.round((q.y - T - (q.ch.sp.big ? 22 : 17) - (q.fly ? (classOf(q) && classOf(q).id === 'fada' ? 16 : 64) : 0)) * S);
     if (sx < -200 || sx > cv.width + 200 || sy < -100 || sy > cv.height + 100) continue;
     ctx.font = `700 ${fs}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06';
-    const nm = (q.badge === 'criador' ? '♛ ' : q.badge === 'apoiador' ? '★ ' : '') + '@' + q.username; ctx.strokeText(nm, sx, sy); ctx.fillStyle = q.badge === 'criador' ? '#ff9a3a' : q.badge === 'apoiador' ? '#ffd84a' : q.mine ? '#fff3b0' : '#ffffff'; ctx.fillText(nm, sx, sy);
-    const role0 = q.roleText || (q.badge === 'criador' ? 'Criador' : NAMED[q.username]?.role || classOf(q)?.name), role = (q.lv ? 'Nv ' + q.lv + (role0 ? ' · ' : '') : '') + (role0 || ''); if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
+    const isK = !!KING && q.username === KING, nm = (isK ? '👑 ' : q.badge === 'criador' ? '♛ ' : q.badge === 'apoiador' ? '★ ' : '') + '@' + q.username; ctx.strokeText(nm, sx, sy); ctx.fillStyle = isK ? '#ffd84a' : q.badge === 'criador' ? '#ff9a3a' : q.badge === 'apoiador' ? '#ffd84a' : q.mine ? '#fff3b0' : '#ffffff'; ctx.fillText(nm, sx, sy);
+    const role0 = q.roleText || (isK ? 'Rei de Eryon' : q.badge === 'criador' ? 'Criador' : NAMED[q.username]?.role || classOf(q)?.name), role = (q.lv ? 'Nv ' + q.lv + (role0 ? ' · ' : '') : '') + (role0 || ''); if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
     if (q.say && now - q.sayT < 6000) bubble(q.say, sx, sy - fs * 1.2, fs);
     ctx.globalAlpha = 1;
   }

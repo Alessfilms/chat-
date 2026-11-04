@@ -37,6 +37,7 @@ function onFeatureMsg(m) {
   if (m.t === 'builders') { const L = m.list.map(u => u === me ? 'você' : '@' + u), txt = L.length === 1 ? L[0] : L.slice(0, -1).join(', ') + ' e ' + L[L.length - 1];
     fxToast(`${txt}${m.more ? ' e mais ' + m.more : ''} ${L.length + m.more > 1 ? 'estão' : 'está'} construindo o castelo!`, 'Venha ajudar: pedreira ao sul da vila', '#ffd84a', '♜'); return true; }
   if (m.t === 'thanks') { showThanks(m.username, m.look); return true; }
+  if (m.t === 'king') { KING = m.username || ''; builders.clear(); for (const q of players.values()) q.ch = charFor(q.username, q.look); if (m.crowned) setTimeout(() => showCoronation(true), 800); return true; }
   if (m.t === 'notice') { NOTICE.cfg = m.notice || null; if (m.now) showNotice(true); return true; }
   if (m.t === 'supnudge') { showNudge(m.supporters || []); return true; }
   if (m.t === 'tp') { const p = players.get(myId); if (p) { p.x = m.x; p.y = m.y; p.room = ''; target = null; follow(); fxToast('Whoosh!', 'O portal te levou de volta para a vila', '#d0a0ff', '✦'); } return true; }
@@ -292,3 +293,15 @@ function showNotice(force) {
 function hideNotice() { const el = $('notice'); if (el) el.hidden = true; }
 addEventListener('DOMContentLoaded', () => { const x = $('noticeX'); if (x) x.onclick = hideNotice; addEventListener('keydown', e => { if (e.key === 'Escape') hideNotice(); }); });
 setTimeout(() => showNotice(), 6000); setInterval(() => showNotice(), 20000);
+
+// ---------- COROAÇÃO: popup para todo mundo ver quem é o Rei de Eryon (uma vez por rei em cada aparelho)
+function kingWelcome() { let seen = ''; try { seen = localStorage.getItem('eryon_king_seen') || ''; } catch (e) {} if (KING && seen !== KING) showCoronation(); }
+function showCoronation(force) {
+  const el = $('notice'); if (!el || !KING || !me) return; const at = $('atCard'); if (!force && at && !at.hidden) return void setTimeout(showCoronation, 4000);
+  try { localStorage.setItem('eryon_king_seen', KING); } catch (e) {}
+  $('noticeIco').textContent = '👑'; $('noticeT').textContent = 'NOVO REI DE ERYON!';
+  $('noticeB').textContent = me === KING ? `Você foi coroado Rei do Castelo de Eryon!\nTodos agora veem sua coroa e seu título. Proteja o reino!` : `@${KING} foi coroado Rei do Castelo de Eryon!\nProcure a coroa dourada e saúde o Rei.`;
+  const go = $('noticeGo'); go.hidden = false; go.textContent = me === KING ? 'Ir para o meu castelo' : 'Ver o Rei';
+  go.onclick = () => { hideNotice(); if (me === KING) { const p = players.get(myId); if (p && !p.room) { target = { x: CASTLE.spot.x, y: CASTLE.spot.y + 10 }; } } else { for (const q of players.values()) if (q.username === KING && !q.room) { cam.mode = 'watch'; cam.watch = q.id; if (typeof showRecenter === 'function') showRecenter(); return; } sys(`O Rei @${KING} não está no mundo agora.`); } };
+  el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); if (typeof fanfare === 'function') fanfare(true);
+}

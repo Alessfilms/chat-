@@ -90,7 +90,7 @@ function castleLabel(ctx2, L, T, S, fs, p) {
   const sx = Math.round((CASTLE.x - L) * S), sy = Math.max(fs * 4, Math.round((CASTLE.oy - 6 - T) * S));
   let line2; if (castleDone()) line2 = 'Pronto! Entre pelo portão'; else { const s = CSTATE.stages[cur], fp = Math.max(0, s.p0 + s.pedra - CSTATE.pedra), fl = Math.max(0, s.l0 + s.lenha - CSTATE.lenha); line2 = `Etapa ${cur + 1}/${CSTATE.stages.length}: ${s.name} · faltam ${fp} pedras${fl ? ' e ' + fl + ' lenhas' : ''}`; }
   ctx2.textAlign = 'center'; ctx2.textBaseline = 'bottom'; ctx2.lineJoin = 'round';
-  ctx2.font = `700 ${Math.round(fs * 1.15)}px Pix, monospace`; ctx2.lineWidth = Math.max(3, fs / 4); ctx2.strokeStyle = '#140e06'; const l1 = `Castelo de Eryon · ${pct}%`; ctx2.strokeText(l1, sx, sy - fs * 1.1); ctx2.fillStyle = '#ffd84a'; ctx2.fillText(l1, sx, sy - fs * 1.1);
+  ctx2.font = `700 ${Math.round(fs * 1.15)}px Pix, monospace`; ctx2.lineWidth = Math.max(3, fs / 4); ctx2.strokeStyle = '#140e06'; const l1 = KING ? `Castelo do Rei @${KING} · ${pct}%` : `Castelo de Eryon · ${pct}%`; ctx2.strokeText(l1, sx, sy - fs * 1.1); ctx2.fillStyle = '#ffd84a'; ctx2.fillText(l1, sx, sy - fs * 1.1);
   ctx2.font = `700 ${Math.round(fs * .8)}px Pix, monospace`; ctx2.strokeText(line2, sx, sy, cv.width * .95); ctx2.fillStyle = '#fff8e0'; ctx2.fillText(line2, sx, sy, cv.width * .95);
   const bw = Math.min(cv.width * .6, fs * 14), bh = Math.max(6, fs * .45); ctx2.fillStyle = '#140e06'; ctx2.fillRect(sx - bw / 2 - 2, sy + 4, bw + 4, bh + 4); ctx2.fillStyle = '#2a4a3d'; ctx2.fillRect(sx - bw / 2, sy + 6, bw, bh); ctx2.fillStyle = '#ffd84a'; ctx2.fillRect(sx - bw / 2, sy + 6, bw * pct / 100, bh);
 }
