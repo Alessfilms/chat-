@@ -399,7 +399,7 @@ function preview() { const c = $('preview'), x = c.getContext('2d'); x.imageSmoo
 // ---------------------------------------------------------------- conexão
 function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-  ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token }));
+  ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, perk: readPerk() }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
     if (onFeatureMsg(m)) return;
     if (m.t === 'welcome') { SIGNS = m.signs || []; setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
@@ -417,7 +417,7 @@ function connect() {
     else if (m.t === 'lunch') onLunch(m);
     else if (m.t === 'note') sys(m.text);
     else if (m.t === 'wood') { wood = m.n; showWood(); }
-    else if (m.t === 'look') { const p = players.get(m.id); if (p) { p.look = m.look; p.ch = charFor(p.username, m.look); if (p.mine) { myLook = m.look; remember(); skillLabel(); } } }
+    else if (m.t === 'look') { const p = players.get(m.id); if (p) { p.look = m.look; p.ch = charFor(p.username, m.look); if (p.mine) { myLook = m.look; remember(); skillLabel(); try { localStorage.setItem('eryon_pet', (m.look && m.look.pet) || ''); } catch { } } } }
     else if (m.t === 'chat') { const p = players.get(m.id); if (p) { p.say = m.text; p.sayT = performance.now(); } logChat(m); } };
   ws.onclose = ev => { if (ev.code === 4001) { store.del('eryon_token'); location.reload(); return; } if (ev.code === 4002) { sys('Você entrou em outro aparelho.'); return; } if (ev.code === 4003) { sys('Você foi retirado de Eryon pelo criador. Recarregue a página para voltar.'); return; } const wait = reconnectNow ? 50 : 2000; reconnectNow = false; setTimeout(connect, wait); };
 }

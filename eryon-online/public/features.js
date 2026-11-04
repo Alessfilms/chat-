@@ -2,6 +2,7 @@
 // RECURSOS DA COMUNIDADE: missões do dia, nível, conquistas, eventos do Criador,
 // apoiadores com bichinho, placas patrocinadas, denúncia e tutorial
 // =====================================================================
+function readPerk() { try { return JSON.parse(localStorage.getItem('eryon_perk') || 'null'); } catch { return null; } }
 let PROG = null, SIGNS = [], SUPPORT = { url: '', pix: '' };
 fetch('/api/config').then(r => r.json()).then(c => { if (c.support) SUPPORT = c.support; }).catch(() => {});
 
@@ -30,6 +31,10 @@ function onFeatureMsg(m) {
   if (m.t === 'announce') { showAnnounce(m.text); return true; }
   if (m.t === 'rain') { startRain(m.gift || {}); return true; }
   if (m.t === 'signs') { SIGNS = m.list || []; return true; }
+  if (m.t === 'perk') { try { localStorage.setItem('eryon_perk', JSON.stringify(m.perk)); } catch { }
+    // devolve o bichinho guardado no aparelho se o servidor tiver esquecido
+    const me2 = players.get(myId), saved = (() => { try { return localStorage.getItem('eryon_pet') || ''; } catch { return ''; } })();
+    if (me2 && (m.perk.sup || m.perk.staff) && saved && !(me2.look && me2.look.pet)) send({ t: 'pet', pet: saved }); return true; }
   return false;
 }
 
@@ -57,10 +62,11 @@ function renderSupport() {
   if (SUPPORT.url) h += `<a class="supbtn" href="${esc(SUPPORT.url)}" target="_blank" rel="noopener">Apoiar pelo link ♥</a>`;
   if (!SUPPORT.pix && !SUPPORT.url) h += '<p class="hint">O criador ainda vai colocar a forma de apoio aqui.</p>';
   h += '<p class="hint">Depois de apoiar, mande uma mensagem para o criador no Instagram com o seu @ do jogo para liberar o selo. Menor de idade: só com autorização dos pais.</p>';
+  if (!sup) h += '<div class="item"><b>Bichinho</b><span>O bichinho aparece aqui depois que o criador te der o selo de Apoiador. (Criador: marque seu @ em /admin → "Marcar como Criador".)</span></div>';
   if (sup) { const cur = me2.look && me2.look.pet; h += '<h3>Seu bichinho</h3><div class="row2 petrow">' + PET_LIST.map(([id, n]) => `<button type="button" class="petb${cur === id ? ' on' : ''}" data-pet="${id}">${n}</button>`).join('') + `<button type="button" class="petb${!cur ? ' on' : ''}" data-pet="">Nenhum</button></div>`; }
   $('supBody').innerHTML = h;
   if ($('copyPix')) $('copyPix').onclick = async () => { try { await navigator.clipboard.writeText(SUPPORT.pix); $('copyPix').textContent = 'Copiado!'; } catch { } };
-  for (const b of $('supBody').querySelectorAll('.petb')) b.onclick = () => { send({ t: 'pet', pet: b.dataset.pet }); setTimeout(renderSupport, 300); };
+  for (const b of $('supBody').querySelectorAll('.petb')) b.onclick = () => { send({ t: 'pet', pet: b.dataset.pet }); try { localStorage.setItem('eryon_pet', b.dataset.pet); } catch { } setTimeout(renderSupport, 300); };
 }
 
 // ---------- denúncia

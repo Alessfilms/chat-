@@ -246,7 +246,7 @@ const server = http.createServer(async (req, res) => {
         return send(res, 200, { ok: true, inv });
       }
       if (p === '/api/admin/reports') { const by = {}; for (const r of db.reports) (by[r.target] ||= []).push(r);
-        return send(res, 200, { reports: db.reports.slice(-100).reverse(), muted: Object.entries(db.mutes).filter(([, t]) => t > Date.now()).map(([u, t]) => ({ username: u, until: t })), supporters: Object.entries(db.users).filter(([, r]) => r.sup).map(([u]) => u), staff: Object.keys(db.staff), signs: db.signs, supportCfg: db.supportCfg || { url: SUPPORT_URL, pix: PIX_KEY }, online: [...clients].map(c => ({ username: c.user, x: Math.round(c.x), y: Math.round(c.y) })) }); }
+        return send(res, 200, { reports: db.reports.slice(-100).reverse(), muted: Object.entries(db.mutes).filter(([, t]) => t > Date.now()).map(([u, t]) => ({ username: u, until: t })), supporters: Object.entries(db.users).filter(([, r]) => r.sup).map(([u]) => u), staff: [...new Set([...Object.keys(db.staff), ...CREATORS])], signs: db.signs, supportCfg: db.supportCfg || { url: SUPPORT_URL, pix: PIX_KEY }, online: [...clients].map(c => ({ username: c.user, x: Math.round(c.x), y: Math.round(c.y) })) }); }
       if (p === '/api/admin/mute' && req.method === 'POST') { const b = await body(req), u = norm(b.username), min = Math.max(0, Math.min(10080, Number(b.minutes) || 0)); if (!db.users[u]) return send(res, 404, { error: 'Esse @ não existe.' }); if (min) mute(u, min, 'pelo criador'); else { delete db.mutes[u]; save(); } return send(res, 200, { ok: true }); }
       if (p === '/api/admin/kick' && req.method === 'POST') { const b = await body(req), u = norm(b.username); let n = 0; for (const c of clients) if (c.user === u) { c.ws.close(4003, 'expulso'); n++; } return send(res, 200, { ok: true, kicked: n }); }
       if (p === '/api/admin/ban' && req.method === 'POST') { const b = await body(req), u = norm(b.username); if (!db.users[u]) return send(res, 404, { error: 'Esse @ não existe.' }); db.users[u].removed = true; db.users[u].v = (db.users[u].v || 0) + 1; for (const t in db.sessions) if (db.sessions[t] === u) delete db.sessions[t]; for (const c of clients) if (c.user === u) c.ws.close(4001, 'banido'); save(); return send(res, 200, { ok: true }); }
@@ -257,13 +257,13 @@ const server = http.createServer(async (req, res) => {
         for (const c of clients) { const r = db.users[c.user]; if (!r) continue; const inv = invOf(r); for (const k in g) inv[k] = (inv[k] || 0) + g[k]; sendInv(c); } save();
         all({ t: 'rain', gift: g }); return send(res, 200, { ok: true, online: clients.size }); }
       if (p === '/api/admin/supporter' && req.method === 'POST') { const b = await body(req), u = norm(b.username), r = db.users[u]; if (!r) return send(res, 404, { error: 'Esse @ ainda não entrou em Eryon.' });
-        r.sup = !!b.on; if (!r.sup && r.look) delete r.look.pet; save();
-        for (const c of clients) if (c.user === u) { c.dirty = true; all({ t: 'badge', id: c.id, badge: badgeOf(u) }); if (r.sup) out(c.ws, { t: 'supporter' }); if (r.look) all({ t: 'look', id: c.id, look: r.look }); }
+        r.sup = !!b.on; if (r.sup) delete r.supOff; else { r.supOff = true; if (r.look && !isStaff(u)) delete r.look.pet; } save();
+        for (const c of clients) if (c.user === u) { c.dirty = true; out(c.ws, { t: 'perk', perk: perkFor(u) }); all({ t: 'badge', id: c.id, badge: badgeOf(u) }); if (r.sup) out(c.ws, { t: 'supporter' }); if (r.look) all({ t: 'look', id: c.id, look: r.look }); }
         return send(res, 200, { ok: true }); }
       if (p === '/api/admin/supportcfg' && req.method === 'POST') { const b = await body(req), url = String(b.url || '').trim().slice(0, 200), pix = String(b.pix || '').trim().slice(0, 120);
         if (url && !/^https:\/\/[^\s<>"']+$/.test(url)) return send(res, 400, { error: 'O link precisa começar com https://' }); db.supportCfg = { url, pix }; save(); return send(res, 200, { ok: true }); }
       if (p === '/api/admin/staff' && req.method === 'POST') { const b = await body(req), u = norm(b.username); if (!validUser(u)) return send(res, 400, { error: '@ inválido' }); if (b.on) db.staff[u] = true; else delete db.staff[u]; save();
-        for (const c of clients) if (c.user === u) all({ t: 'badge', id: c.id, badge: badgeOf(u) }); return send(res, 200, { ok: true }); }
+        for (const c of clients) if (c.user === u) { out(c.ws, { t: 'perk', perk: perkFor(u) }); all({ t: 'badge', id: c.id, badge: badgeOf(u) }); } return send(res, 200, { ok: true }); }
       if (p === '/api/admin/sign' && req.method === 'POST') { const b = await body(req), text = String(b.text || '').trim().slice(0, 80), u = norm(b.username); const at = [...clients].find(c => c.user === u);
         if (!text) return send(res, 400, { error: 'Escreva o texto da placa.' }); if (!at) return send(res, 404, { error: 'Esse @ precisa estar online: a placa aparece do lado dele.' }); if (at.room) return send(res, 400, { error: 'A pessoa precisa estar do lado de fora.' });
         db.signs.push({ id: db.nextSign++, text, x: Math.round(at.x + 14), y: Math.round(at.y), color: /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#ffd84a' }); save(); all({ t: 'signs', list: db.signs }); return send(res, 200, { ok: true, signs: db.signs }); }
@@ -414,7 +414,15 @@ const LM_POS = { costela: [170, 1060], ruinas: [520, 400], torre: [290, 118], ca
 // =====================================================================
 const PETS = new Set(['gato', 'raposa', 'dragao', 'coruja']);
 const SUPPORT_URL = process.env.SUPPORT_URL || '', PIX_KEY = process.env.PIX_KEY || '98988907210';   // chave Pix do criador (pode trocar no /admin)
-const badgeOf = u => { const r = db.users[u] || {}; return db.staff[u] ? 'criador' : r.sup ? 'apoiador' : ''; };
+const CREATORS = new Set((process.env.CREATOR || '').split(/[\s,;]+/).map(norm).filter(Boolean));
+const isStaff = u => !!db.staff[u] || CREATORS.has(u);
+// selo assinado: fica guardado no aparelho e volta mesmo se o servidor perder a memória
+const perkSig = (u, k) => crypto.createHmac('sha256', SECRET || 'eryon').update('perk:' + k + ':' + u).digest('hex').slice(0, 24);
+const perkFor = u => { const r = db.users[u] || {}; return { u, sup: r.sup ? perkSig(u, 'sup') : '', staff: isStaff(u) ? perkSig(u, 'staff') : '' }; };
+function applyPerk(u, pk) { if (!pk || typeof pk !== 'object' || pk.u !== u) return; const r = db.users[u]; if (!r) return;
+  if (!r.sup && !r.supOff && typeof pk.sup === 'string' && pk.sup && same(pk.sup, perkSig(u, 'sup'))) { r.sup = true; save(); }
+  if (!db.staff[u] && typeof pk.staff === 'string' && pk.staff && same(pk.staff, perkSig(u, 'staff'))) { db.staff[u] = true; save(); } }
+const badgeOf = u => { const r = db.users[u] || {}; return isStaff(u) ? 'criador' : r.sup ? 'apoiador' : ''; };
 
 wss.on('connection', (ws, req) => {
   if (limited('ws:' + ipOf(req), 30, 60000)) return ws.close(4029, 'muitas conexões');
@@ -427,11 +435,12 @@ wss.on('connection', (ws, req) => {
       const u = userBySession(m.token); if (!u || !db.users[u] || db.users[u].removed) return ws.close(4001, 'sessão inválida');
       clearTimeout(timer);
       for (const o of clients) if (o.user === u) o.ws.close(4002, 'conectado em outro lugar');
+      applyPerk(u, m.perk);
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c);
       out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
-      all({ t: 'join', p: pub(c) }, c); sendProg(c);
+      all({ t: 'join', p: pub(c) }, c); sendProg(c); out(ws, { t: 'perk', perk: perkFor(u) });
       return;
     }
     if (m.t === 'move') {
@@ -548,7 +557,7 @@ wss.on('connection', (ws, req) => {
       const dl = dailyOf(r, c.user); dl.v ||= []; if (dl.v.includes(id)) return; dl.v.push(id); track(c, 'visit');
     } else if (m.t === 'pet') {
       const r = db.users[c.user]; if (!r) return; const look = r.look || (r.look = {}); const pet = String(m.pet || '');
-      if (!pet) delete look.pet; else { if (!PETS.has(pet)) return; if (!r.sup && !db.staff[c.user]) return note(c, 'Bichinhos são um presente para apoiadores de Eryon ♥'); look.pet = pet; }
+      if (!pet) delete look.pet; else { if (!PETS.has(pet)) return; if (!r.sup && !isStaff(c.user)) return note(c, 'Bichinhos são um presente para apoiadores de Eryon ♥'); look.pet = pet; }
       save(); all({ t: 'look', id: c.id, look });
     }
   });
