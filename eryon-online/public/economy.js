@@ -2,7 +2,7 @@
 // ECONOMIA DE ERYON: moedas, frutas, animais com dono, barracas de feira,
 // Mercador na Praça da Feira, muros/portões e construções novas
 // =====================================================================
-const GOOD_NAMES = { moedas: 'Moedas', frutas: 'Frutas', leite: 'Leite', ovos: 'Ovos', trufas: 'Trufas', lenha: 'Lenha', pedra: 'Pedra', ervas: 'Ervas', vaca: 'Vaca', porco: 'Porco', galinha: 'Galinha' };
+const GOOD_NAMES = { machado: 'Machado', picareta: 'Picareta', facao: 'Facão', faca: 'Faca', moedas: 'Moedas', frutas: 'Frutas', leite: 'Leite', ovos: 'Ovos', trufas: 'Trufas', lenha: 'Lenha', pedra: 'Pedra', ervas: 'Ervas', vaca: 'Vaca', porco: 'Porco', galinha: 'Galinha' };
 const MERCH_BUY = { frutas: 1, leite: 3, ovos: 2, trufas: 6 };
 const ANIM = { vaca: { name: 'Vaca', price: 30, prod: 'leite', act: 'Ordenhar a vaca', w: 18 }, porco: { name: 'Porco', price: 18, prod: 'trufas', act: 'Procurar trufas com o porco', w: 14 }, galinha: { name: 'Galinha', price: 8, prod: 'ovos', act: 'Pegar os ovos', w: 9 } };
 const MERCH = { x: 640, y: 650 }, FAIR = { x: 640, y: 684, r: 62 };
@@ -128,6 +128,9 @@ function renderEcon() {
     for (const [k, pr] of Object.entries(MERCH_BUY)) { const n = INV[k] || 0; if (!n) continue; any = true; h += `<div class="item erow"><div><b>${nameOf(k)} × ${n}</b><span>${pr} moeda${pr > 1 ? 's' : ''} cada</span></div><div class="row2"><button data-a="ms" data-k="${k}" data-n="1">Vender 1</button><button data-a="ms" data-k="${k}" data-n="${n}">Vender tudo (${n * pr})</button></div></div>`; }
     for (const k of Object.keys(ANIM)) { const n = INV[k] || 0; if (!n) continue; any = true; h += `<div class="item erow"><div><b>${ANIM[k].name} × ${n}</b><span>${Math.floor(ANIM[k].price / 2)} moedas</span></div><div class="row2"><button data-a="ms" data-k="${k}" data-n="1">Vender 1</button></div></div>`; }
     if (!any) h += '<p class="hint">Traga frutas (dos arbustos e macieiras), leite, ovos ou trufas dos seus animais.</p>';
+    h += '<h3>Loja do mercador</h3>';
+    for (const [k, pr, d] of [['frutas', 2, 'Uma fruta fresquinha.'], ['faca', 12, '+1 produto dos seus animais e da macieira.'], ['facao', 20, '+1 erva e +1 fruta sempre que colher.'], ['machado', 30, '+2 lenha em cada árvore.'], ['picareta', 30, '+1 pedra em cada rocha.']]) {
+      const has = k !== 'frutas' && INV[k] > 0; h += `<div class="item erow"><div><b>${nameOf(k)} · ${pr} moedas</b><span>${d}</span></div><div class="row2">${has ? '<span class="tag">você já tem</span>' : `<button data-a="mi" data-k="${k}" data-n="1" ${coins < pr ? 'disabled' : ''}>${coins < pr ? 'Faltam moedas' : 'Comprar'}</button>`}${k === 'frutas' && coins >= pr * 5 ? `<button data-a="mi" data-k="frutas" data-n="5">Comprar 5</button>` : ''}</div></div>`; }
     h += '<h3>Comprar animais</h3>';
     for (const [k, A] of Object.entries(ANIM)) h += `<div class="item erow"><div><b>${A.name} · ${A.price} moedas</b><span>Dá ${nameOf(A.prod).toLowerCase()} de tempos em tempos. Só o dono recolhe.</span></div><button data-a="mb" data-k="${k}" ${coins < A.price ? 'disabled' : ''}>${coins < A.price ? 'Faltam moedas' : 'Comprar'}</button></div>`;
   } else {
@@ -141,7 +144,7 @@ function renderEcon() {
   }
   b.innerHTML = h;
   for (const el of b.querySelectorAll('button[data-a]')) el.onclick = () => { const a = el.dataset.a, k = el.dataset.k, n = Number(el.dataset.n || 1);
-    if (a === 'ms') send({ t: 'merchSell', k, n }); else if (a === 'mb') send({ t: 'merchBuy', k }); else if (a === 'st') send({ t: 'shopTake', id: ECON.id, k }); else if (a === 'sb') send({ t: 'shopBuy', id: ECON.id, k, n });
+    if (a === 'ms') send({ t: 'merchSell', k, n }); else if (a === 'mb') send({ t: 'merchBuy', k }); else if (a === 'mi') send({ t: 'merchBuy', k, n }); else if (a === 'st') send({ t: 'shopTake', id: ECON.id, k }); else if (a === 'sb') send({ t: 'shopBuy', id: ECON.id, k, n });
     else if (a === 'sp') send({ t: 'shopPut', id: ECON.id, k: $('eK').value, n: Number($('eN').value), price: Number($('eP').value) });
     play('coins', .5); };
 }

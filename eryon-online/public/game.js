@@ -454,7 +454,7 @@ function connect() {
     if (m.t === 'welcome') { SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
-    else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; } } }
+    else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; p.fly = !!s.fly; } } }
     else if (m.t === 'act') { const p = players.get(m.id); if (p && !p.mine) { const t0 = performance.now() / 1000; p.act = { kind: m.kind, t0, end: t0 + (ACT_DUR[m.kind] || 1.5) }; const me2 = players.get(myId); if (me2 && (me2.room || '') === (p.room || '') && Math.hypot(me2.x - p.x, me2.y - p.y) < 120) actSound(m.kind); } }
     else if (m.t === 'trees') { CUT.clear(); m.cut.forEach(i => CUT.add(i)); }
     else if (m.t === 'houses') setBuilt(m.list);
@@ -532,21 +532,21 @@ function loop(now) {
     if (keys.has('arrowup') || keys.has('w')) iy--; if (keys.has('arrowdown') || keys.has('s')) iy++;
     if (!ix && !iy && target) { const dx = target.x - p.x, dy = target.y - p.y, d = Math.hypot(dx, dy); if (d < 2) target = null; else { ix = dx / d; iy = dy / d; } }
     if (p.act && t < p.act.end) { ix = 0; iy = 0; target = null; }
-    const blk0 = (x2, y2) => p.room ? roomBlocked(p.room, x2, y2) : blocked(x2, y2);
-    const stuck = blk0(p.x, p.y), blk = (x2, y2) => !stuck && blk0(x2, y2);
-    const len = Math.hypot(ix, iy) || 1, sp = 44 * dt, mx = ix / len * sp, my = iy / len * sp;
+    const blk0 = (x2, y2) => p.fly ? (x2 < 6 || y2 < 20 || x2 > WW - 6 || y2 > WH - 6) : p.room ? roomBlocked(p.room, x2, y2) : blocked(x2, y2);
+    const stuck = !p.fly && blk0(p.x, p.y), blk = (x2, y2) => !stuck && blk0(x2, y2);
+    const len = Math.hypot(ix, iy) || 1, sp = (p.fly ? 82 : 44) * dt, mx = ix / len * sp, my = iy / len * sp;
     let moved = false;
     if (mx && !blk(p.x + mx, p.y)) { p.x += mx; moved = true; }
     if (my && !blk(p.x, p.y + my)) { p.y += my; moved = true; }
     if (p.room && moved && iy > 0) { const r = roomOf(p.room); if (p.y > r.door.y + 1 && Math.abs(p.x - r.door.x) < 10) exitRoom(p); }
-    if (moved) { stepT += dt; if (stepT > .34) { stepT = 0; sfx.step(!!p.room); } } else stepT = .3;
+    if (moved && !p.fly) { stepT += dt; if (stepT > .34) { stepT = 0; sfx.step(!!p.room); } } else stepT = .3;
     updateContext(p, t);
     if (!p.room) { revT += dt; if (revT > .25) { revT = 0; if (fogKey) revealAt(p.x, p.y, 72); checkDiscover(p); checkVisit(p); const bz = biomeAt(p.x, p.y); if (bz !== curBiome) { if (curBiome !== -1) fxToast(BIOME_NAMES[bz], 'Você entrou numa nova região', ['#84c65a', '#f2a04a', '#f6b6d8', '#6ad0a0', '#e8f4ff'][bz], '⚑'); curBiome = bz; } } }
     setFireLevel(p.room ? (p.room === 'taverna' ? .7 : 0) : 1 - Math.hypot(p.x - C.x, p.y - C.y) / 110);
     if ((ix || iy) && !moved) target = null;
     p.moving = moved; if (ix) p.face = ix < 0 ? -1 : 1;
-    sendT += dt; const sig = `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.face},${p.moving},${p.room},${p.carry}`;
-    if (sendT > .1 && sig !== lastSent && ws && ws.readyState === 1) { ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: p.moving, room: p.room || '', carry: !!p.carry })); lastSent = sig; sendT = 0; }
+    sendT += dt; const sig = `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.face},${p.moving},${p.room},${p.carry},${!!p.fly}`;
+    if (sendT > .1 && sig !== lastSent && ws && ws.readyState === 1) { ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: p.moving, room: p.room || '', carry: !!p.carry, fly: !!p.fly })); lastSent = sig; sendT = 0; }
   }
   for (const q of players.values()) if (!q.mine) { q.x += (q.tx - q.x) * Math.min(1, dt * 12); q.y += (q.ty - q.y) * Math.min(1, dt * 12); }
   draw(t, p);
@@ -581,11 +581,11 @@ function draw(t, p) {
   if (!room) for (const h of BUILT) if (h.x > li - 40 && h.x < li + cw + 40 && h.y > ti - 10 && h.y < ti + ch + 40) list.push({ y: h.y, built: h });
   if (!room) for (const a of ANIMALS_L) { const q = animalPos(a, t); if (q.X > li - 20 && q.X < li + cw + 20 && q.Y > ti - 10 && q.Y < ti + ch + 20) list.push({ y: q.Y, animal: a }); }
   if (!room) for (const sg of allSigns()) if (sg.x > li - 30 && sg.x < li + cw + 30 && sg.y > ti - 10 && sg.y < ti + ch + 30) list.push({ y: sg.y, sign: sg });
-  if (!room) drawDragonShadows(x, li, ti, cw, ch);
+  if (!room) { drawDragonShadows(x, li, ti, cw, ch); drawBalloonShadows(x); }
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
     if (o.fire) { drawFire(x, C.x, C.y + 1, t); continue; }
-    if (o.pl) { const q = o.pl; drawPet(x, q, t); drawCharAt(x, q.ch, q.x, q.y, poseFor(q, t), q.face || 1); continue; }
+    if (o.pl) { const q = o.pl; if (q.fly) continue; drawPet(x, q, t); drawCharAt(x, q.ch, q.x, q.y, poseFor(q, t), q.face || 1); continue; }
     if (o.sign) { drawSign(x, o.sign); continue; }
     if (o.castle) { drawCastle(x, t); continue; }
     if (o.merchant) { drawMerchant(x, t); continue; }
@@ -604,7 +604,7 @@ function draw(t, p) {
     x.drawImage(o.img, o.dx, o.dy);
   }
   for (const q of players.values()) if ((q.room || '') === myRoom) drawActFx(x, q, t);
-  if (!room) { drawDragons(x, li, ti, cw, ch, p); drawRain(x, li, ti, cw, ch, t); }
+  if (!room) { for (const q of players.values()) if (q.fly && !q.room) drawBalloon(x, q, t); drawDragons(x, li, ti, cw, ch, p); drawRain(x, li, ti, cw, ch, t); }
   if (room && room.fire) { drawFire(x, room.fire.x, room.fire.y, t); glow(x, room.fire.x, room.fire.y - 6, 18, P.fire2, .12); }
   if (!room) { drawAmbient(x, t, li, ti, cw, ch); drawCloudShadows(x, t, li, ti, cw, ch); }
   if (!room && B.forja) { x.globalAlpha = .6 + .4 * h2(Math.floor(t * 10), 2); px(x, P.fire1, B.forja.x - 7, B.forja.y - 10, 12, 8); px(x, P.fire3, B.forja.x - 5, B.forja.y - 8, 8, 5); x.globalAlpha = 1; smoke(x, B.forja.x + 11, B.forja.y - 30, t, 6); }
@@ -634,7 +634,7 @@ function draw(t, p) {
   if (room) { ctx.font = `700 ${Math.round(fs * 1.1)}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06'; const ty = Math.max(fs * 3, Math.round((0 - T) * S) - 6); ctx.strokeText(room.name, cv.width / 2, ty); ctx.fillStyle = '#ffd84a'; ctx.fillText(room.name, cv.width / 2, ty); }
   for (const q of players.values()) {
     if ((q.room || '') !== myRoom) continue;
-    const sx = Math.round((q.x - L) * S), sy = Math.round((q.y - T - (q.ch.sp.big ? 22 : 17)) * S);
+    const sx = Math.round((q.x - L) * S), sy = Math.round((q.y - T - (q.ch.sp.big ? 22 : 17) - (q.fly ? 64 : 0)) * S);
     if (sx < -200 || sx > cv.width + 200 || sy < -100 || sy > cv.height + 100) continue;
     ctx.font = `700 ${fs}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06';
     const nm = (q.badge === 'criador' ? '♛ ' : q.badge === 'apoiador' ? '★ ' : '') + '@' + q.username; ctx.strokeText(nm, sx, sy); ctx.fillStyle = q.badge === 'criador' ? '#ff9a3a' : q.badge === 'apoiador' ? '#ffd84a' : q.mine ? '#fff3b0' : '#ffffff'; ctx.fillText(nm, sx, sy);
@@ -647,7 +647,8 @@ function draw(t, p) {
 let ctxAct = null;
 function updateContext(p, t) {
   let c = null;
-  if (p.room) {
+  if (p.fly) c = { kind: 'econ', label: 'Pousar o balão', fn: toggleBalloon };
+  else   if (p.room) {
     const r = roomOf(p.room);
     for (const s of r.spots) if (Math.abs(p.x - s.x) < s.rx && Math.abs(p.y - s.y) < s.ry) c = s.node && DEPL.has(s.node) ? { kind: 'none', label: 'Volta a crescer logo' } : { kind: s.kind, label: s.label, node: s.node };
     if (!c) c = { kind: 'exit', label: 'Sair' };

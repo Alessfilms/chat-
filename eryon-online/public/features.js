@@ -21,10 +21,10 @@ function fanfare(big) { if (!SND.ctx) return; const w = SND.ctx.currentTime, n =
 
 // ---------- mensagens do servidor
 function onFeatureMsg(m) {
-  if (m.t === 'prog') { PROG = m; if (!$('questPanel').hidden) renderQuests(); const me2 = players.get(myId); if (me2) me2.lv = m.lv; return true; }
+  if (m.t === 'prog') { PROG = m; if (!$('questPanel').hidden) renderQuests(); const me2 = players.get(myId); if (me2) me2.lv = m.lv; updBalloonBtn(); return true; }
   if (m.t === 'mission') { const r = Object.entries(m.rew || {}).map(([k, v]) => `+${v} ${k}`).join(' '); fxToast('Missão completa!', `${m.text} · +${m.xp} XP ${r}`, '#84c65a', '✔'); fanfare(); return true; }
-  if (m.t === 'ach') { fxToast('Conquista: ' + m.name, m.desc, '#ffd84a', '🏆'); fanfare(true); return true; }
-  if (m.t === 'levelup') { fxToast('Nível ' + m.lv + '!', 'Você está ficando forte em Eryon', '#9ff3ff', '▲'); fanfare(true); return true; }
+  if (m.t === 'ach') { fxToast('Conquista: ' + m.name, m.desc + (m.coins ? ` · +${m.coins} moedas` : ''), '#ffd84a', '🏆'); fanfare(true); return true; }
+  if (m.t === 'levelup') { fxToast('Nível ' + m.lv + '!', `Você ganhou ${m.coins || 0} moedas`, '#9ff3ff', '▲'); fanfare(true); if (m.balloon) { fxToast('VOCÊ GANHOU UM BALÃO!', 'Toque no botão do balão (no alto) para voar por Eryon', '#f2a04a', '◓'); updBalloonBtn(); } return true; }
   if (m.t === 'lv') { const p = players.get(m.id); if (p) p.lv = m.lv; return true; }
   if (m.t === 'badge') { const p = players.get(m.id); if (p) p.badge = m.badge; return true; }
   if (m.t === 'supporter') { fxToast('Obrigado por apoiar Eryon!', 'Escolha seu bichinho em Menu → Apoiar', '#ffd84a', '♥'); fanfare(true); return true; }
@@ -50,9 +50,10 @@ function renderQuests() {
   const P2 = PROG; if (!P2) { $('questBody').innerHTML = '<p class="hint">Carregando…</p>'; return; }
   const pct = Math.round(100 * (P2.xp - P2.cur) / Math.max(1, P2.next - P2.cur));
   let h = `<div class="lvbox"><b>Nível ${P2.lv}</b><div class="xpbar"><i style="width:${pct}%"></i></div><span>${P2.xp - P2.cur} / ${P2.next - P2.cur} XP para o nível ${P2.lv + 1}</span></div>`;
+  h += P2.lv >= P2.balloonLv ? '<div class="item"><b>◓ Você tem um balão!</b><span>Toque no botão do balão no alto da tela para voar por Eryon.</span></div>' : `<div class="item"><b>◓ Meta: nível ${P2.balloonLv}</b><span>Quem chega no nível ${P2.balloonLv} ganha um BALÃO para sobrevoar Eryon. Faltam ${Math.max(0, P2.balloonLv - P2.lv)} níveis.</span></div>`;
   h += '<h3>Missões de hoje</h3>';
   for (const q of P2.missions) { const r = Object.entries(q.rew).map(([k, v]) => `${v} ${k}`).join(' + ');
-    h += `<div class="item quest${q.done ? ' done' : ''}"><b>${q.done ? '✔ ' : ''}${esc(q.text)}</b><div class="qbar"><i style="width:${Math.round(100 * q.have / q.n)}%"></i></div><span>${q.have}/${q.n} · Prêmio: ${q.xp} XP + ${r}</span></div>`; }
+    h += `<div class="item quest${q.done ? ' done' : ''}"><b>${q.done ? '✔ ' : ''}${esc(q.text)}</b><div class="qbar"><i style="width:${Math.round(100 * q.have / q.n)}%"></i></div><span>${q.have}/${q.n} · Prêmio: ${q.xp} XP + ${Math.round(q.xp / 5)} moedas + ${r}</span></div>`; }
   h += '<p class="hint">Complete as 3 e ganhe +60 XP de bônus. Novas missões todo dia.</p>';
   if (CSTATE.stages.length) { const tot = CSTATE.stages.reduce((a, st) => a + st.pedra + st.lenha, 0), pc = Math.floor(100 * Math.min(tot, CSTATE.pedra + CSTATE.lenha) / tot), cur = curStage();
     h += `<h3>Castelo de Eryon</h3><div class="item"><b>${pc}% construído${cur < CSTATE.stages.length ? ' · Etapa ' + (cur + 1) + ': ' + esc(CSTATE.stages[cur].name) : ' · PRONTO!'}</b><div class="xpbar"><i style="width:${pc}%"></i></div><span>Quebre pedras e leve até a obra, ao sul da vila (Vale das Flores).</span>`;
@@ -229,3 +230,29 @@ function showNudge(sup) {
   el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); clearTimeout(showNudge.t); showNudge.t = setTimeout(() => el.hidden = true, 8000);
 }
 addEventListener('DOMContentLoaded', () => { const el = $('nudge'); if (el) el.onclick = () => { el.hidden = true; closePanels(); $('supPanel').hidden = false; renderSupport(); }; });
+
+// ---------- BALÃO: prêmio de quem chega no nível 8 — voa por cima de tudo
+const BALLOON_COLS = [['#c0302a', '#ffd84a'], ['#3f6fc0', '#f4f0d8'], ['#7a4ac0', '#ffd84a'], ['#2f8a6a', '#f2a04a'], ['#e04a5a', '#9ff3ff']];
+const BSPR = {};
+function balloonSprite(ci) { if (BSPR[ci]) return BSPR[ci]; const [c, x] = canvas(34, 40), O = '#140e06', [A, B2] = BALLOON_COLS[ci];
+  for (let Y = 0; Y < 30; Y++) { const v = (Y - 13) / 14, half = Y < 24 ? Math.round(15 * Math.sqrt(Math.max(0, 1 - v * v * (v > 0 ? .55 : 1)))) : Math.max(3, Math.round(7 - (Y - 24) * .9));
+    for (let X = -half; X <= half; X++) { const stripe = Math.floor((X + 16) / 4.5) % 2, u = X / Math.max(1, half); let col = stripe ? A : B2; if (u > .45) col = shadeHex(col, .72); else if (u < -.5 && Y < 18) col = shadeHex(col, 1.18);
+      px(x, Math.abs(X) === half || Y === 0 ? O : col, 17 + X, Y); } }
+  px(x, '#ffffff', 9, 6, 2, 4); px(x, '#ffffff', 8, 10, 1, 3);
+  for (const X of [11, 14, 20, 23]) for (let Y = 30; Y < 34; Y++) px(x, '#5a3420', X + Math.round((Y - 30) * (X < 17 ? .5 : -.5)), Y, 1, 1);
+  return BSPR[ci] = c; }
+function drawBalloonShadows(x) { for (const q of players.values()) if (q.fly && !(q.room)) { x.fillStyle = 'rgba(8,20,16,.28)'; x.beginPath(); x.ellipse(Math.round(q.x), Math.round(q.y), 11, 4, 0, 0, 6.283); x.fill(); } }
+function drawBalloon(x, q, t) {
+  const ci = (q.username || '').split('').reduce((a, ch) => a + ch.charCodeAt(0), 0) % BALLOON_COLS.length, s = balloonSprite(ci), sway = Math.sin(t * 1.3 + (q.ph || 0)) * 1.5, X = Math.round(q.x + sway), Y = Math.round(q.y - 46 + Math.sin(t * .9 + (q.ph || 0)) * 2);
+  drawCharAt(x, q.ch, X, Y + 1, { legs: 'stand', arm: q.moving ? 'wave' : 'down', eyes: 0, br: Math.floor(t * 3) % 2 }, q.face || 1);
+  px(x, '#140e06', X - 6, Y - 6, 13, 9); px(x, '#8a5530', X - 5, Y - 5, 11, 7); px(x, '#b8814a', X - 5, Y - 5, 11, 1); for (let k = -4; k <= 4; k += 3) px(x, '#5a3420', X + k, Y - 4, 1, 6);
+  x.drawImage(s, X - 17, Y - 46);
+  const fl = Math.floor(t * 10 + (q.ph || 0)) % 4; if (q.moving || fl === 0) { px(x, '#ffd84a', X - 1, Y - 13, 3, 3); px(x, '#fff3b0', X, Y - 12, 1, 2); px(x, '#f2a33a', X - 1, Y - 11, 3, 1); }
+}
+function updBalloonBtn() { const b = $('balloonBtn'); if (!b) return; const ok = PROG && PROG.lv >= PROG.balloonLv; b.hidden = !ok; const p = players.get(myId); b.classList.toggle('on', !!(p && p.fly)); b.querySelector('span').textContent = p && p.fly ? 'Pousar' : 'Balão'; }
+function toggleBalloon() { const p = players.get(myId); if (!p) return; if (!PROG || PROG.lv < PROG.balloonLv) return sys(`O balão é o prêmio do nível ${PROG ? PROG.balloonLv : 8}.`);
+  if (p.room) return sys('Saia para o lado de fora para subir no balão.');
+  if (p.fly) { if (blocked(p.x, p.y)) return sys('Procure um lugar livre para pousar (fora da água e longe das árvores).'); p.fly = false; setZoom(zoomTarget / .72); sfx.door && sfx.door(false); }
+  else { p.fly = true; target = null; follow(); setZoom(zoomTarget * .72); fxToast('Voando por Eryon!', 'Ande para qualquer lado: o balão passa por cima de tudo', '#f2a04a', '◓'); play('whoosh', .5, .6); }
+  updBalloonBtn(); }
+addEventListener('DOMContentLoaded', () => { const b = $('balloonBtn'); if (b) b.onclick = () => { sndStart(); toggleBalloon(); }; });

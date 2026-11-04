@@ -162,6 +162,7 @@ body.clean #nudge{display:none!important}
 .sellform{display:flex;flex-direction:column;gap:8px;padding:10px;background:#0c1410;border:2px solid #2a4a3d}.sellform label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:#c4ccd0}
 .sellform select,.sellform input{font:700 17px Pix,monospace;padding:8px;background:#060b0a;color:var(--txt);border:2px solid #3c5d4a}
 .res.coin b{color:var(--gold)}
+#balloonBtn span{font:700 15px Pix,monospace}#balloonBtn.on{box-shadow:inset 0 0 0 2px #f2a04a}
 </style>
 </head>
 <body>
@@ -200,7 +201,7 @@ body.clean #nudge{display:none!important}
 </div>
 
 <div id="hud">
-  <div class="hudl"><button class="pill" id="onlineBtn" type="button" aria-label="Quem está online"><i class="dot"></i><b id="online">1</b></button><button class="pill" id="supPill" type="button" aria-label="Apoiar Eryon com Pix"><svg class="ph" width="18" height="16" viewBox="0 0 9 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="#140e06" d="M1 0h2v1H1zM6 0h2v1H6zM0 1h1v3H0zM8 1h1v3H8zM4 1h1v1H4zM1 4h1v1H1zM7 4h1v1H7zM2 5h1v1H2zM6 5h1v1H6zM3 6h1v1H3zM5 6h1v1H5zM4 7h1v1H4z"/><path fill="#e04a5a" d="M1 1h2v1H1zM6 1h2v1H6zM1 2h7v2H1zM3 1h1v1H3zM5 1h1v1H5zM2 4h5v1H2zM3 5h3v1H3zM4 6h1v1H4z"/><path fill="#ff9aa8" d="M1 1h1v2H1z"/></svg><span>Apoiar <b>PIX</b></span></button><div id="plist" class="box" hidden></div></div>
+  <div class="hudl"><button class="pill" id="onlineBtn" type="button" aria-label="Quem está online"><i class="dot"></i><b id="online">1</b></button><button class="pill" id="balloonBtn" type="button" hidden aria-label="Balão"><svg width="16" height="18" viewBox="0 0 8 9" shape-rendering="crispEdges" aria-hidden="true"><path fill="#140e06" d="M2 0h4v1H2zM1 1h1v1H1zM6 1h1v1H6zM0 2h1v3H0zM7 2h1v3H7zM1 5h1v1H1zM6 5h1v1H6zM2 6h4v1H2zM2 8h4v1H2z"/><path fill="#c0302a" d="M2 1h1v5H2zM4 1h1v5H4zM1 2h1v3H1zM6 2h1v3H6z"/><path fill="#ffd84a" d="M3 1h1v5H3zM5 1h1v5H5z"/><path fill="#8a5530" d="M3 7h2v1H3z"/></svg><span>Balão</span></button><button class="pill" id="supPill" type="button" aria-label="Apoiar Eryon com Pix"><svg class="ph" width="18" height="16" viewBox="0 0 9 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="#140e06" d="M1 0h2v1H1zM6 0h2v1H6zM0 1h1v3H0zM8 1h1v3H8zM4 1h1v1H4zM1 4h1v1H1zM7 4h1v1H7zM2 5h1v1H2zM6 5h1v1H6zM3 6h1v1H3zM5 6h1v1H5zM4 7h1v1H4z"/><path fill="#e04a5a" d="M1 1h2v1H1zM6 1h2v1H6zM1 2h7v2H1zM3 1h1v1H3zM5 1h1v1H5zM2 4h5v1H2zM3 5h3v1H3zM4 6h1v1H4z"/><path fill="#ff9aa8" d="M1 1h1v2H1z"/></svg><span>Apoiar <b>PIX</b></span></button><div id="plist" class="box" hidden></div></div>
   <button class="pill" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 2h8v1H1zM1 5h8v1H1zM1 8h8v1H1z"/></svg></button>
 </div>
 <div id="menu" class="panel" hidden><div class="box pbox menubox">
@@ -268,14 +269,14 @@ body.clean #nudge{display:none!important}
 <div id="chatlog"></div>
 <div id="chatbar"><button id="chatToggle" type="button" class="sec" aria-pressed="false" aria-label="Tela cheia" title="Tela cheia: deixa só o campo de mensagem"></button><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
 
-<script src="engine.js?v=40"></script>
-<script src="life.js?v=40"></script>
-<script src="craft.js?v=40"></script>
-<script src="explore.js?v=40"></script>
-<script src="dragons.js?v=40"></script>
-<script src="features.js?v=40"></script>
-<script src="castle.js?v=40"></script>
-<script src="economy.js?v=42"></script>
-<script src="game.js?v=41"></script>
+<script src="engine.js?v=50"></script>
+<script src="life.js?v=50"></script>
+<script src="craft.js?v=50"></script>
+<script src="explore.js?v=50"></script>
+<script src="dragons.js?v=50"></script>
+<script src="features.js?v=50"></script>
+<script src="castle.js?v=50"></script>
+<script src="economy.js?v=50"></script>
+<script src="game.js?v=50"></script>
 </body>
 </html>

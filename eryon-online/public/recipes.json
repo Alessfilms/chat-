@@ -297,5 +297,23 @@
   },
   "type": "decor",
   "desc": "Dá 3 maçãs a cada 4 minutos (só para o dono)."
+ },
+ {
+  "id": "facao",
+  "name": "Facão",
+  "cls": "mercador",
+  "cost": {},
+  "type": "equip",
+  "tool": "machete",
+  "desc": "+1 erva e +1 fruta sempre que colher."
+ },
+ {
+  "id": "faca",
+  "name": "Faca",
+  "cls": "mercador",
+  "cost": {},
+  "type": "equip",
+  "tool": "knife",
+  "desc": "+1 produto dos seus animais e da macieira."
  }
 ]
