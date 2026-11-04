@@ -384,8 +384,22 @@ async function rejoin() {
   }
   return false;
 }
+// primeira vez: pede o @ do Instagram antes de entrar
+function askHandle() {
+  return new Promise(done => {
+    const card = $('atCard'), inp = $('atInput'), err = $('atErr'); card.hidden = false; setTimeout(() => inp.focus(), 200);
+    const go = async () => { const u = inp.value.trim().replace(/^@+/, '').toLowerCase(); if (!u) { err.textContent = 'Escreva o seu @ (ou entre como visitante).'; return; }
+      if (!/^[a-z0-9._]{1,30}$/.test(u)) { err.textContent = 'Use só letras, números, ponto e _ (até 30).'; return; }
+      $('atGo').disabled = true; err.textContent = ''; const r = await post('/api/join', { username: u }); $('atGo').disabled = false;
+      if (r.ok) { card.hidden = true; done(r); } else err.textContent = (r.data && r.data.error) || 'Não deu para entrar com esse @. Tente outro.'; };
+    $('atGo').onclick = go; inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') go(); };
+    $('atSkip').onclick = () => { card.hidden = true; done(null); };
+  });
+}
 async function quickJoin() {
   if (await rejoin()) return;
+  const chosen = await askHandle();
+  if (chosen) { token = chosen.data.token; store.set('eryon_token', token); me = chosen.data.username; myLook = chosen.data.look || savedLook() || randLook(); if (!chosen.data.look) await post('/api/look', { token, look: myLook }); remember(); start(); return chosen.data.look ? null : openAvatar(true); }
   for (let i = 0; i < 5; i++) {
     const r = await post('/api/join', { username: 'visitante' + Math.floor(1000 + Math.random() * 9000) });
     if (r.ok) { token = r.data.token; store.set('eryon_token', token); myLook = savedLook() || randLook(); await post('/api/look', { token, look: myLook }); me = r.data.username; remember(); start(); return openAvatar(true); }

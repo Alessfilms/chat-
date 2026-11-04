@@ -140,6 +140,19 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 #tut{position:fixed;left:50%;bottom:calc(130px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:7;width:min(400px,calc(100% - 24px));padding:14px;display:flex;flex-direction:column;gap:6px}
 #tut[hidden]{display:none}#tut small{color:#9ff3ff;font-size:13px}#tut b{color:var(--gold);font-size:19px}#tut p{margin:0;font-size:16px}#tut .row2{display:flex;gap:8px;justify-content:flex-end}
 #plist .plrow{display:flex;align-items:center}#plist .plrow .pl{flex:1}#plist .repb{font:700 13px Pix,monospace;background:none;border:0;color:#ff8a70;padding:6px 8px;cursor:pointer}
+
+#supPill{gap:6px;background:linear-gradient(90deg,#3a1a10,#5a2418,#3a1a10);color:#fff3b0;box-shadow:inset 0 0 0 2px #ffd84a,0 0 0 0 rgba(255,216,74,.7);animation:supGlow 2.2s infinite;position:relative;overflow:hidden}
+#supPill span{font:700 15px Pix,monospace}#supPill b{color:#ffd84a}
+#supPill .ph{animation:beat 1.1s infinite;image-rendering:pixelated}
+#supPill::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,243,176,.55),transparent);animation:shine 3.2s infinite}
+@keyframes beat{0%,60%,100%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1.05)}45%{transform:scale(1.2)}}
+@keyframes supGlow{0%{box-shadow:inset 0 0 0 2px #ffd84a,0 0 0 0 rgba(255,216,74,.65)}70%{box-shadow:inset 0 0 0 2px #ffd84a,0 0 0 10px rgba(255,216,74,0)}100%{box-shadow:inset 0 0 0 2px #ffd84a,0 0 0 0 rgba(255,216,74,0)}}
+@keyframes shine{0%,55%{left:-60%}85%,100%{left:130%}}
+@media (prefers-reduced-motion:reduce){#supPill,#supPill .ph,#supPill::after{animation:none}}
+.hudl{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.atbox{gap:12px}.att{font:400 20px/1.3 P2P,monospace!important;color:var(--gold);text-align:center;margin:0}
+.atrow{display:flex;align-items:center;background:#0c1410;border:3px solid #3c5d4a}.atrow span{font:700 22px Pix,monospace;color:var(--gold);padding:0 4px 0 12px}.atrow input{border:0;padding-left:2px}
+.aterr{color:#ff8a70;min-height:1.2em;margin:0;font-size:15px}
 </style>
 </head>
 <body>
@@ -178,7 +191,7 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 </div>
 
 <div id="hud">
-  <div class="hudl"><button class="pill" id="onlineBtn" type="button" aria-label="Quem está online"><i class="dot"></i><b id="online">1</b></button><div id="plist" class="box" hidden></div></div>
+  <div class="hudl"><button class="pill" id="onlineBtn" type="button" aria-label="Quem está online"><i class="dot"></i><b id="online">1</b></button><button class="pill" id="supPill" type="button" aria-label="Apoiar Eryon com Pix"><svg class="ph" width="18" height="16" viewBox="0 0 9 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="#140e06" d="M1 0h2v1H1zM6 0h2v1H6zM0 1h1v3H0zM8 1h1v3H8zM4 1h1v1H4zM1 4h1v1H1zM7 4h1v1H7zM2 5h1v1H2zM6 5h1v1H6zM3 6h1v1H3zM5 6h1v1H5zM4 7h1v1H4z"/><path fill="#e04a5a" d="M1 1h2v1H1zM6 1h2v1H6zM1 2h7v2H1zM3 1h1v1H3zM5 1h1v1H5zM2 4h5v1H2zM3 5h3v1H3zM4 6h1v1H4z"/><path fill="#ff9aa8" d="M1 1h1v2H1z"/></svg><span>Apoiar <b>PIX</b></span></button><div id="plist" class="box" hidden></div></div>
   <button class="pill" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 2h8v1H1zM1 5h8v1H1zM1 8h8v1H1z"/></svg></button>
 </div>
 <div id="menu" class="panel" hidden><div class="box pbox menubox">
@@ -206,6 +219,14 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 <div id="fxToast" hidden><i></i><div><b></b><span></span></div></div>
 <div id="announce" hidden><small>CRIADOR DE ERYON</small><span></span></div>
 <div id="tut" class="box" hidden><small></small><b></b><p></p><div class="row2"><button id="tutSkip" type="button" class="sec">Pular</button><button id="tutNext" type="button">Próximo</button></div></div>
+<div id="atCard" class="panel" hidden><div class="box pbox atbox">
+  <h2 class="att">Bem-vindo a Eryon!</h2>
+  <p>Qual é o seu <b>@ do Instagram</b>? Ele aparece em cima do seu personagem para a galera te reconhecer.</p>
+  <div class="atrow"><span>@</span><input id="atInput" placeholder="seu_usuario" maxlength="31" autocapitalize="none" autocomplete="off" spellcheck="false" inputmode="text" enterkeyhint="go"></div>
+  <p id="atErr" class="aterr" role="alert"></p>
+  <button id="atGo" type="button">Entrar em Eryon</button>
+  <button id="atSkip" type="button" class="sec">Entrar sem @ (visitante)</button>
+</div></div>
 <div id="camctl"><button id="recenter" type="button" class="pill" hidden title="Voltar para o meu personagem">◎</button><button id="zin" type="button" class="pill zbtn" title="Aproximar">+</button><button id="zout" type="button" class="pill zbtn" title="Afastar">−</button></div>
 <div id="actbar"><button id="actBtn" type="button" class="act main" hidden>Ação</button><button id="act2" type="button" class="act skill" hidden>Guardar</button><button id="magicBtn" type="button" class="act skill">Habilidade</button></div>
 <div id="placeBar" hidden><button id="placeOk" type="button" class="act main">Colocar</button><button id="placeRot" type="button" class="act skill">Girar</button><button id="placeNo" type="button" class="act skill">Cancelar</button></div>
@@ -241,8 +262,8 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 <script src="craft.js?v=31"></script>
 <script src="explore.js?v=31"></script>
 <script src="dragons.js?v=31"></script>
-<script src="features.js?v=31"></script>
+<script src="features.js?v=32"></script>
 <script src="castle.js?v=31"></script>
-<script src="game.js?v=31"></script>
+<script src="game.js?v=32"></script>
 </body>
 </html>

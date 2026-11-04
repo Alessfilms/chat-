@@ -170,6 +170,7 @@ $('questBtn').onclick = () => { closePanels(); $('questPanel').hidden = false; r
 $('questClose').onclick = () => $('questPanel').hidden = true;
 $('supportBtn').onclick = () => { closePanels(); $('supPanel').hidden = false; renderSupport(); };
 $('supClose').onclick = () => $('supPanel').hidden = true;
+$('supPill').onclick = () => { closePanels(); $('supPanel').hidden = false; renderSupport(); };
 $('repClose').onclick = () => $('repPanel').hidden = true;
 $('tutAgain').onclick = () => { closePanels(); startTutorial(true); };
 });
