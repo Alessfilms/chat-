@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Eryon Admin</title>
+<style>
+@font-face{font-family:Pix;src:url(fonts/pixelify-sans-latin-700-normal.woff2)}
+:root{--bg:#0c1410;--panel:#1c2a22;--edge:#c9a46a;--gold:#ffd84a;--txt:#eef0ea;--mut:#98a4ac}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.4 Pix,system-ui,sans-serif;padding:20px max(16px,env(safe-area-inset-left)) 40px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1{color:var(--gold);margin:0;font-size:28px}
+section{background:var(--panel);border:3px solid #060b0a;box-shadow:inset 0 0 0 2px var(--edge);padding:16px;display:flex;flex-direction:column;gap:10px}
+label{color:var(--gold);font-size:14px;text-transform:uppercase;letter-spacing:1px}
+textarea{width:100%;min-height:120px;resize:vertical;font:16px Pix,monospace;padding:10px;background:#060b0a;color:var(--txt);border:2px solid #3c5d4a}
+button{font:700 16px Pix,monospace;padding:10px 14px;background:var(--gold);color:#140e06;border:2px solid #140e06;cursor:pointer}
+button.sm{padding:5px 9px;font-size:14px}
+button.dan{background:#a83a32;color:#fff}
+button:focus-visible,textarea:focus-visible{outline:3px solid var(--txt);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #2a4a3d;white-space:nowrap}
+th{color:var(--mut);font-size:13px;text-transform:uppercase}
+code{background:#060b0a;padding:2px 6px;color:var(--gold);font-size:16px;letter-spacing:2px}
+.on{color:#9cbf62}.off{color:var(--mut)}
+#msg{color:#9ff3ff;min-height:1.2em;margin:0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Eryon · Painel do criador</h1>
+  <section>
+    <p id="who" style="margin:0">Entre com a conta Google que você colocou nas regras do Firebase.</p>
+    <div class="row"><button id="in">Entrar com Google</button><button id="out" class="sm" hidden>Sair</button></div>
+  </section>
+  <div id="panel" hidden>
+    <section>
+      <label for="list">Cole aqui os @ de quem comentou (um por linha, ou separados por vírgula)</label>
+      <textarea id="list" placeholder="@heitor_morrone&#10;@kaguya.xs&#10;@lorhan_cristian"></textarea>
+      <div class="row"><button id="add">Liberar acesso</button><button id="copyAll" class="sm">Copiar todas as mensagens</button></div>
+    </section>
+    <section style="margin-top:18px">
+      <label>Moradores liberados (<span id="count">0</span>) · online agora: <span id="onl">0</span></label>
+      <div class="tbl"><table><thead><tr><th>@</th><th>Código</th><th>Status</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+    </section>
+  </div>
+  <p id="msg"></p>
+</main>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const enc = u => u.replace(/\./g, ','), dec = k => String(k).replace(/,/g, '.');
+const norm = u => String(u || '').trim().toLowerCase().replace(/^@+/, '');
+const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newCode = () => Array.from(crypto.getRandomValues(new Uint32Array(6)), n => ALPHA[n % ALPHA.length]).join('');
+const say = t => { $('msg').textContent = t; };
+let codes = {}, online = new Set();
+if (!window.firebase || !window.ERYON_FIREBASE || String(window.ERYON_FIREBASE.apiKey).startsWith('COLE')) { say('Falta configurar o Firebase no arquivo config.js (veja o LEIA-ME).'); throw new Error('config'); }
+firebase.initializeApp(window.ERYON_FIREBASE);
+const db = firebase.database(), auth = firebase.auth();
+$('in').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => say('Não foi possível entrar: ' + e.message));
+$('out').onclick = () => auth.signOut();
+auth.onAuthStateChanged(u => {
+  const ok = u && !u.isAnonymous;
+  $('who').textContent = ok ? 'Conectado como ' + u.email : 'Entre com a conta Google que você colocou nas regras do Firebase.';
+  $('in').hidden = ok; $('out').hidden = !ok; $('panel').hidden = !ok;
+  if (!ok) return;
+  db.ref('codes').on('value', s => { codes = s.val() || {}; render(); }, () => say('Sem permissão. Confira se o seu e-mail está nas regras (database.rules.json).'));
+  db.ref('players').on('value', s => { online = new Set(Object.values(s.val() || {}).map(p => p.u)); render(); }, () => {});
+});
+const site = location.origin;
+const msgFor = (u, c) => `Oi @${u}! Você agora é morador de Eryon. Entre em ${site} com o seu @ e o código ${c}`;
+function render() {
+  const list = Object.entries(codes).sort(); $('count').textContent = list.length; $('onl').textContent = online.size;
+  const tb = $('rows'); tb.innerHTML = '';
+  for (const [k, c] of list) {
+    const u = dec(k), tr = document.createElement('tr'), td = t => { const d = document.createElement('td'); if (t !== undefined) d.textContent = t; tr.appendChild(d); return d; };
+    td('@' + u); const cc = td(); const code = document.createElement('code'); code.textContent = c; cc.appendChild(code);
+    const st = td(online.has(k) ? 'online' : 'offline'); st.className = online.has(k) ? 'on' : 'off';
+    const act = td(); act.className = 'row';
+    const b1 = document.createElement('button'); b1.className = 'sm'; b1.textContent = 'Copiar mensagem'; b1.onclick = () => copy(msgFor(u, c));
+    const b2 = document.createElement('button'); b2.className = 'sm'; b2.textContent = 'Novo código'; b2.onclick = async () => { await revoke(k, false); await db.ref('codes/' + k).set(newCode()); say('Novo código gerado para @' + u); };
+    const b3 = document.createElement('button'); b3.className = 'sm dan'; b3.textContent = 'Remover'; b3.onclick = async () => { if (b3.dataset.sure !== '1') { b3.dataset.sure = '1'; b3.textContent = 'Confirmar?'; return; } await revoke(k, true); say('@' + u + ' removido.'); };
+    act.append(b1, b2, b3); tb.appendChild(tr);
+  }
+}
+// tira o acesso: apaga o código (opcional), os cadastros e o personagem online desse @
+async function revoke(k, delCode) {
+  const upd = {}; if (delCode) upd['codes/' + k] = null;
+  const m = (await db.ref('members').orderByChild('username').equalTo(k).get()).val() || {};
+  for (const uid in m) { upd['members/' + uid] = null; upd['players/' + uid] = null; }
+  await db.ref().update(upd);
+}
+$('add').onclick = async () => {
+  const raw = $('list').value.split(/[\s,;]+/).map(norm).filter(Boolean), bad = raw.filter(u => !/^[a-z0-9._]{1,30}$/.test(u)), ok = raw.filter(u => /^[a-z0-9._]{1,30}$/.test(u));
+  const upd = {}; let n = 0; for (const u of ok) if (!codes[enc(u)]) { upd['codes/' + enc(u)] = newCode(); n++; }
+  try { if (n) await db.ref().update(upd); $('list').value = ''; say(`${n} liberado(s).` + (bad.length ? ' Inválidos: ' + bad.join(', ') : '')); } catch (e) { say('Erro: ' + e.message); }
+};
+$('copyAll').onclick = () => copy(Object.entries(codes).map(([k, c]) => msgFor(dec(k), c)).join('\n\n'));
+async function copy(t) { try { await navigator.clipboard.writeText(t); say('Copiado!'); } catch { say(t); } }
+</script>
+</body>
+</html>

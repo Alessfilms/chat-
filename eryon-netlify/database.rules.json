@@ -1,0 +1,41 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "codes": {
+      ".read": "auth != null && auth.token.email == 'SEU_EMAIL@gmail.com' && auth.token.email_verified == true",
+      ".write": "auth != null && auth.token.email == 'SEU_EMAIL@gmail.com' && auth.token.email_verified == true"
+    },
+    "members": {
+      ".read": "auth != null && auth.token.email == 'SEU_EMAIL@gmail.com' && auth.token.email_verified == true",
+      ".write": "auth != null && auth.token.email == 'SEU_EMAIL@gmail.com' && auth.token.email_verified == true",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        ".validate": "newData.hasChildren(['username', 'code']) && newData.child('username').isString() && newData.child('code').isString() && root.child('codes').child(newData.child('username').val()).val() == newData.child('code').val()"
+      },
+      ".indexOn": [
+        "username"
+      ]
+    },
+    "players": {
+      ".read": "auth != null && (root.child('members').child(auth.uid).exists() || auth.token.email == 'SEU_EMAIL@gmail.com')",
+      ".write": "auth != null && auth.token.email == 'SEU_EMAIL@gmail.com' && auth.token.email_verified == true",
+      "$uid": {
+        ".write": "auth != null && auth.uid == $uid && (root.child('members').child(auth.uid).exists() || !newData.exists())",
+        ".validate": "newData.child('u').val() == root.child('members').child($uid).child('username').val() && newData.child('x').isNumber() && newData.child('y').isNumber()"
+      }
+    },
+    "chat": {
+      ".read": "auth != null && root.child('members').child(auth.uid).exists()",
+      ".write": "auth != null && auth.token.email == 'SEU_EMAIL@gmail.com' && auth.token.email_verified == true",
+      ".indexOn": [
+        "ts"
+      ],
+      "$id": {
+        ".write": "auth != null && !data.exists() && root.child('members').child(auth.uid).exists()",
+        ".validate": "newData.child('u').val() == root.child('members').child(auth.uid).child('username').val() && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 120 && newData.child('ts').val() == now"
+      }
+    }
+  }
+}

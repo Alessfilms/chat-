@@ -1,0 +1,66 @@
+ERYON ONLINE — versão para NETLIFY (arrastar e soltar)
+=====================================================
+
+A Netlify só hospeda arquivos. Para os jogadores se verem e conversarem em tempo
+real, o jogo usa o Firebase (do Google, plano gratuito "Spark"). São 3 partes:
+
+------------------------------------------------------------
+PARTE 1 — Criar o Firebase (uns 10 minutos, uma vez só)
+------------------------------------------------------------
+1. Entre em https://console.firebase.google.com e clique em "Criar projeto"
+   (pode desativar o Google Analytics).
+2. Menu "Criação" > "Authentication" > "Vamos começar" > aba "Método de login":
+   - ative "Anônimo"
+   - ative "Google" (escolha o seu e-mail de suporte e salve)
+3. Menu "Criação" > "Realtime Database" > "Criar banco de dados"
+   (local: Estados Unidos; comece no "modo bloqueado").
+4. Na aba "Regras" do Realtime Database: apague tudo, cole o conteúdo do arquivo
+   database.rules.json desta pasta e TROQUE as 5 ocorrências de
+   SEU_EMAIL@gmail.com pelo SEU e-mail do Google. Clique em "Publicar".
+5. Engrenagem (Configurações do projeto) > "Seus apps" > ícone </> (Web) >
+   dê um nome > Registrar. Vai aparecer um "firebaseConfig".
+   Copie apiKey, authDomain, databaseURL, projectId e appId para o arquivo
+   config.js desta pasta (substitua os textos COLE_AQUI / SEU-PROJETO).
+   Se o databaseURL não aparecer, copie o link que está no topo da página
+   do Realtime Database (algo como https://xxxx-default-rtdb.firebaseio.com).
+
+------------------------------------------------------------
+PARTE 2 — Publicar na Netlify
+------------------------------------------------------------
+1. Entre em https://app.netlify.com/drop
+2. Arraste ESTA PASTA inteira (eryon-netlify) para a página.
+3. A Netlify mostra o seu link (ex.: https://nome-aleatorio.netlify.app).
+   Em "Site configuration" você pode trocar o nome do link.
+4. Volte no Firebase: Authentication > "Configurações" > "Domínios autorizados"
+   > "Adicionar domínio" e cole o seu domínio da Netlify
+   (ex.: nome-aleatorio.netlify.app). Sem isso o login do painel não funciona.
+
+Sempre que mudar algum arquivo, arraste a pasta de novo na mesma página do site
+(Netlify > seu site > "Deploys" > arraste a pasta).
+
+------------------------------------------------------------
+PARTE 3 — Liberar quem comentou
+------------------------------------------------------------
+1. Abra  https://SEU-LINK.netlify.app/admin.html
+2. "Entrar com Google" usando o MESMO e-mail que você colocou nas regras.
+3. Cole os @ de quem comentou e clique em "Liberar acesso".
+4. Cada @ ganha um código de 6 letras. O botão "Copiar mensagem" copia o texto
+   pronto para mandar por DM.
+5. O seguidor abre o link, digita o @ e o código e entra em Eryon.
+
+"Remover" tira o acesso e expulsa a pessoa do mapa.
+"Novo código" invalida o código antigo.
+
+------------------------------------------------------------
+O que está protegido
+------------------------------------------------------------
+- Só entra quem tiver o código liberado para aquele @. A conferência é feita
+  pelas regras do Firebase, no servidor do Google, não no navegador.
+- Os códigos e a lista de membros só podem ser lidos pelo seu e-mail de admin.
+- Mensagens do chat: até 120 caracteres, o nome é sempre o do próprio jogador
+  (ninguém fala em nome de outro).
+- Para apagar mensagens: Firebase > Realtime Database > "chat" > apague.
+
+Limites do plano gratuito do Firebase: 100 pessoas conectadas ao mesmo tempo
+e 10 GB de transferência por mês. Passou disso, mude para o plano "Blaze"
+(paga só o que usar).
