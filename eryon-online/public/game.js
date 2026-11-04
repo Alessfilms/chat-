@@ -616,7 +616,7 @@ function draw(t, p) {
       if (k < 1) burst(x, t, t - (Date.now() - h.t) / 1000 + 2.9, h.x, h.y - 2, 24, [P.st3, P.st4, P.wallD], 22, .9, 10, h.id * 7);
       continue; }
     if (o.tree !== undefined && URBAN.has(o.tree)) continue;
-    if (o.tree !== undefined && CUT.has(o.tree)) { px(x, P.ink, o.x - 3, o.y - 4, 7, 5); px(x, P.wood, o.x - 2, o.y - 3, 5, 3); px(x, P.woodL, o.x - 2, o.y - 3, 5, 1); continue; }
+    if (o.tree !== undefined && CUT.has(o.tree)) { drawCutTree(x, o); continue; }
     x.drawImage(GIANT.burned.size && isBurnt(o) ? burntImg(o.img) : o.img, o.dx, o.dy);
   }
   for (const q of players.values()) if ((q.room || '') === myRoom) drawActFx(x, q, t);

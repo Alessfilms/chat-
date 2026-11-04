@@ -65,3 +65,23 @@ function drawRider(x, q, t) {
   if (q.moving && f === 1 && Math.random() < .5) burst(x, t, t - .05, q.x - face * 12, q.y - 1, 3, ['#c9a46a', '#a0784a'], 10, .4, 20, q.id || 1);
 }
 setInterval(() => { const p = players.get(myId); if (p && p.horse && (p.room || p.fly)) p.horse = false; updHorseBtn(); }, 2000);
+
+// ---------- árvore cortada: toco + troncos caídos que vão se amontoando no chão (não some mais)
+const LOG_SPR = {};
+function logSprite(v) {
+  if (LOG_SPR[v]) return LOG_SPR[v]; const [c, x] = canvas(30, 16), O = P.ink, BK = ['#3a2216', '#5a3a26', '#6b4630', '#8b5e3c'];
+  x.fillStyle = 'rgba(10,30,20,.3)'; x.beginPath(); x.ellipse(15, 13, 14, 3, 0, 0, 6.283); x.fill();
+  const log = (X, Y, L) => { px(x, O, X - 1, Y - 1, L + 2, 6); for (let k = 0; k < L; k++) { px(x, BK[(k * 7 + Y) % 3 === 0 ? 1 : 2], X + k, Y, 1, 4); px(x, BK[3], X + k, Y, 1, 1); px(x, BK[0], X + k, Y + 3, 1, 1); if ((k + Y) % 5 === 0) px(x, BK[0], X + k, Y + 1, 1, 2); }
+    px(x, O, X + L - 1, Y - 1, 4, 6); px(x, '#e4c590', X + L, Y, 2, 4); px(x, '#c9a46a', X + L, Y + 1, 2, 2); px(x, '#a0784a', X + L + 1, Y + 1, 1, 1); };   // ponta cortada com anéis
+  if (v === 0) log(4, 9, 18);
+  else if (v === 1) { log(3, 10, 17); log(8, 6, 16); }
+  else { log(2, 10, 18); log(7, 10, 15); log(5, 6, 16); px(x, '#47994a', 3, 14, 3, 1); }
+  return LOG_SPR[v] = c;
+}
+function drawCutTree(x, o) {
+  const v = Math.floor(h2(o.tree, 31) * 3), fl = h2(31, o.tree) > .5, s = logSprite(v);
+  // toco
+  px(x, P.ink, o.x - 4, o.y - 5, 9, 6); px(x, P.wood, o.x - 3, o.y - 4, 7, 4); px(x, '#e4c590', o.x - 3, o.y - 4, 7, 2); px(x, '#c9a46a', o.x - 1, o.y - 4, 3, 1); px(x, P.woodD, o.x - 3, o.y - 1, 7, 1);
+  // troncos caídos ao lado
+  if (fl) { x.save(); x.translate(Math.round(o.x - 2), 0); x.scale(-1, 1); x.drawImage(s, -30, Math.round(o.y - 12)); x.restore(); } else x.drawImage(s, Math.round(o.x + 2), Math.round(o.y - 12));
+}
