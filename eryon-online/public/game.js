@@ -513,6 +513,7 @@ function draw(t, p) {
   for (const q of players.values()) if ((q.room || '') === myRoom) list.push({ y: q.y, pl: q });
   if (!room) { for (const n of NODES) if (n.x > li - 20 && n.x < li + cw + 20 && n.y > ti - 10 && n.y < ti + ch + 20) list.push({ y: n.y, node: n }); for (const d of DECOR) if (d.x > li - 30 && d.x < li + cw + 30 && d.y > ti - 10 && d.y < ti + ch + 30) list.push({ y: d.y, decor: d }); }
   if (!room) for (const h of BUILT) if (h.x > li - 40 && h.x < li + cw + 40 && h.y > ti - 10 && h.y < ti + ch + 40) list.push({ y: h.y, built: h });
+  if (!room) drawDragonShadows(x, li, ti, cw, ch);
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
     if (o.fire) { drawFire(x, C.x, C.y + 1, t); continue; }
@@ -530,6 +531,7 @@ function draw(t, p) {
     x.drawImage(o.img, o.dx, o.dy);
   }
   for (const q of players.values()) if ((q.room || '') === myRoom) drawActFx(x, q, t);
+  if (!room) drawDragons(x, li, ti, cw, ch, p);
   if (room && room.fire) { drawFire(x, room.fire.x, room.fire.y, t); glow(x, room.fire.x, room.fire.y - 6, 18, P.fire2, .12); }
   if (!room) { drawAmbient(x, t, li, ti, cw, ch); drawCloudShadows(x, t, li, ti, cw, ch); }
   if (!room && B.forja) { x.globalAlpha = .6 + .4 * h2(Math.floor(t * 10), 2); px(x, P.fire1, B.forja.x - 7, B.forja.y - 10, 12, 8); px(x, P.fire3, B.forja.x - 5, B.forja.y - 8, 8, 5); x.globalAlpha = 1; smoke(x, B.forja.x + 11, B.forja.y - 30, t, 6); }
