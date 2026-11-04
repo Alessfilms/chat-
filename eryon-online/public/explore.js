@@ -244,10 +244,78 @@ function checkDiscover(p) {
   if (p.room) return;
   for (const l of LANDMARKS) if (!FOUND.has(l.id) && Math.hypot(p.x - l.x, p.y - l.y) < l.r) { FOUND.add(l.id); send({ t: 'discover', id: l.id }); showDiscovery(l); updFound(); }
 }
+// ---------------------------------------------------------------- animação de descoberta (tela cheia, estilo jogo)
+const LM_FX = {
+  costela: { aura: '#ff7a3a', cols: ['#ffd84a', '#ff9a3a', '#ff5a2a'], kind: 'ember', lore: 'Os ossos do dragão que caiu antes de Eryon existir.' },
+  ruinas: { aura: '#3fd0e0', cols: ['#9ff3ff', '#3fd0e0', '#e8ffff'], kind: 'rune', lore: 'Uma inscrição antiga brilha… ninguém sabe ler.' },
+  torre: { aura: '#ffd84a', cols: ['#fff3b0', '#ffd84a', '#f2a33a'], kind: 'gold', lore: 'A luz da janela nunca se apaga.' },
+  caverna: { aura: '#3fd0e0', cols: ['#9ff3ff', '#3fd0e0', '#6f9be0'], kind: 'crystal', lore: 'Cristais azuis iluminam o caminho para baixo.' },
+  buraco: { aura: '#9a5ad0', cols: ['#d0a0ff', '#9a5ad0', '#6e4a8a'], kind: 'swirl', lore: 'Dizem que não tem fundo.' },
+  circulo: { aura: '#3fd0e0', cols: ['#9ff3ff', '#3fd0e0', '#fff3b0'], kind: 'rune', lore: 'As runas acordam quando alguém chega perto.' },
+  arvore: { aura: '#84c65a', cols: ['#84c65a', '#47994a', '#9ff3ff'], kind: 'leaf', lore: 'A árvore mais velha da floresta. Ela respira.' },
+  poco: { aura: '#c8d8ff', cols: ['#ffffff', '#c8d8ff', '#fff3b0'], kind: 'star', lore: 'Na água, a lua aparece mesmo de dia.' },
+};
+let discAnim = null;
 function showDiscovery(l) {
-  $('discName').textContent = l.name; $('disc').hidden = false; $('disc').classList.remove('anim'); void $('disc').offsetWidth; $('disc').classList.add('anim');
-  clearTimeout(showDiscovery.t); showDiscovery.t = setTimeout(() => $('disc').hidden = true, 4200);
-  if (SND.ctx) { const w = SND.ctx.currentTime; [392, 523.25, 659.25, 783.99, 1046.5].forEach((f, i) => pluck(f, w + i * .12, .35, 2.2)); drum(w, .6); }
+  if (SND.ctx) { const w = SND.ctx.currentTime; [392, 523.25, 659.25, 783.99, 1046.5].forEach((f, i) => pluck(f, w + i * .12, .35, 2.2)); drum(w, .6); [1046.5, 1318.5, 1568].forEach((f, i) => pluck(f, w + .9 + i * .09, .18, 2.6)); }
+  let cv = document.getElementById('discFx');
+  if (!cv) { cv = document.createElement('canvas'); cv.id = 'discFx'; cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:9;cursor:pointer;touch-action:none';
+    cv.addEventListener('pointerdown', e => { e.preventDefault(); if (discAnim && performance.now() - discAnim.t0 > 900) discAnim.t0 = performance.now() - discAnim.T * 1000 + 450; }); document.body.appendChild(cv); }
+  const D = Math.min(devicePixelRatio || 1, 2); cv.width = Math.round(innerWidth * D); cv.height = Math.round(innerHeight * D); cv.hidden = false;
+  discAnim = { l, fx: LM_FX[l.id] || LM_FX.torre, t0: performance.now(), T: 5.6, parts: [], D, last: 0 };
+  requestAnimationFrame(discFrame);
+}
+function discFrame(now) {
+  const A0 = discAnim, cv = document.getElementById('discFx'); if (!A0 || !cv) return;
+  const t = (now - A0.t0) / 1000, dt = Math.min(.05, (now - (A0.last || now)) / 1000); A0.last = now;
+  if (t > A0.T) { cv.hidden = true; discAnim = null; return; }
+  const x = cv.getContext('2d'), W = cv.width, H = cv.height, D = A0.D, fx = A0.fx, A = Math.min(1, t / .35) * Math.min(1, (A0.T - t) / .6);
+  x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H); x.imageSmoothingEnabled = false; x.globalAlpha = A;
+  // fundo escuro com vinheta
+  const g = x.createRadialGradient(W / 2, H * .44, 10, W / 2, H * .44, Math.max(W, H) * .7); g.addColorStop(0, 'rgba(10,16,40,.55)'); g.addColorStop(1, 'rgba(2,4,12,.92)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // raios de luz girando
+  const cx = W / 2, cy = H * .44, R = Math.max(W, H);
+  x.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 14; i++) { const a = t * .25 + i / 14 * 6.283; x.globalAlpha = A * (.07 + .04 * Math.sin(t * 2 + i)); x.fillStyle = fx.aura; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(a - .07) * R, cy + Math.sin(a - .07) * R); x.lineTo(cx + Math.cos(a + .07) * R, cy + Math.sin(a + .07) * R); x.fill(); }
+  const ag = x.createRadialGradient(cx, cy, 0, cx, cy, Math.min(W, H) * .42); ag.addColorStop(0, fx.aura); ag.addColorStop(1, 'rgba(0,0,0,0)'); x.globalAlpha = A * (.35 + .1 * Math.sin(t * 3)); x.fillStyle = ag; x.fillRect(0, 0, W, H);
+  x.globalCompositeOperation = 'source-over';
+  // monumento ampliado (pula para a tela)
+  const s = lmSprite(A0.l.id), k = Math.max(2, Math.floor(Math.min(W * .62 / s.c.width, H * .3 / s.c.height))), pop = Math.max(.02, t < .7 ? eOutBack(clamp(t / .7)) : 1), sc = k * pop, bob = Math.sin(t * 2) * k * .8;
+  const sw = s.c.width * sc, sh = s.c.height * sc;
+  x.globalAlpha = A; x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(cx, cy + sh * .45 + k * 2, Math.max(.5, sw * .42), k * 4, 0, 0, 6.283); x.fill();
+  x.drawImage(s.c, Math.round(cx - sw / 2), Math.round(cy - sh / 2 + bob), Math.round(sw), Math.round(sh));
+  // partículas de cada lugar
+  const P0 = A0.parts, spawn = n => { for (let i = 0; i < n; i++) P0.push({ x: cx + (Math.random() - .5) * sw * .9, y: cy + (Math.random() - .3) * sh * .6, vx: 0, vy: 0, life: 0, max: 1.4 + Math.random() * 1.6, c: fx.cols[Math.floor(Math.random() * fx.cols.length)], a: Math.random() * 6.283, r: Math.random() }); };
+  if (t < A0.T - .8) spawn(fx.kind === 'swirl' ? 3 : 2);
+  const u = Math.max(2, Math.round(k * .6));
+  for (let i = P0.length - 1; i >= 0; i--) { const q = P0[i]; q.life += dt; if (q.life > q.max) { P0.splice(i, 1); continue; }
+    const f = q.life / q.max;
+    if (fx.kind === 'ember') { q.vy -= 40 * D * dt; q.vx = Math.sin(q.life * 4 + q.a) * 20 * D; }
+    else if (fx.kind === 'rune' || fx.kind === 'gold' || fx.kind === 'crystal') { q.vy = -30 * D; q.vx = Math.sin(q.life * 2 + q.a) * 12 * D; }
+    else if (fx.kind === 'leaf') { if (!q.init) { q.init = 1; q.y = cy - sh * .6 + Math.random() * sh * .3; } q.vy = 28 * D; q.vx = Math.sin(q.life * 3 + q.a) * 30 * D; }
+    else if (fx.kind === 'star') { q.vx = 0; q.vy = -8 * D; }
+    else if (fx.kind === 'swirl') { if (!q.init) { q.init = 1; q.rad = Math.min(W, H) * (.3 + q.r * .2); } q.a += dt * 2.2; q.rad *= 1 - dt * .9; q.x = cx + Math.cos(q.a) * q.rad; q.y = cy + Math.sin(q.a) * q.rad * .45; }
+    q.x += q.vx * dt; q.y += q.vy * dt;
+    const al = Math.sin(f * Math.PI) * A; x.globalAlpha = al; x.fillStyle = q.c; const X = Math.round(q.x), Y = Math.round(q.y);
+    if (fx.kind === 'star' || fx.kind === 'crystal') { const tw = .5 + .5 * Math.sin(q.life * 9 + q.a); x.fillRect(X - u * 1.5 * tw, Y - u / 4, u * 3 * tw, u / 2); x.fillRect(X - u / 4, Y - u * 1.5 * tw, u / 2, u * 3 * tw); }
+    else if (fx.kind === 'rune') { x.fillRect(X, Y, u, u * 2); x.fillRect(X, Y, u * 2, u / 2 + 1); if (q.r > .5) x.fillRect(X + u, Y + u, u, u); }
+    else if (fx.kind === 'leaf') { x.fillRect(X, Y, u * 2, u); x.fillRect(X + u / 2, Y - u / 2, u, u * 2); }
+    else x.fillRect(X, Y, u, u);
+  }
+  // textos
+  x.globalAlpha = A; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
+  const shadowText = (txt, X, Y, font, col, lw) => { x.font = font; x.lineWidth = lw; x.strokeStyle = '#140e06'; x.strokeText(txt, X, Y); x.fillStyle = col; x.fillText(txt, X, Y); };
+  const fs1 = Math.round(Math.min(W * .07, 30 * D)), tp = t < .5 ? eOutBack(clamp(t / .5)) : 1;
+  x.save(); x.translate(cx, H * .14); x.scale(tp, tp); shadowText('DESCOBERTA!', 0, 0, `400 ${fs1}px P2P, monospace`, '#ffd84a', fs1 * .35); x.restore();
+  const name = A0.l.name, n = clamp(Math.floor((t - .45) * 24), 0, name.length), fs2 = Math.round(Math.min(W * .075, 34 * D));
+  if (n > 0) shadowText(name.slice(0, n), cx, H * .22, `700 ${fs2}px Pix, monospace`, '#fff8e0', fs2 * .3);
+  if (t > 1.1) { x.globalAlpha = A * clamp((t - 1.1) / .5); const fs3 = Math.round(Math.min(W * .045, 18 * D)); x.font = `700 ${fs3}px Pix, monospace`;
+    const words = fx.lore.split(' '), lines = []; let ln = ''; for (const w2 of words) { if (x.measureText(ln + ' ' + w2).width > W * .8 && ln) { lines.push(ln); ln = w2; } else ln = ln ? ln + ' ' + w2 : w2; } lines.push(ln);
+    lines.forEach((L2, i) => shadowText(L2, cx, H * .72 + i * fs3 * 1.35, `700 ${fs3}px Pix, monospace`, '#e8f4ff', fs3 * .3));
+    const fs4 = Math.round(Math.min(W * .035, 13 * D)); shadowText(`${FOUND.size}/${LANDMARKS.length} lugares descobertos`, cx, H * .72 + lines.length * fs3 * 1.35 + fs4 * 1.4, `400 ${fs4}px P2P, monospace`, '#9ff3ff', fs4 * .35); }
+  if (t > 2.2) { x.globalAlpha = A * (.5 + .5 * Math.sin(t * 5)); const fs5 = Math.round(Math.min(W * .035, 13 * D)); shadowText('toque para continuar', cx, H * .92, `700 ${fs5}px Pix, monospace`, '#c3cad6', fs5 * .3); }
+  x.globalAlpha = 1;
+  requestAnimationFrame(discFrame);
 }
 function updFound() { $('foundN').textContent = `${FOUND.size}/${LANDMARKS.length}`; }
 

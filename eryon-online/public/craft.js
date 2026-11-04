@@ -60,10 +60,17 @@ let DECOR = [];
 const DECOR_SPR = {};
 function decorSprite(k) {
   if (DECOR_SPR[k]) return DECOR_SPR[k];
-  const S2 = { cerca: [16, 10], banco: [16, 9], lanterna: [8, 18], fogueira: [14, 8], tabuas: [16, 10], canteiro: [16, 10], cristal: [10, 14], runa: [10, 14], alvo: [12, 14], estandarte: [9, 18], boneco: [11, 16], palco: [24, 12], barril: [10, 11] }[k] || [8, 8];
+  const S2 = { cerca: [16, 11], cerca_v: [6, 21], banco: [16, 9], lanterna: [8, 18], fogueira: [14, 8], tabuas: [16, 10], canteiro: [16, 10], cristal: [10, 14], runa: [10, 14], alvo: [12, 14], estandarte: [9, 18], boneco: [11, 16], palco: [24, 12], barril: [10, 11] }[k] || [8, 8];
   const [c, x] = canvas(S2[0], S2[1]), W = S2[0], H = S2[1];
   const box = (X, Y, w, h, col) => { px(x, P.ink, X - 1, Y - 1, w + 2, h + 2); px(x, col, X, Y, w, h); };
-  if (k === 'cerca') { box(1, 1, 2, 8, P.wood); box(13, 1, 2, 8, P.wood); box(1, 3, 14, 1, P.woodL); box(1, 6, 14, 1, P.woodL); }
+  if (k === 'cerca') { x.fillStyle = 'rgba(10,30,20,.3)'; x.fillRect(1, H - 2, 15, 2);
+    for (const r of [4, 7]) { px(x, P.ink, 1, r - 1, 14, 3); px(x, P.wood, 1, r, 14, 1); px(x, P.woodL, 1, r, 14, 1); }
+    for (const X of [0, 12]) { px(x, P.ink, X, 1, 4, H - 2); px(x, P.ink, X + 1, 0, 2, 1); px(x, P.wood, X + 1, 1, 2, H - 4); px(x, P.woodL, X + 1, 1, 1, H - 4); px(x, P.woodD, X + 1, H - 4, 2, 1); }
+    px(x, '#47994a', 5, H - 3, 1, 2); px(x, '#84c65a', 9, H - 3, 1, 1); }
+  if (k === 'cerca_v') { x.fillStyle = 'rgba(10,30,20,.3)'; x.fillRect(1, H - 2, 6, 2);
+    for (const X of [1, 3]) { px(x, P.ink, X, 3, 3, H - 5); }
+    px(x, P.woodL, 2, 4, 1, H - 7); px(x, P.wood, 4, 4, 1, H - 7);
+    for (const Y of [0, H - 9]) { px(x, P.ink, 0, Y + 1, 6, 8); px(x, P.ink, 1, Y, 4, 1); px(x, P.wood, 1, Y + 1, 4, 6); px(x, P.woodL, 1, Y + 1, 2, 6); px(x, P.woodD, 1, Y + 6, 4, 1); px(x, '#b8814a', 2, Y + 1, 2, 1); } }
   if (k === 'banco') { box(1, 2, 14, 2, P.woodL); box(2, 5, 2, 3, P.wood); box(12, 5, 2, 3, P.wood); }
   if (k === 'lanterna') { box(3, 4, 2, 13, P.woodD); box(2, 1, 4, 4, P.st1); px(x, P.fire3, 3, 2, 2, 2); }
   if (k === 'fogueira') { for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; px(x, i % 2 ? P.st2 : P.st3, Math.round(7 + Math.cos(a) * 5) - 1, Math.round(5 + Math.sin(a) * 2), 2, 2); } px(x, P.woodD, 3, 5, 8, 1); }
@@ -79,9 +86,11 @@ function decorSprite(k) {
   return DECOR_SPR[k] = { c, ax: Math.floor(W / 2), ay: H - 1 };
 }
 const DECOR_BLOCK = { banco: 7, barril: 4, boneco: 3, alvo: 3, runa: 4, cristal: 3, palco: 11, tabuas: 7, cerca: 7, fogueira: 6, lanterna: 2, estandarte: 1, canteiro: 7 };
-function decorBlocked(x, y) { for (const d of DECOR) { const w = DECOR_BLOCK[d.kind] || 3; if (x > d.x - w && x < d.x + w && y > d.y - 4 && y < d.y + 1) return true; } return false; }
+function decorBlocked(x, y) { for (const d of DECOR) { if (d.kind === 'cerca' && d.rot) { if (x > d.x - 3 && x < d.x + 3 && y > d.y - 15 && y < d.y + 1) return true; continue; }
+  const w = DECOR_BLOCK[d.kind] || 3; if (x > d.x - w && x < d.x + w && y > d.y - 4 && y < d.y + 1) return true; } return false; }
+const sprKey = d => d.kind === 'cerca' && d.rot ? 'cerca_v' : d.kind;
 function drawDecor(x, d, t) {
-  const s = decorSprite(d.kind); x.drawImage(s.c, d.x - s.ax, d.y - s.ay);
+  const s = decorSprite(sprKey(d)); x.drawImage(s.c, d.x - s.ax, d.y - s.ay);
   if (d.kind === 'fogueira') drawFire(x, d.x, d.y - 1, t, .7);
   if (d.kind === 'cristal') glow(x, d.x, d.y - 8, 8, P.cy, .12 + .06 * Math.sin(t * 3 + d.id));
   if (d.kind === 'lanterna') glow(x, d.x, d.y - 15, 7, P.fire3, .14);
@@ -108,7 +117,7 @@ function renderBag() {
     const btn = (label, fn, dis) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.disabled = !!dis; b.onclick = fn; acts.appendChild(b); };
     if (rc.type === 'food') btn('Usar', () => { send({ t: 'use', id: k }); doAct(k === 'pocao' ? 'heal' : 'drink'); closePanels(); });
     if (rc.type === 'equip') btn(eq === k ? 'Guardar' : 'Equipar', () => { send({ t: 'equip', id: eq === k ? null : k }); closePanels(); });
-    if (rc.type === 'decor') btn('Colocar aqui', () => { if (p.room) return sys('Coloque objetos do lado de fora.'); send({ t: 'place', id: k, x: Math.round(p.x + (p.face || 1) * 10), y: Math.round(p.y + 2) }); closePanels(); }, p.room);
+    if (rc.type === 'decor') btn('Colocar', () => { if (p.room) return sys('Coloque objetos do lado de fora.'); closePanels(); startPlacing({ kind: k }); }, p.room);
     if (rc.type === 'tool') { const s = document.createElement('span'); s.className = 'tag'; s.textContent = 'ativo'; acts.appendChild(s); }
     btn(mate ? `Dar p/ @${mate.username}` : 'Dar (chegue perto de alguém)', () => { if (mate) { send({ t: 'give', id: k, to: mate.id }); closePanels(); } }, !mate);
     row.appendChild(acts); list.appendChild(row);
@@ -150,7 +159,7 @@ function buildingSprite(type, roofIdx) {
   if (B_SPR[type]) return B_SPR[type];
   const T = BTYPES[type], w = T.w, wallH = 16, roofH = 13, top = T.tower ? 14 : 0, H = top + roofH + wallH + 3, [c, x] = canvas(w + 4, H);
   const y0 = top + roofH - 2;
-  fancyBuilding(x, { w, wallTop: y0, wallH: wallH + 1, roofTop: top, roof: T.roof[0], roofD: T.roof[1], wall: T.walls, wallD: T.wallsD, stripes: T.stripes, columns: T.columns, stone: !!T.columns, timber: !T.columns && type !== 'hospital', door: type === 'bar' || type === 'mercado' ? 'open' : 'wood', doorW: w > 40 ? 8 : 6, windows: w > 40 ? [5, 14, w - 19, w - 10] : [5, w - 10], chim: type === 'bar' || type === 'escola' });
+  fancyBuilding(x, { w, wallTop: y0, wallH: wallH + 1, roofTop: top, roof: T.roof[0], roofD: T.roof[1], wall: T.walls, wallD: T.wallsD, stripes: T.stripes, columns: T.columns, stone: !!T.columns, timber: !T.columns && type !== 'hospital', door: type === 'bar' || type === 'mercado' ? 'open' : 'wood', doorW: w > 40 ? 8 : 6, windows: w > 40 ? [5, 15, w - 20, w - 10] : [4, w - 10], chim: type === 'bar' || type === 'escola' });
   if (T.tower) { const tx = Math.floor(w / 2) - 5; px(x, P.ink, tx, 2, 11, top + 2); px(x, T.walls, tx + 1, 3, 9, top); for (let y = 4; y < top; y += 3) px(x, T.wallsD, tx + 1, y, 9, 1); disc(x, tx + 5, 8, 3, P.ink); disc(x, tx + 5, 8, 2, '#eef0ea'); px(x, P.ink, tx + 5, 6, 1, 3); px(x, P.ink, tx + 5, 8, 2, 1); px(x, P.woodD, tx + 10, 0, 1, 8); px(x, '#a83a32', tx + 11, 0, 5, 4); px(x, P.fire3, tx + 12, 1, 2, 1); }
   // placa
   const sx = Math.floor(w / 2) - 4, sy = y0 - 3; px(x, P.ink, sx, sy, 9, 7); px(x, P.woodL, sx + 1, sy + 1, 7, 5);
@@ -172,4 +181,30 @@ function renderBuild() {
     b.onclick = () => { send({ t: 'build', type: id, x: Math.round(p.x) + 1, y: Math.round(p.y) - 6 }); doAct('build'); $('buildPanel').hidden = true; };
     row.append(cv2, t, b); list.appendChild(row);
   }
+}
+
+// ---------------------------------------------------------------- modo de colocar/mover objetos (com prévia e encaixe das cercas)
+let placing = null;
+function startPlacing(o) { placing = { kind: o.kind, id: o.id || null, rot: o.rot ? 1 : 0 }; $('placeBar').hidden = false; $('placeRot').hidden = placing.kind !== 'cerca'; $('placeOk').textContent = (placing.id ? 'Soltar ' : 'Colocar ') + ((RBY[placing.kind] || {}).name || 'objeto').toLowerCase(); document.body.classList.add('placing'); }
+function stopPlacing() { placing = null; $('placeBar').hidden = true; document.body.classList.remove('placing'); }
+function placeSpot(p) {
+  let X = p.x + (p.face || 1) * 12, Y = p.y + 3;
+  if (placing.kind === 'cerca') { if (placing.rot) { X = Math.round(X / 6) * 6; Y = Math.round(Y / 15) * 15; } else { X = Math.round(X / 14) * 14; Y = Math.round(Y / 6) * 6; } }
+  X = Math.round(X); Y = Math.round(Y);
+  const ok = !p.room && Math.abs(Y - riverY(X)) > 12 && !blocked(X, Y - 1) && Math.hypot(X - p.x, Y - p.y) < 38 && !DECOR.some(d => d.id !== placing.id && Math.abs(d.x - X) < 3 && Math.abs(d.y - Y) < 3);
+  return { X, Y, ok };
+}
+function drawPlacing(x, p, t) {
+  if (!placing || !p || p.room) return; const { X, Y, ok } = placeSpot(p), s = decorSprite(placing.kind === 'cerca' && placing.rot ? 'cerca_v' : placing.kind);
+  x.globalAlpha = .55 + .2 * Math.sin(t * 6); x.drawImage(s.c, X - s.ax, Y - s.ay); x.globalAlpha = 1;
+  x.globalAlpha = .8; ring(x, X, Y, 3, ok ? '#84c65a' : '#e04a3a'); x.globalAlpha = 1;
+}
+function confirmPlacing() {
+  const p = players.get(myId); if (!placing || !p) return; const { X, Y, ok } = placeSpot(p);
+  if (!ok) return sys('Não dá para colocar aí. Ande um pouco e tente de novo.');
+  if (placing.id) send({ t: 'move', id: placing.id, x: X, y: Y, rot: placing.rot }); else send({ t: 'place', id: placing.kind, x: X, y: Y, rot: placing.rot });
+  play('plank', .6);
+  // cercas: continua no modo para emendar a próxima (se ainda tiver na mochila)
+  if (!placing.id && placing.kind === 'cerca' && (INV.cerca || 0) > 1) { INV.cerca--; return; }
+  stopPlacing();
 }

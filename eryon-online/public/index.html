@@ -83,6 +83,10 @@ button.sec{background:#3c5d4a;color:var(--txt)}
 #chatlog div{background:rgba(12,20,16,.72);padding:5px 8px;font-size:16px;line-height:1.25;word-wrap:break-word;border-left:3px solid var(--edge)}
 #chatlog b{color:var(--gold)}
 body.clean #chatlog,body.clean #hud,body.clean #camctl,body.clean #actbar{display:none!important}
+#placeBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(66px + env(safe-area-inset-bottom));display:flex;gap:8px;z-index:3;width:max-content;max-width:calc(100% - 20px)}
+#placeBar[hidden]{display:none!important} body.placing #actbar{display:none!important}
+#placeBar .act{font:700 16px Pix,monospace;border:3px solid #0c1410;padding:10px 13px}
+#placeBar .main{background:var(--gold);color:var(--ink);box-shadow:0 4px 0 #0c1410} #placeBar .skill{background:rgba(20,30,24,.9);color:var(--cream);box-shadow:inset 0 0 0 2px var(--edge)}
 #chatToggle{padding:6px 9px!important;line-height:0;flex:0 0 auto}
 #chatbar{position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));display:none;gap:8px}
 #chatbar input{flex:1;min-width:0;font-size:18px;padding:10px}
@@ -171,7 +175,8 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
   <p class="hint keys">Teclado: setas/WASD andar · E ação · Q habilidade · C criar · I mochila · M mapa</p>
 </div></div>
 <div id="camctl"><button id="recenter" type="button" class="pill" hidden title="Voltar para o meu personagem">◎</button><button id="zin" type="button" class="pill zbtn" title="Aproximar">+</button><button id="zout" type="button" class="pill zbtn" title="Afastar">−</button></div>
-<div id="actbar"><button id="actBtn" type="button" class="act main" hidden>Ação</button><button id="magicBtn" type="button" class="act skill">Habilidade</button></div>
+<div id="actbar"><button id="actBtn" type="button" class="act main" hidden>Ação</button><button id="act2" type="button" class="act skill" hidden>Guardar</button><button id="magicBtn" type="button" class="act skill">Habilidade</button></div>
+<div id="placeBar" hidden><button id="placeOk" type="button" class="act main">Colocar</button><button id="placeRot" type="button" class="act skill">Girar</button><button id="placeNo" type="button" class="act skill">Cancelar</button></div>
 <div id="toast" class="box" hidden><span id="toastText">Almoço!</span><div class="row2"><button id="toastGo" type="button">Ir para o almoço</button><button id="toastNo" type="button" class="sec">Agora não</button></div></div>
 <div id="disc" hidden><small>DESCOBERTA</small><b id="discName"></b></div>
 <div id="mapPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Mapa de Eryon</h2><button id="mapClose" type="button" class="sec">Fechar</button></div><canvas id="mapCv" width="270" height="480"></canvas><ul id="mapList"></ul><p class="hint">O escuro é o mundo desconhecido. Ande por ele para descobrir os lugares.</p></div></div>
@@ -199,10 +204,10 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 <div id="chatlog"></div>
 <div id="chatbar"><button id="chatToggle" type="button" class="sec" aria-pressed="false" aria-label="Tela cheia" title="Tela cheia: deixa só o campo de mensagem"></button><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
 
-<script src="engine.js?v=17"></script>
+<script src="engine.js?v=18"></script>
 <script src="life.js?v=16"></script>
-<script src="craft.js?v=17"></script>
-<script src="explore.js?v=17"></script>
-<script src="game.js?v=16"></script>
+<script src="craft.js?v=18"></script>
+<script src="explore.js?v=18"></script>
+<script src="game.js?v=18"></script>
 </body>
 </html>

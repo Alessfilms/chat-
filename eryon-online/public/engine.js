@@ -254,38 +254,70 @@ function drawCharAt(x, ch, X, Y, po, face = 1, alpha = 1) {
 // =====================================================================
 function houseSprite(roof, roofD, chim) {
   const w = 26, h = 26, [c, x] = canvas(w + 4, h + 3);
-  fancyBuilding(x, { w, wallTop: 12, wallH: h - 12, roof, roofD, chim, timber: true, door: 'wood' });
+  fancyBuilding(x, { w, wallTop: 12, wallH: h - 12, roof, roofD, chim, timber: true, door: 'wood', windows: [5], doorX: w - 10 });
   return c;
 }
-// prédio detalhado: base de pedra, enxaimel, janelas com floreira, porta com lampião e telhado de telhas
+// prédio detalhado (estilo pixel art com contorno): fundação de pedras, enxaimel, janelas com cruz e floreira,
+// porta de tábuas em arco com degrau e lampião, telhado de telhas em escama com cumeeira, mansarda e chaminé de tijolos
 function fancyBuilding(x, o) {
-  const { w, wallTop, wallH } = o, bot = wallTop + wallH, roofTop = o.roofTop || 0, wallC = o.wall || P.wall, wallD2 = o.wallD || P.wallD;
-  x.fillStyle = 'rgba(5,15,12,.5)'; x.fillRect(4, bot - 1, w + 1, 4); x.fillStyle = 'rgba(5,15,12,.25)'; x.fillRect(w + 1, wallTop + 2, 3, wallH);
-  // paredes
-  px(x, P.ink, 2, wallTop - 1, w - 2, wallH + 1); px(x, wallC, 3, wallTop, w - 4, wallH - 1); px(x, wallD2, w - 4, wallTop, 2, wallH - 1);
-  for (let y = wallTop + 1; y < bot - 3; y += 3) for (let X = 4; X < w - 4; X += 5) if (h2(X, y) > .7) px(x, wallD2, X, y, 1, 1);
-  if (o.stone) for (let y = wallTop + 1; y < bot - 3; y += 3) for (let X = 3 + ((y / 3) % 2) * 2; X < w - 3; X += 5) px(x, wallD2, X, y, 4, 1);
-  if (o.timber) { const beam = P.woodD; for (const X of [3, Math.floor(w / 2), w - 5]) px(x, beam, X, wallTop, 2, wallH - 3); px(x, beam, 3, wallTop, w - 6, 1); px(x, beam, 3, wallTop + Math.floor(wallH / 2) - 1, w - 6, 1);
-    for (const X0 of [5, Math.floor(w / 2) + 2]) for (let k = 0; k < 4; k++) px(x, beam, X0 + k, wallTop + 1 + k, 1, 1); }
-  if (o.columns) for (let X = 4; X < w - 4; X += 7) { px(x, '#eef0ea', X, wallTop + 1, 2, wallH - 4); px(x, P.st3, X + 1, wallTop + 1, 1, wallH - 4); }
-  // base de pedra
-  for (let X = 2; X < w; X += 4) { px(x, P.ink, X, bot - 3, 4, 3); px(x, X % 8 ? P.st2 : P.st3, X + 1, bot - 2, 2, 1); }
-  // janelas com veneziana e floreira
-  const wy = wallTop + 3, wxs = o.windows || [5, w - 10];
-  for (const wx of wxs) { px(x, P.ink, wx - 1, wy - 1, 7, 6); px(x, '#ffd84a', wx, wy, 5, 4); px(x, '#fff3b0', wx, wy, 2, 2); px(x, '#c9a46a', wx + 2, wy, 1, 4); px(x, '#c9a46a', wx, wy + 2, 5, 1);
-    px(x, P.wood, wx - 3, wy - 1, 2, 6); px(x, P.wood, wx + 6, wy - 1, 2, 6); px(x, P.woodD, wx - 3, wy + 1, 2, 1); px(x, P.woodD, wx + 6, wy + 1, 2, 1);
-    px(x, P.ink, wx - 1, wy + 5, 7, 2); px(x, P.dirt3, wx, wy + 5, 5, 1); for (let k = 0; k < 5; k += 2) px(x, ['#f6b6d8', '#a83a32', '#fff3b0'][k / 2], wx + k, wy + 4, 1, 1); px(x, P.f8, wx + 1, wy + 4, 1, 1); px(x, P.f8, wx + 3, wy + 4, 1, 1); }
-  // porta em arco com lampião
-  const dw = o.doorW || 6, dx = Math.floor(w / 2) - Math.floor(dw / 2) + 1, dh = 9;
-  px(x, P.ink, dx - 1, bot - dh - 1, dw + 2, dh + 1); px(x, P.ink, dx, bot - dh - 2, dw, 1);
-  px(x, o.door === 'open' ? '#2a1a0c' : P.woodD, dx, bot - dh, dw, dh - 1); if (o.door !== 'open') { for (let X = dx + 1; X < dx + dw; X += 2) px(x, P.wood, X, bot - dh + 1, 1, dh - 2); px(x, P.fire3, dx + dw - 2, bot - 5, 1, 1); } else px(x, P.fire2, dx + 1, bot - 5, dw - 2, 3);
-  px(x, P.ink, dx + dw + 1, bot - dh, 3, 4); px(x, P.fire3, dx + dw + 2, bot - dh + 1, 1, 2);
-  // telhado de telhas
-  const rH = wallTop - roofTop + 1; px(x, P.ink, 0, roofTop, w + 2, rH);
-  for (let y = 1; y < rH - 1; y++) { const yy = roofTop + y; px(x, o.stripes ? (Math.floor(y / 2) % 2 ? o.roof : o.roofD) : o.roof, 1, yy, w, 1);
-    if (!o.stripes) { if (y % 3 === 0) px(x, o.roofD, 1, yy, w, 1); else for (let X = 1 + ((Math.floor(y / 3) % 2) * 2); X < w; X += 4) px(x, o.roofD, X, yy, 1, 1); } }
-  px(x, shadeHex(o.roof, 1.3), 1, roofTop + 1, w, 1); px(x, o.roofD, 1, wallTop - 1, w, 1); px(x, 'rgba(5,10,8,.35)', 3, wallTop, w - 4, 1);
-  if (o.chim) { const cx = w - 9; px(x, P.ink, cx, roofTop - 3 < 0 ? 0 : roofTop, 6, 6); px(x, '#8a3a1c', cx + 1, roofTop + 1, 4, 4); px(x, '#5a2418', cx + 1, roofTop + 2, 4, 1); px(x, P.st1, cx, roofTop, 6, 1); }
+  const { w, wallTop, wallH } = o, bot = wallTop + wallH, roofTop = o.roofTop || 0, O = '#1a120c';
+  const WALL = o.wall || P.wall, WALLD = o.wallD || P.wallD, WL = shadeHex(WALL, 1.1), WD2 = shadeHex(WALLD, .82);
+  const BEAM = '#5a3420', BEAML = '#7a4a2a', ST = ['#4d5566', '#6e7789', '#939cae', '#c3cad6'];
+  // sombra no chão
+  x.fillStyle = 'rgba(10,30,20,.38)'; for (let dy = 0; dy < 3; dy++) x.fillRect(3 + dy, bot - 1 + dy, w + 1 - dy, 1); x.fillStyle = 'rgba(10,30,20,.22)'; x.fillRect(w, wallTop + 3, 3, wallH - 2);
+  // paredes com reboco (claro à esquerda, escuro na quina direita) e sombra do beiral
+  px(x, O, 2, wallTop - 1, w - 2, wallH + 1);
+  for (let Y = wallTop; Y < bot - 1; Y++) for (let X = 3; X < w - 1; X++) { let col = X > w - 5 ? WALLD : X < 5 ? WL : WALL; if (Y < wallTop + 2) col = WD2; else if (h2(X, Y) > .86) col = WALLD; px(x, col, X, Y); }
+  if (o.stone) for (let Y = wallTop + 3; Y < bot - 3; Y += 3) { px(x, WALLD, 3, Y, w - 4, 1); for (let X = 3 + ((Y / 3) % 2) * 3; X < w - 1; X += 6) px(x, WALLD, X, Y - 2, 1, 2); }
+  if (o.timber) { const mid = Math.floor(w / 2), yM = wallTop + Math.floor(wallH / 2) - 1;
+    for (const X of [3, mid - 1, w - 4]) { px(x, BEAM, X, wallTop + 1, 2, wallH - 4); px(x, BEAML, X, wallTop + 1, 1, wallH - 4); }
+    px(x, BEAM, 3, wallTop + 1, w - 5, 1); px(x, BEAM, 3, yM, w - 5, 1); px(x, BEAML, 3, yM, w - 5, 0);
+    for (const [X0, dir] of [[5, 1], [w - 6, -1]]) for (let k = 0; k < Math.min(5, yM - wallTop - 1); k++) px(x, BEAM, X0 + k * dir, yM - 1 - k, 1, 1); }
+  if (o.columns) for (let X = 4; X < w - 4; X += 7) { px(x, O, X - 1, wallTop + 1, 4, wallH - 3); px(x, '#f4f2ea', X, wallTop + 2, 2, wallH - 5); px(x, ST[2], X + 1, wallTop + 2, 1, wallH - 5); px(x, '#f4f2ea', X - 1, wallTop + 1, 4, 1); px(x, ST[3], X - 1, bot - 4, 4, 1); }
+  // hera subindo na quina esquerda
+  if (o.ivy !== false && (w + wallH) % 3 !== 1) for (let k = 0; k < wallH - 2; k++) if (h2(w, k) > .3) px(x, k % 3 ? '#3f8f45' : '#84c65a', 3 + (h2(k, w) > .6 ? 1 : 0), bot - 3 - k, 1, 1);
+  // fundação de pedras
+  px(x, O, 2, bot - 3, w - 2, 3);
+  for (let X = 3, i = 0; X < w - 1; i++) { const sw = 3 + Math.floor(h2(i, w) * 3), ww = Math.min(sw, w - 1 - X); px(x, ST[1 + (i % 2)], X, bot - 2, ww, 2); px(x, ST[3], X, bot - 2, ww - 1, 1); px(x, ST[0], X + ww - 1, bot - 2, 1, 2); X += sw; }
+  // janelas
+  const wy = wallTop + 3, wxs = o.windows || [5, w - 10], SH = shadeHex(o.roof, .85), SHD = shadeHex(o.roof, .6);
+  for (const wx of wxs) {
+    px(x, SHD, wx - 3, wy - 1, 2, 7); px(x, SH, wx - 3, wy - 1, 1, 7); px(x, SHD, wx + 6, wy - 1, 2, 7); px(x, SH, wx + 6, wy - 1, 1, 7);      // venezianas
+    for (const sx2 of [wx - 3, wx + 6]) for (let k = 1; k < 7; k += 2) px(x, O, sx2, wy - 1 + k, 2, 0);
+    px(x, O, wx - 1, wy - 1, 7, 7); px(x, '#f2a33a', wx, wy, 5, 5); px(x, '#ffd84a', wx, wy, 5, 3); px(x, '#fff3b0', wx, wy, 2, 1); px(x, '#fff3b0', wx, wy, 1, 2);
+    px(x, BEAM, wx + 2, wy, 1, 5); px(x, BEAM, wx, wy + 2, 5, 1);
+    px(x, O, wx - 2, wy + 5, 9, 3); px(x, BEAML, wx - 1, wy + 6, 7, 1); px(x, ST[3], wx - 2, wy + 5, 9, 1);                                     // floreira
+    for (let k = 0; k < 7; k++) px(x, k % 2 ? '#47994a' : ['#f6b6d8', '#e04a5a', '#fff3b0', '#9ff3ff'][(k + wx) % 4], wx - 1 + k, wy + 4, 1, 1);
+  }
+  // porta de tábuas em arco, moldura de pedra, degrau e lampião
+  const dw = o.doorW || 6, dx = o.doorX ?? (Math.floor(w / 2) - Math.floor(dw / 2) + 1), dh = Math.min(10, wallH - 1), dt = bot - dh;
+  px(x, O, dx - 2, dt - 1, dw + 4, dh); px(x, ST[2], dx - 1, dt, dw + 2, dh - 1); px(x, ST[3], dx - 1, dt, 1, dh - 1); px(x, O, dx, dt - 2, dw, 1); px(x, ST[2], dx, dt - 1, dw, 1);
+  if (o.door === 'open') { px(x, '#2a1a0c', dx, dt + 1, dw, dh - 2); px(x, '#f2a33a', dx + 1, bot - 5, dw - 2, 3); px(x, '#ffd84a', dx + 1, bot - 4, dw - 2, 1); }
+  else { for (let X = dx; X < dx + dw; X++) px(x, (X - dx) % 2 ? '#6a3c22' : '#8a5530', X, dt + 1, 1, dh - 2); px(x, '#2b3138', dx, dt + 3, dw, 1); px(x, '#2b3138', dx, bot - 4, dw, 1); px(x, '#ffd84a', dx + dw - 2, bot - 6, 1, 1); }
+  px(x, O, dx - 2, bot - 1, dw + 4, 2); px(x, ST[2], dx - 1, bot - 1, dw + 2, 1); px(x, ST[3], dx - 1, bot - 1, dw + 2, 0);
+  px(x, O, dx + dw + 2, dt, 1, 2); px(x, O, dx + dw + 2, dt + 2, 3, 4); px(x, '#ffd84a', dx + dw + 3, dt + 3, 1, 2);
+  // telhado de telhas em escama
+  const rH = wallTop - roofTop + 1, RL = shadeHex(o.roof, 1.22), RD = o.roofD;
+  const inset = y => o.stripes ? 0 : Math.round(Math.max(0, 1 - y / (rH * .7)) * 3);
+  for (let y = 0; y <= rH; y++) { const i = inset(y); px(x, O, i, roofTop + y, w + 2 - i * 2, 1); }
+  for (let y = 1; y < rH; y++) { const yy = roofTop + y, i = inset(y);
+    for (let X = 1 + i; X <= w - i; X++) {
+      let col;
+      if (o.stripes) col = Math.floor((X - 1) / 3) % 2 ? o.roof : RD;
+      else { const row = Math.floor((y - 1) / 3), ry = (y - 1) % 3, tx = (X - 1 + (row % 2) * 2) % 4; col = ry === 2 ? RD : (tx === 0 ? RD : ry === 0 && tx === 1 ? RL : o.roof); }
+      if (X > w - 3 && col === o.roof) col = shadeHex(o.roof, .86);
+      px(x, col, X, yy);
+    } }
+  { const i = inset(1); px(x, RL, 1 + i, roofTop + 1, w - i * 2, 1); px(x, shadeHex(o.roof, 1.5), 2 + i, roofTop + 1, Math.max(1, w - 8 - i * 2), 1); } px(x, shadeHex(RD, .8), 1, wallTop, w, 1);
+  if (o.stripes) for (let X = 1; X <= w; X += 3) px(x, O, X, wallTop + 1, 2, 1);   // franja do toldo
+  // pontas do beiral (madeira)
+  px(x, BEAML, 0, wallTop - 1, 2, 2); px(x, BEAML, w, wallTop - 1, 2, 2);
+  // mansarda (janelinha no telhado)
+  if (!o.stripes && rH >= 11 && w >= 24) { const mx = 4, my = roofTop + 3; px(x, O, mx, my, 7, 6); px(x, '#ffd84a', mx + 1, my + 2, 5, 3); px(x, '#fff3b0', mx + 1, my + 2, 2, 1); px(x, BEAM, mx + 3, my + 2, 1, 3);
+    px(x, O, mx - 1, my - 1, 9, 2); px(x, RL, mx, my - 1, 7, 1); }
+  // chaminé de tijolos
+  if (o.chim) { const cx = w - 9, cy = Math.max(0, roofTop - 1); px(x, O, cx, cy, 7, 8); for (let Y = cy + 2; Y < cy + 8; Y++) for (let X = cx + 1; X < cx + 6; X++) px(x, (Y % 2 === 0) || ((X + (Y % 4 < 2 ? 0 : 2)) % 4 === 0) ? '#6a2a1a' : '#a8482c', X, Y);
+    px(x, ST[2], cx, cy, 7, 2); px(x, ST[3], cx, cy, 7, 1); px(x, '#1a120c', cx + 2, cy, 3, 1); }
 }
 const ROOFS = [['#a83a32', '#5a2418'], ['#3c5f9a', '#1d3550'], ['#6e4a8a', '#3a2650'], ['#8b5e3c', '#4a2f22'], ['#3f7ab0', '#2c4f7a'], ['#d0622a', '#8a3a1c']];
 const HOUSE_SPR = ROOFS.map((r, i) => houseSprite(r[0], r[1], i % 2 === 0));

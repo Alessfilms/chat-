@@ -383,7 +383,11 @@ wss.on('connection', (ws, req) => {
       const rc = RBY[m.id], r = db.users[c.user], X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!rc || !r || rc.type !== 'decor' || c.room || !(invOf(r)[rc.id] > 0)) return;
       if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
       if (db.decor.filter(d => d.owner === c.user).length >= 30) return note(c, 'Você já colocou 30 objetos. Recolha algum antes.');
-      invOf(r)[rc.id]--; db.decor.push({ id: db.nextDecor++, kind: rc.id, x: X, y: Y, owner: c.user }); save(); sendInv(c); all({ t: 'decor', list: db.decor });
+      invOf(r)[rc.id]--; db.decor.push({ id: db.nextDecor++, kind: rc.id, x: X, y: Y, owner: c.user, ...(m.rot ? { rot: 1 } : {}) }); save(); sendInv(c); all({ t: 'decor', list: db.decor });
+    } else if (m.t === 'move') {      // mudar um objeto seu de lugar (ex.: cercas)
+      const d = db.decor.find(d => d.id === Number(m.id)), X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!d || d.owner !== c.user || c.room) return;
+      if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
+      d.x = X; d.y = Y; if (m.rot) d.rot = 1; else delete d.rot; save(); all({ t: 'decor', list: db.decor });
     } else if (m.t === 'pickup') {
       const i = db.decor.findIndex(d => d.id === Number(m.id)); if (i < 0) return; const d = db.decor[i], r = db.users[c.user];
       if (!r || d.owner !== c.user || Math.hypot(d.x - c.x, d.y - c.y) > 40) return;

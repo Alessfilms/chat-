@@ -207,7 +207,20 @@ function placeScenery(x) {
   OBJ.sort((a, b) => a.y - b.y);
 }
 // ---- vida ambiente: brilho na água, vagalumes, folhas, fumaça das chaminés e sombra das nuvens
-const FIREFLIES = Array.from({ length: 70 }, (_, i) => ({ x: h2(i, 1) * WW, y: h2(i, 2) * WH, ph: h2(i, 3) * 6.283 }));
+const FIREFLIES = Array.from({ length: 420 }, (_, i) => ({ x: h2(i, 1) * WW, y: h2(i, 2) * WH, ph: h2(i, 3) * 6.283, sp: .5 + h2(i, 4), r: 8 + h2(i, 5) * 18 }));
+// vagalumes: desenhados por cima da escuridão para brilharem de verdade à noite
+function drawFireflies(x, t, li, ti, cw, ch, night) {
+  if (night < .05) return; x.globalCompositeOperation = 'lighter';
+  for (const f of FIREFLIES) {
+    const X = f.x + Math.sin(t * .35 * f.sp + f.ph) * f.r + Math.sin(t * 1.3 + f.ph * 2) * 2, Y = f.y + Math.cos(t * .27 * f.sp + f.ph * 2) * f.r * .6 - Math.abs(Math.sin(t * .5 + f.ph)) * 6;
+    if (X < li - 4 || X > li + cw + 4 || Y < ti - 4 || Y > ti + ch + 4) continue;
+    const blink = Math.max(0, Math.sin(t * 1.7 * f.sp + f.ph * 3) * .8 + .35), on = Math.min(1, blink) * night; if (on < .05) continue;
+    const XX = Math.round(X), YY = Math.round(Y);
+    x.globalAlpha = on * .18; disc(x, XX, YY, 4, '#a8ff60'); x.globalAlpha = on * .35; disc(x, XX, YY, 2, '#d8ff8a');
+    x.globalAlpha = on; px(x, '#f6ffd0', XX, YY, 1, 1);
+  }
+  x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+}
 function drawAmbient(x, t, li, ti, cw, ch) {
   // brilho do rio
   for (let X = Math.max(0, li - 2); X < Math.min(WW, li + cw + 2); X += 3) { const k = Math.sin(X * .7 + t * 3.1) + Math.sin(X * .23 - t * 1.7); if (k > 1.35) { const Y = Math.round(riverY(X) + Math.sin(X * 1.3 + t) * 5); px(x, '#bfe6f5', X, Y, 2, 1); } }
@@ -221,18 +234,15 @@ function drawAmbient(x, t, li, ti, cw, ch) {
     for (let yy = top; yy < Y; yy += 2) { const k = (yy - top) / (Y - top), w = Math.round(8 + k * 8); x.globalAlpha = a * (.3 + .7 * k); x.fillStyle = '#fff6c0'; x.fillRect(X - w, yy, w * 2, 2); x.globalAlpha = a * .6 * k; x.fillRect(X - Math.round(w * .5), yy, Math.round(w), 2); }
     for (let i = 0; i < 6; i++) { const ph = (t * .25 + i / 6) % 1; x.globalAlpha = .7 * Math.sin(ph * Math.PI); px(x, '#fff3b0', Math.round(X + Math.sin(i * 2.1 + t) * 10), Math.round(Y - ph * 70), 1, 1); }
     x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
-  // vagalumes
-  for (const f of FIREFLIES) { const X = f.x + Math.sin(t * .4 + f.ph) * 12, Y = f.y + Math.cos(t * .33 + f.ph * 2) * 8; if (X < li || X > li + cw || Y < ti || Y > ti + ch) continue; const on = (.5 + .5 * Math.sin(t * 2.4 + f.ph * 3)) * (.35 + .65 * ambient().night); if (on < .2) continue; x.globalAlpha = on; px(x, '#fff3b0', Math.round(X), Math.round(Y), 1, 1); x.globalAlpha = on * .25; px(x, '#ffd84a', Math.round(X) - 1, Math.round(Y) - 1, 3, 3); }
-  x.globalAlpha = 1;
   // folhas caindo
   for (let i = 0; i < 14; i++) { const ph = (t * .08 + i / 14) % 1, X = li + ((i * 97 + t * 6) % cw), Y = ti + ph * ch; px(x, i % 3 ? '#9a9442' : '#d0622a', Math.round(X + Math.sin(ph * 12 + i) * 6), Math.round(Y), 2, 1); }
 }
 const DAY_LEN = 1200;  // 20 minutos
 function dayPhase() { return (Date.now() / 1000 % DAY_LEN) / DAY_LEN; }
 function ambient() {   // cor e intensidade do escuro em cada momento do dia
-  const K = [[0, [6, 14, 22], .10], [.40, [6, 14, 22], .12], [.47, [96, 40, 6], .30], [.53, [30, 12, 40], .48], [.6, [2, 6, 30], .68], [.82, [2, 6, 30], .68], [.9, [60, 26, 40], .38], [.96, [12, 16, 24], .16], [1, [6, 14, 22], .10]];
+  const K = [[0, [6, 14, 22], .08], [.40, [6, 14, 22], .10], [.47, [110, 46, 10], .28], [.53, [46, 26, 96], .44], [.6, [10, 30, 110], .64], [.82, [10, 30, 110], .64], [.9, [70, 40, 90], .36], [.96, [20, 30, 60], .14], [1, [6, 14, 22], .08]];   // noite azulada
   const p = dayPhase(); let i = 0; while (K[i + 1][0] < p) i++; const a = K[i], b = K[i + 1], k = (p - a[0]) / (b[0] - a[0]);
-  return { r: Math.round(lerp(a[1][0], b[1][0], k)), g: Math.round(lerp(a[1][1], b[1][1], k)), b: Math.round(lerp(a[1][2], b[1][2], k)), a: lerp(a[2], b[2], k), night: clamp((lerp(a[2], b[2], k) - .2) / .48) };
+  return { r: Math.round(lerp(a[1][0], b[1][0], k)), g: Math.round(lerp(a[1][1], b[1][1], k)), b: Math.round(lerp(a[1][2], b[1][2], k)), a: lerp(a[2], b[2], k), night: clamp((lerp(a[2], b[2], k) - .18) / .4) };
 }
 function phaseName() { const p = dayPhase(); return p < .44 ? 'Dia' : p < .53 ? 'Pôr do sol' : p < .86 ? 'Noite' : 'Amanhecer'; }
 let vigC = null, vigKey = '';
@@ -419,7 +429,8 @@ $('sendBtn').onclick = sendChat; $('msg').addEventListener('keydown', e => { if 
 
 // ---------------------------------------------------------------- controles
 addEventListener('keydown', e => { sndStart(); if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; if (e.key === 'Enter') { $('msg').focus(); e.preventDefault(); return; }
-  const k = e.key.toLowerCase(); if (k === 'e' || k === ' ') { e.preventDefault(); doContext(); return; } if (k === 'q') { doSkill(); return; } if (k === 'c') { openPanel('craft'); return; } if (k === 'i') { openPanel('bag'); return; } if (k === 'm') { $('foundBtn').click(); return; } if (k === 'escape') { closePanels(); return; }
+  const k = e.key.toLowerCase(); if (placing) { if (k === 'e' || k === ' ' || k === 'enter') { e.preventDefault(); confirmPlacing(); return; } if (k === 'r') { placing.rot = placing.rot ? 0 : 1; return; } if (k === 'escape') { stopPlacing(); return; } }
+  if (k === 'e' || k === ' ') { e.preventDefault(); doContext(); return; } if (k === 'q') { doSkill(); return; } if (k === 'c') { openPanel('craft'); return; } if (k === 'i') { openPanel('bag'); return; } if (k === 'm') { $('foundBtn').click(); return; } if (k === 'escape') { closePanels(); return; }
   keys.add(k); target = null; if (cam.mode !== 'follow') follow(); });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 const cam = { L: 0, T: 0, mode: 'follow', x: C.x, y: C.y, watch: null };
@@ -522,6 +533,7 @@ function draw(t, p) {
   if (room && room.fire) { drawFire(x, room.fire.x, room.fire.y, t); glow(x, room.fire.x, room.fire.y - 6, 18, P.fire2, .12); }
   if (!room) { drawAmbient(x, t, li, ti, cw, ch); drawCloudShadows(x, t, li, ti, cw, ch); }
   if (!room && B.forja) { x.globalAlpha = .6 + .4 * h2(Math.floor(t * 10), 2); px(x, P.fire1, B.forja.x - 7, B.forja.y - 10, 12, 8); px(x, P.fire3, B.forja.x - 5, B.forja.y - 8, 8, 5); x.globalAlpha = 1; smoke(x, B.forja.x + 11, B.forja.y - 30, t, 6); }
+  if (!room) drawPlacing(x, p, t);
   if (target) { x.globalAlpha = .7; ring(x, target.x, target.y, 3 + (Math.floor(t * 4) % 2), P.fire3); x.globalAlpha = 1; }
   // luz
   const l = lx; l.setTransform(1, 0, 0, 1, 0, 0); l.globalCompositeOperation = 'source-over'; l.clearRect(0, 0, cw, ch);
@@ -534,7 +546,7 @@ function draw(t, p) {
   if (p) lightHole(l, p.x, p.y - 6, Math.round(22 + NIGHT * 10));
   l.globalCompositeOperation = 'source-over';
   x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(light, 0, 0, cw, ch, 0, 0, cw, ch);
-  if (!room && NIGHT > .05) { x.translate(-li, -ti); glow(x, C.x, C.y - 4, 24, P.fire2, .06 * NIGHT); for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) glow(x, B[id].x, B[id].y - 8, 8, P.fire3, .07 * NIGHT); for (const h of BUILT) glow(x, h.x, h.y - 8, 8, P.fire3, .07 * NIGHT); x.setTransform(1, 0, 0, 1, 0, 0); }
+  if (!room && NIGHT > .05) { x.translate(-li, -ti); drawFireflies(x, t, li, ti, cw, ch, NIGHT); glow(x, C.x, C.y - 4, 24, P.fire2, .06 * NIGHT); for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) glow(x, B[id].x, B[id].y - 8, 8, P.fire3, .07 * NIGHT); for (const h of BUILT) glow(x, h.x, h.y - 8, 8, P.fire3, .07 * NIGHT); x.setTransform(1, 0, 0, 1, 0, 0); }
   if (room && room.dark) { x.translate(-li, -ti); for (const [gx2, gy2, gc] of room.glows) glow(x, gx2, gy2, 10, gc, .14); x.setTransform(1, 0, 0, 1, 0, 0); }
   // mundo aberto (sem névoa)
   // saída ampliada
@@ -570,12 +582,12 @@ function updateContext(p, t) {
     if (!c && nearKit) c = lunchOn ? { kind: 'eat', label: 'Comer o almoço' } : { kind: 'lunch', label: 'Cozinhar e chamar para o almoço' };
     if (!c) { const dr = Math.abs(p.y - riverY(p.x)); if (dr > 9 && dr < 20 && Math.abs(p.x - BRIDGE.x) > 30 && !BRIDGES.some(b => Math.abs(p.x - b.x) < 30)) c = wood >= 15 ? { kind: 'bridge', label: 'Construir ponte (15 lenha)' } : { kind: 'none', label: 'Ponte: junte 15 lenhas' }; }
     if (!c) { let best = 14, bn = null; for (const n of NODES) { if (DEPL.has(n.id)) continue; const d = Math.hypot(p.x - n.x, (p.y - n.y) * 1.2); if (d < best) { best = d; bn = n; } } if (bn) c = bn.kind === 'rock' ? { kind: 'mine', label: 'Quebrar pedra', node: bn.id, tx: bn.x } : { kind: 'herb', label: 'Colher ervas', node: bn.id, tx: bn.x }; }
-    if (!c) { const d = DECOR.find(d => d.owner === me && Math.hypot(p.x - d.x, p.y - d.y) < 14); if (d) c = { kind: 'pickup', label: 'Recolher ' + ((RBY[d.kind] || {}).name || 'objeto'), id: d.id }; }
+    if (!c) { const d = DECOR.find(d => d.owner === me && Math.hypot(p.x - d.x, p.y - d.y) < 14); if (d) c = { kind: 'movedecor', label: 'Mover ' + ((RBY[d.kind] || {}).name || 'objeto').toLowerCase(), id: d.id, d }; }
     if (!c && canBuildAt(p)) c = { kind: 'buildmenu', label: 'Construir aqui…' };
     if (!c) { let best = 13, bt = null; for (const tr of TREE_POS) { if (CUT.has(tr.i)) continue; const d = Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2); if (d < best) { best = d; bt = tr; } } if (bt) c = { kind: 'chop', label: 'Derrubar árvore', tree: bt.i, tx: bt.x }; }
   }
   const key = c ? c.kind + c.label + (c.tree ?? '') + (c.node ?? '') + (c.id ?? '') : '';
-  if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + (TOUCH ? '' : '  [E]'); }
+  if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + (TOUCH ? '' : '  [E]'); $('act2').hidden = !(c && c.kind === 'movedecor'); }
 }
 function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; const c = ctxAct;
   if (c.kind === 'enter') { sfx.door(true); const r = roomOf(c.room); p.room = c.room; p.x = r.spawn.x; p.y = r.spawn.y; target = null; follow(); sendNow(p); return; }
@@ -584,6 +596,7 @@ function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; c
   if (c.kind === 'cmine' || c.kind === 'cherb') { const kind = c.kind === 'cmine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
   if (c.kind === 'mine' || c.kind === 'herb') { p.face = c.tx < p.x ? -1 : 1; const kind = c.kind === 'mine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
   if (c.kind === 'pickup') { send({ t: 'pickup', id: c.id }); return; }
+  if (c.kind === 'movedecor') { startPlacing({ kind: c.d.kind, id: c.d.id, rot: c.d.rot }); return; }
   if (c.kind === 'bridge') { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'bridge', x: Math.round(p.x) })); doAct('build'); return; }
   if (c.kind === 'lunch') { doAct('cook'); if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'lunch' })); return; }
   if (c.kind === 'eat') { doAct('drink'); return; }
@@ -623,6 +636,10 @@ function canBuildAt(p) {
 function sendNow(p) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: false, room: p.room || '' })); }
 function showWood() { $('wood').textContent = `Lenha ${INV.lenha || 0} · Pedra ${INV.pedra || 0} · Ervas ${INV.ervas || 0}`; }
 $('actBtn').onclick = () => { sndStart(); doContext(); };
+$('act2').onclick = () => { if (ctxAct && ctxAct.kind === 'movedecor') send({ t: 'pickup', id: ctxAct.id }); };
+$('placeOk').onclick = () => { sndStart(); confirmPlacing(); };
+$('placeRot').onclick = () => { if (placing) placing.rot = placing.rot ? 0 : 1; };
+$('placeNo').onclick = () => stopPlacing();
 $('magicBtn').onclick = () => { sndStart(); doSkill(); };
 $('muteBtn').onclick = () => { sndStart(); const m = toggleMute(); $('muteBtn').innerHTML = (m ? MUTE_OFF : MUTE_ON) + (m ? ' Som desligado' : ' Som ligado'); $('muteBtn').title = m ? 'Ligar som' : 'Desligar som'; };
 const MUTE_ON = '<svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 4h2v3H1zM3 3h1v5H3zM4 2h1v7H4zM5 1h1v9H5zM7 4h1v3H7zM8 3h1v1H8zM8 7h1v1H8zM9 2h1v1H9zM9 8h1v1H9zM10 3h1v5h-1z"/></svg>';
@@ -706,7 +723,8 @@ function drawMap() {
   x.font = '700 11px Pix, monospace'; x.textAlign = 'center';
   for (const l of LANDMARKS) if (FOUND.has(l.id)) { x.fillStyle = '#140e06'; x.fillRect(l.x * k - 3, l.y * k - 3, 7, 7); x.fillStyle = '#ffd84a'; x.fillRect(l.x * k - 2, l.y * k - 2, 5, 5); x.lineWidth = 3; x.strokeStyle = '#140e06'; x.strokeText(l.name, l.x * k, l.y * k - 6); x.fillStyle = '#fff3b0'; x.fillText(l.name, l.x * k, l.y * k - 6); }
   const p = players.get(myId); if (p && !p.room) { x.fillStyle = '#9ff3ff'; x.fillRect(p.x * k - 2, p.y * k - 2, 5, 5); }
-  $('mapList').innerHTML = LANDMARKS.map(l => `<li class="${FOUND.has(l.id) ? 'f' : ''}">${FOUND.has(l.id) ? l.name : '???'}</li>`).join('');
+  $('mapList').innerHTML = LANDMARKS.map(l => `<li class="${FOUND.has(l.id) ? 'f' : ''}" data-id="${l.id}">${FOUND.has(l.id) ? l.name + ' ▶' : '???'}</li>`).join('');
+  for (const li2 of $('mapList').querySelectorAll('li.f')) { li2.style.cursor = 'pointer'; li2.title = 'Ver a animação de novo'; li2.onclick = () => { closePanels(); showDiscovery(LM[li2.dataset.id]); }; }
 }
 
 // ---------------------------------------------------------------- ocultar o histórico do chat (os balões continuam)
