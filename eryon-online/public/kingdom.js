@@ -33,12 +33,12 @@ function updHorseBtn() { const b = $('horseBtn'), p = players.get(myId); if (!b)
 function toggleHorse() { const p = players.get(myId); if (!p || !canHorse(p)) return; if (p.room) return sys('Saia para o lado de fora para montar no cavalo.'); if (p.fly) return sys('Pouse antes de montar no cavalo.');
   p.horse = !p.horse; if (p.horse) { fxToast('A cavalo!', 'Você anda bem mais rápido. Proteja a cidade!', '#9fc4ff', '🐎'); play('whoosh', .4, .7); } updHorseBtn(); }
 addEventListener('DOMContentLoaded', () => { const b = $('horseBtn'); if (b) b.onclick = () => { sndStart(); toggleHorse(); }; addEventListener('keydown', e => { if ((e.key === 'h' || e.key === 'H') && document.activeElement && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') toggleHorse(); }); });
-function onKingdomMsg(m) {
+var onKingdomMsg = function (m) {
   if (m.t === 'rg') { const q = players.get(m.id); if (q) { if (m.rg) RGS.add(q.username); else { RGS.delete(q.username); q.horse = false; } q.ch = charFor(q.username, q.look); } return true; }
   if (m.t === 'rgMe') { const p = players.get(myId); if (p) { if (m.rg) RGS.add(p.username); else { RGS.delete(p.username); p.horse = false; } p.ch = charFor(p.username, p.look); }
     if (m.rg) { fxToast('VOCÊ É GUARDA REAL!', 'Toque em 🐎 Cavalo para montar e proteja Eryon', '#9fc4ff', '🛡'); fanfare(true); } else sys('Você não é mais Guarda Real.'); updHorseBtn(); return true; }
   return false;
-}
+};
 // cavalo de lado (olhando para a direita); o do Rei é branco com manta vermelha, o dos guardas é castanho com manta azul
 const HSPR = {};
 function horseSprite(royal, f) {
@@ -85,3 +85,56 @@ function drawCutTree(x, o) {
   // troncos caídos ao lado
   if (fl) { x.save(); x.translate(Math.round(o.x - 2), 0); x.scale(-1, 1); x.drawImage(s, -30, Math.round(o.y - 12)); x.restore(); } else x.drawImage(s, Math.round(o.x + 2), Math.round(o.y - 12));
 }
+
+// =====================================================================
+// PAINEL DO REI (só o Rei vê): tesouro, imposto, ordens, recompensas e guardas
+// =====================================================================
+let ROYAL = null;
+function updKingBtn() { const b = $('kingBtn'); if (b) b.hidden = !(me && KING && me === KING); }
+function openKing() { closePanels(); $('kingPanel').hidden = false; send({ t: 'royal', a: 'state' }); renderKing(); }
+const kEsc = v => String(v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+function renderKing() {
+  const b = $('kingBody'); if (!b || $('kingPanel').hidden) return; const R = ROYAL || { moedas: 0, taxAt: 0, log: [], online: [] }, left = Math.max(0, 30 * 60000 - (Date.now() - (R.taxAt || 0)));
+  let h = `<div class="kp"><div class="treas">Tesouro do Reino: ${R.moedas} moedas</div>`;
+  h += `<h3>💰 Cobrar imposto</h3><p class="hint">Tira uma parte das moedas de quem está online (no máximo 100 por pessoa). Guardas Reais não pagam. ${left ? `Próximo imposto em ${Math.ceil(left / 60000)} min.` : 'Pode cobrar agora.'}</p>
+    <div class="row2"><button data-k="tax" data-p="5" ${left ? 'disabled' : ''}>5%</button><button data-k="tax" data-p="10" ${left ? 'disabled' : ''}>10%</button><button data-k="tax" data-p="20" ${left ? 'disabled' : ''}>20%</button></div>`;
+  h += `<h3>📜 Dar uma ordem</h3><div class="row2"><button data-k="ord" data-t="Todos ao castelo! O Rei convoca o povo." data-g="castelo">Todos ao castelo</button><button data-k="ord" data-t="Reunião na praça da fogueira, agora!" data-g="praca">Reunir na praça</button>
+    <button data-k="ord" data-t="Guardas, protejam a vila! Ninguém entra sem ordem do Rei." data-g="vila">Guardas na vila</button><button data-k="ord" data-t="Cortem lenha e quebrem pedras para o Reino!" data-g="">Trabalhar para o Reino</button>
+    <button data-k="ord" data-t="Hoje é dia de festa em Eryon! Todos à praça!" data-g="praca">Festa!</button><button data-k="ord" data-t="Preparem as armas! Um inimigo pode atacar a qualquer momento!" data-g="vila">Preparar armas</button></div>
+    <div class="row2" style="margin-top:6px"><input id="kOrd" maxlength="160" placeholder="Escreva a sua ordem..." style="flex:3"><select id="kGo" style="flex:1"><option value="">sem lugar</option><option value="castelo">castelo</option><option value="praca">praça</option><option value="vila">vila</option></select></div>
+    <div class="row2" style="margin-top:6px"><button data-k="ordx">Anunciar ordem para todos</button></div>`;
+  h += `<h3>🎁 Recompensar</h3><div class="row2"><input id="kUser" placeholder="@ de quem" style="flex:2"><input id="kN" type="number" min="1" value="10" style="flex:1"></div>
+    <div class="row2" style="margin-top:6px"><button data-k="give">Dar ao @</button><button data-k="share">Dividir com todos online</button></div>
+    <div class="row2" style="margin-top:6px"><button data-k="wd">Pegar do Tesouro</button><button data-k="dep">Guardar no Tesouro</button></div>`;
+  h += `<h3>🛡 Povo online (${R.online.length})</h3>`;
+  for (const o of R.online) h += `<div class="ppl"><span>${o.rg ? '🛡 ' : ''}@${kEsc(o.u)} · ${o.m} moedas</span><span class="row2"><button data-k="pick" data-u="${kEsc(o.u)}">Recompensar</button><button data-k="rg" data-u="${kEsc(o.u)}" data-on="${o.rg ? 0 : 1}">${o.rg ? 'Dispensar' : 'Nomear guarda'}</button></span></div>`;
+  if (!R.online.length) h += '<p class="hint">Ninguém online agora além de você.</p>';
+  if (R.log.length) h += `<h3>📖 Registro do Reino</h3><div class="log">${R.log.map(l => kEsc(new Date(l.t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) + ' · ' + l.txt)).join('<br>')}</div>`;
+  b.innerHTML = h + '</div>';
+  b.querySelectorAll('button[data-k]').forEach(el => el.onclick = () => { const k = el.dataset.k, n = Math.floor(Number(($('kN') || {}).value) || 0), u = (($('kUser') || {}).value || '').trim().replace(/^@/, '');
+    if (k === 'tax') { if (confirm(`Cobrar ${el.dataset.p}% de imposto de quem está online?`)) send({ t: 'royal', a: 'tax', pct: Number(el.dataset.p) }); }
+    else if (k === 'ord') send({ t: 'royal', a: 'decree', text: el.dataset.t, go: el.dataset.g });
+    else if (k === 'ordx') { const tx = ($('kOrd').value || '').trim(); if (tx) { send({ t: 'royal', a: 'decree', text: tx, go: $('kGo').value }); $('kOrd').value = ''; } }
+    else if (k === 'give') send({ t: 'royal', a: 'give', username: u, n });
+    else if (k === 'share') send({ t: 'royal', a: 'share', n });
+    else if (k === 'wd') send({ t: 'royal', a: 'withdraw', n });
+    else if (k === 'dep') send({ t: 'royal', a: 'deposit', n });
+    else if (k === 'pick') { $('kUser').value = el.dataset.u; $('kN').focus(); }
+    else if (k === 'rg') send({ t: 'appoint', username: el.dataset.u, on: el.dataset.on === '1' }); });
+}
+const DECREE_GO = { castelo: () => ({ x: CASTLE.spot.x, y: CASTLE.spot.y + 12 }), praca: () => ({ x: C.x, y: C.y + 30 }), vila: () => ({ x: C.x + 40, y: C.y + 40 }) };
+function showDecree(m) {
+  const el = $('notice'); if (!el) return; $('noticeIco').textContent = '📜'; $('noticeT').textContent = 'ORDEM DO REI'; $('noticeB').textContent = `${m.text}\n— Rei @${m.king}`;
+  const go = $('noticeGo'), f = DECREE_GO[m.go]; go.hidden = !f || me === m.king; if (f) { go.textContent = m.go === 'castelo' ? 'Ir ao castelo' : m.go === 'praca' ? 'Ir à praça' : 'Ir para a vila'; go.onclick = () => { hideNotice(); const p = players.get(myId); if (p && !p.room) { target = f(); follow(); } }; }
+  el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); if (typeof giantHorn === 'function') giantHorn();
+}
+const _okm = onKingdomMsg;
+onKingdomMsg = function (m) {
+  if (m.t === 'royal') { ROYAL = m; renderKing(); return true; }
+  if (m.t === 'decree') { showDecree(m); return true; }
+  if (m.t === 'taxed') { fxToast('Imposto do Rei', `Você pagou ${m.n} moedas (${m.pct}%) ao Tesouro do Reino`, '#ffd84a', '👑'); return true; }
+  if (m.t === 'reward') { fxToast('Presente do Rei!', `Você ganhou ${m.n} moedas do Tesouro`, '#ffd84a', '🎁'); fanfare(true); return true; }
+  return _okm(m);
+};
+addEventListener('DOMContentLoaded', () => { const b = $('kingBtn'); if (b) b.onclick = () => { sndStart(); openKing(); }; const c = $('kingClose'); if (c) c.onclick = () => { $('kingPanel').hidden = true; }; });
+setInterval(updKingBtn, 1500);

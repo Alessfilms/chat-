@@ -30,7 +30,7 @@ function initDb() {
   db.notice ||= { on: false, title: '', text: '', every: 10 };
   db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
   db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {}; db.animals ||= []; db.nextAnimal ||= 1;
-  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; db.cut ||= []; if (db.king === undefined) db.king = 'emanuel01.f'; db.rguards ||= {}; db.giant.burned ||= []; db.giant.rebuild ||= {};
+  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; db.cut ||= []; if (db.king === undefined) db.king = 'emanuel01.f'; db.rguards ||= {}; db.treasury ||= { moedas: 0, taxAt: 0, log: [] }; db.giant.burned ||= []; db.giant.rebuild ||= {};
   if (db.giant.state === 'battle') db.giant.state = 'scheduled', db.giant.at = Date.now() + 60000;   // reiniciou no meio da batalha: recomeça em 1 min
   for (const r of Object.values(db.users)) if (r && typeof r === 'object') { if (r.tot && typeof r.tot !== 'object') r.tot = {}; }
 }
@@ -815,10 +815,33 @@ wss.on('connection', (ws, req) => {
       if (now - (G.catCd[d.id] || 0) < 4000) return note(c, 'A catapulta está recarregando...'); if (Math.hypot(d.x - G.x, d.y - G.y) > 300) return note(c, 'O gigante está longe demais para esta catapulta.');
       const inv = invOf(r); if (!(inv.pedra > 0)) return note(c, 'Precisa de 1 pedra para disparar.'); inv.pedra--; sendInv(c); G.catCd[d.id] = now;
       all({ t: 'catShot', id: d.id, x: d.x, y: d.y, tx: Math.round(G.x), ty: Math.round(G.y), by: c.id }); setTimeout(() => hurtGiant(c, 45, 'cat'), 800);
+    } else if (m.t === 'royal') {        // PAINEL DO REI: tesouro, impostos, decretos e recompensas
+      if (!db.king || c.user !== db.king) return note(c, 'Só o Rei pode usar o painel do Rei.');
+      const T = db.treasury, now = Date.now(), r = db.users[c.user], logT = txt => { T.log.unshift({ t: now, txt }); T.log = T.log.slice(0, 12); };
+      const reply = () => out(c.ws, { t: 'royal', moedas: T.moedas, taxAt: T.taxAt || 0, log: T.log, online: [...clients].filter(o => o.user !== db.king).map(o => ({ u: o.user, rg: !!db.rguards[o.user], m: invOf(db.users[o.user] || {}).moedas || 0 })) });
+      if (m.a === 'tax') { const pct = [5, 10, 20].includes(Number(m.pct)) ? Number(m.pct) : 10; if (now - (T.taxAt || 0) < 30 * 60000) return note(c, `Você só pode cobrar imposto de novo em ${Math.ceil((30 * 60000 - (now - T.taxAt)) / 60000)} min.`);
+        let total = 0, n = 0; for (const o of clients) { if (o.user === db.king || db.rguards[o.user]) continue; const ro = db.users[o.user]; if (!ro) continue; const inv = invOf(ro), have = inv.moedas || 0; if (have < 5) continue;
+          const v = Math.max(1, Math.min(100, Math.floor(have * pct / 100))); inv.moedas = have - v; total += v; n++; sendInv(o); out(o.ws, { t: 'taxed', n: v, pct }); }
+        T.moedas += total; T.taxAt = now; logT(`Imposto de ${pct}%: +${total} moedas de ${n} pessoa(s)`); save();
+        all({ t: 'announce', from: '👑 DECRETO DO REI', text: `O Rei @${db.king} cobrou ${pct}% de imposto. ${total} moedas foram para o Tesouro do Reino. (Guardas Reais não pagam.)` }); return reply(); }
+      if (m.a === 'decree') { if (now - (c.lastDecree || 0) < 30000) return note(c, 'Espere um pouco para dar outra ordem.'); const text = censor(String(m.text || '').trim().slice(0, 160)).text; if (!text) return; c.lastDecree = now;
+        const go = ['castelo', 'praca', 'vila'].includes(m.go) ? m.go : ''; logT(`Ordem: ${text}`); save(); all({ t: 'decree', text, go, king: db.king });
+        const km = { t: 'chat', id: 0, username: 'Rei', text: `📜 ${text}`, ts: now, badge: 'criador' }; chatLog.push(km); all(km); return reply(); }
+      if (m.a === 'give') { const u = norm(m.username), v = Math.floor(Number(m.n)); if (!validUser(u) || !db.users[u] || !(v > 0)) return note(c, 'Escolha um @ e a quantidade.'); if (v > T.moedas) return note(c, 'O Tesouro não tem moedas suficientes.');
+        T.moedas -= v; const inv = invOf(db.users[u]); inv.moedas = (inv.moedas || 0) + v; logT(`Recompensa: ${v} moedas para @${u}`); save();
+        for (const o of clients) if (o.user === u) { sendInv(o); out(o.ws, { t: 'reward', n: v, king: db.king }); } all({ t: 'announce', from: '👑 REINO DE ERYON', text: `O Rei @${db.king} recompensou @${u} com ${v} moedas do Tesouro!` }); return reply(); }
+      if (m.a === 'share') { const v = Math.floor(Number(m.n)), list = [...clients].filter(o => o.user !== db.king && db.users[o.user]); if (!(v > 0) || !list.length) return note(c, 'Ninguém online para receber.'); if (v > T.moedas) return note(c, 'O Tesouro não tem moedas suficientes.');
+        const each = Math.floor(v / list.length); if (each < 1) return note(c, `Precisa de pelo menos ${list.length} moedas para dar 1 a cada um.`); T.moedas -= each * list.length;
+        for (const o of list) { const inv = invOf(db.users[o.user]); inv.moedas = (inv.moedas || 0) + each; sendInv(o); out(o.ws, { t: 'reward', n: each, king: db.king }); }
+        logT(`Presente: ${each} moedas para ${list.length} pessoa(s)`); save(); all({ t: 'announce', from: '👑 REINO DE ERYON', text: `O Rei @${db.king} deu ${each} moedas para cada pessoa online! Viva o Rei!` }); return reply(); }
+      if (m.a === 'withdraw') { const v = Math.floor(Number(m.n)); if (!(v > 0) || v > T.moedas) return note(c, 'Quantidade inválida.'); T.moedas -= v; const inv = invOf(r); inv.moedas = (inv.moedas || 0) + v; sendInv(c); logT(`O Rei pegou ${v} moedas do Tesouro`); save(); return reply(); }
+      if (m.a === 'deposit') { const v = Math.floor(Number(m.n)), inv = invOf(r); if (!(v > 0) || v > (inv.moedas || 0)) return note(c, 'Você não tem essas moedas.'); inv.moedas -= v; T.moedas += v; sendInv(c); logT(`O Rei guardou ${v} moedas no Tesouro`); save(); return reply(); }
+      return reply();
     } else if (m.t === 'appoint') {       // o Rei nomeia (ou dispensa) um Guarda Real
       if (!db.king || c.user !== db.king) return note(c, 'Só o Rei pode nomear guardas.'); const u = norm(m.username); if (!validUser(u) || !db.users[u] || u === db.king) return;
       if (m.on) { db.rguards[u] = Date.now(); all({ t: 'announce', from: '👑 REINO DE ERYON', text: `O Rei @${db.king} nomeou @${u} GUARDA REAL! Agora protege a cidade e anda a cavalo.` }); }
       else { delete db.rguards[u]; note(c, `@${u} não é mais Guarda Real.`); }
+      setTimeout(() => { if (c.ws.readyState === 1) onMsg(JSON.stringify({ t: 'royal', a: 'state' })); }, 50);
       save(); for (const o of clients) if (o.user === u) { o.dirty = true; if (!m.on) o.horse = false; all({ t: 'rg', id: o.id, rg: !!m.on }); out(o.ws, { t: 'rgMe', rg: !!m.on }); }
     } else if (m.t === 'rebuild') {       // reconstruir casa queimada: várias pessoas ajudam (3 lenhas + 2 pedras cada vez)
       const r = db.users[c.user], id = String(m.id || ''); if (!r || G || !db.giant.burned.includes(id)) return; const b = giantBuildings().find(q => q.id === id); if (!b || c.room || Math.hypot(c.x - b.x, c.y - b.y) > 50) return;
