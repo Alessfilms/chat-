@@ -153,6 +153,9 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 .atbox{gap:12px}.att{font:400 20px/1.3 P2P,monospace!important;color:var(--gold);text-align:center;margin:0}
 .atrow{display:flex;align-items:center;background:#0c1410;border:3px solid #3c5d4a}.atrow span{font:700 22px Pix,monospace;color:var(--gold);padding:0 4px 0 12px}.atrow input{border:0;padding-left:2px}
 .aterr{color:#ff8a70;min-height:1.2em;margin:0;font-size:15px}
+#nudge{position:fixed;left:10px;bottom:calc(128px + env(safe-area-inset-bottom));z-index:4;max-width:min(300px,calc(100% - 20px));text-align:left;font:700 14px Pix,monospace;padding:9px 12px;background:#2a1410;color:#fff3b0;border:3px solid #0c1410;box-shadow:inset 0 0 0 2px #ffd84a,0 4px 0 rgba(0,0,0,.4)}
+#nudge[hidden]{display:none}#nudge.in{animation:nIn 8s forwards}@keyframes nIn{0%{opacity:0;transform:translateX(-30px)}6%{opacity:1;transform:none}90%{opacity:1}100%{opacity:0}}
+body.clean #nudge{display:none!important}
 </style>
 </head>
 <body>
@@ -216,6 +219,7 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 <div id="repPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Denunciar</h2><button id="repClose" type="button" class="sec">Cancelar</button></div><p>O que <b id="repWho"></b> fez?</p>
   <div class="mgrid"><button type="button" class="mbtn rep" data-r="palavrões ou ofensa">Palavrões / ofensa</button><button type="button" class="mbtn rep" data-r="assédio">Assédio</button><button type="button" class="mbtn rep" data-r="spam">Spam</button><button type="button" class="mbtn rep" data-r="atrapalhando o jogo">Atrapalhando</button></div>
   <p class="hint">A denúncia vai para o criador. Com 3 denúncias, a pessoa fica sem chat por um tempo.</p></div></div>
+<button id="nudge" type="button" hidden><span></span></button>
 <div id="fxToast" hidden><i></i><div><b></b><span></span></div></div>
 <div id="announce" hidden><small>CRIADOR DE ERYON</small><span></span></div>
 <div id="tut" class="box" hidden><small></small><b></b><p></p><div class="row2"><button id="tutSkip" type="button" class="sec">Pular</button><button id="tutNext" type="button">Próximo</button></div></div>
@@ -262,7 +266,7 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 <script src="craft.js?v=31"></script>
 <script src="explore.js?v=31"></script>
 <script src="dragons.js?v=31"></script>
-<script src="features.js?v=33"></script>
+<script src="features.js?v=37"></script>
 <script src="castle.js?v=34"></script>
 <script src="game.js?v=34"></script>
 </body>

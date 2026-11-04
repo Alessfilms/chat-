@@ -261,6 +261,7 @@ const server = http.createServer(async (req, res) => {
         all({ t: 'rain', gift: g }); return send(res, 200, { ok: true, online: clients.size }); }
       if (p === '/api/admin/supporter' && req.method === 'POST') { const b = await body(req), u = norm(b.username), r = db.users[u]; if (!r) return send(res, 404, { error: 'Esse @ ainda não entrou em Eryon.' });
         r.sup = !!b.on; if (r.sup) delete r.supOff; else { r.supOff = true; if (r.look && !isStaff(u)) delete r.look.pet; } save();
+        if (r.sup) { db.supList = [u, ...(db.supList || []).filter(x => x !== u)].slice(0, 20); all({ t: 'thanks', username: u, look: r.look || null }); }
         for (const c of clients) if (c.user === u) { c.dirty = true; out(c.ws, { t: 'perk', perk: perkFor(u) }); all({ t: 'badge', id: c.id, badge: badgeOf(u) }); if (r.sup) out(c.ws, { t: 'supporter' }); if (r.look) all({ t: 'look', id: c.id, look: r.look }); }
         return send(res, 200, { ok: true }); }
       if (p === '/api/admin/castle' && req.method === 'POST') { const b = await body(req);
@@ -271,6 +272,7 @@ const server = http.createServer(async (req, res) => {
         save(); all(castleState({ n: 1 })); return send(res, 200, { ok: true, castle: { pedra: db.castle.pedra, lenha: db.castle.lenha, stage: stageIdx(), stages: STAGES.length } }); }
       if (p === '/api/admin/supportcfg' && req.method === 'POST') { const b = await body(req), url = String(b.url || '').trim().slice(0, 200), pix = String(b.pix || '').trim().slice(0, 120);
         if (url && !/^https:\/\/[^\s<>"']+$/.test(url)) return send(res, 400, { error: 'O link precisa começar com https://' }); db.supportCfg = { url, pix }; save(); return send(res, 200, { ok: true }); }
+      if (p === '/api/admin/thanks' && req.method === 'POST') { const b = await body(req), u = norm(b.username), r = db.users[u]; if (!r || !r.sup) return send(res, 400, { error: 'Esse @ ainda não tem o selo de apoiador.' }); all({ t: 'thanks', username: u, look: r.look || null }); return send(res, 200, { ok: true }); }
       if (p === '/api/admin/staff' && req.method === 'POST') { const b = await body(req), u = norm(b.username); if (!validUser(u)) return send(res, 400, { error: '@ inválido' }); if (b.on) db.staff[u] = true; else delete db.staff[u]; save();
         for (const c of clients) if (c.user === u) { out(c.ws, { t: 'perk', perk: perkFor(u) }); all({ t: 'badge', id: c.id, badge: badgeOf(u) }); } return send(res, 200, { ok: true }); }
       if (p === '/api/admin/sign' && req.method === 'POST') { const b = await body(req), text = String(b.text || '').trim().slice(0, 80), u = norm(b.username); const at = [...clients].find(c => c.user === u);
@@ -431,6 +433,14 @@ const STAGES = (() => { let p = 0, l = 0; return [
   { id: 'torres', name: 'Torres dos cantos', pedra: 400, lenha: 0 }, { id: 'portao', name: 'Portão', pedra: 200, lenha: 100 }, { id: 'torre', name: 'Torre do Rei', pedra: 500, lenha: 0 },
   { id: 'telhados', name: 'Telhados e bandeiras', pedra: 250, lenha: 150 }].map(st => { const o = { ...st, p0: p, l0: l }; p += st.pedra; l += st.lenha; return o; }); })();
 const stageIdx = () => { for (let i = 0; i < STAGES.length; i++) { const st = STAGES[i]; if (db.castle.pedra < st.p0 + st.pedra || db.castle.lenha < st.l0 + st.lenha) return i; } return STAGES.length; };
+const castleActive = new Map();   // @ -> último trabalho na obra
+const markBuilder = u => castleActive.set(u, Date.now());
+let lastBuildersMsg = '';
+setInterval(() => { if (!clients.size) return; const sup = (db.supList || []).filter(u => db.users[u] && db.users[u].sup).slice(0, 3); all({ t: 'supnudge', supporters: sup }); }, 14 * 60000).unref();
+setInterval(() => { const now = Date.now(), online = new Set([...clients].map(c => c.user)), list = [...castleActive].filter(([u, t]) => now - t < 4 * 60000 && online.has(u)).sort((a, b) => b[1] - a[1]).map(([u]) => u);
+  for (const [u, t] of castleActive) if (now - t > 10 * 60000) castleActive.delete(u);
+  if (!list.length || stageIdx() >= STAGES.length) return; const key = list.join(','); if (key === lastBuildersMsg && Math.random() < .5) return; lastBuildersMsg = key;
+  all({ t: 'builders', list: list.slice(0, 6), more: Math.max(0, list.length - 6) }); }, 90000).unref();
 const castleState = (extra = {}) => ({ t: 'castle', pedra: db.castle.pedra, lenha: db.castle.lenha, stages: STAGES, top: Object.entries(db.castle.by).sort((a, b) => b[1] - a[1]).slice(0, 5), ...extra });
 
 // =====================================================================
@@ -497,7 +507,7 @@ wss.on('connection', (ws, req) => {
       // pedreira do castelo: a pedra vira bloco direto na obra
       const cur = stageIdx(), st = STAGES[cur], room = st ? st.p0 + st.pedra - db.castle.pedra : 0;
       if (quarry && room > 0) { const n = Math.min(room, 3 + (invOf(r).picareta ? 1 : 0)); db.castle.pedra += n; db.castle.by[c.user] = (db.castle.by[c.user] || 0) + n; save();
-        track(c, 'mine'); track(c, 'castle', n); all(castleState({ n, by: c.user, fx: { x: c.x, y: c.y } }));
+        track(c, 'mine'); track(c, 'castle', n); markBuilder(c.user); all(castleState({ n, by: c.user, fx: { x: c.x, y: c.y } }));
         const after = stageIdx(); if (after > cur) { const txt = after >= STAGES.length ? 'O CASTELO DE ERYON ESTÁ PRONTO! Obrigado, comunidade!' : `O castelo ganhou: ${st.name}! Próxima etapa: ${STAGES[after].name}.`; all({ t: 'announce', text: txt }); const msg = { t: 'chat', id: 0, username: 'Castelo de Eryon', text: txt, ts: now, badge: 'criador' }; chatLog.push(msg); all(msg); }
         else if (st.l0 + st.lenha > db.castle.lenha && st.p0 + st.pedra <= db.castle.pedra) note(c, `Pedras da etapa "${st.name}" completas! Agora falta lenha: leve lenha até a obra.`);
       } else {
@@ -596,7 +606,7 @@ wss.on('connection', (ws, req) => {
       const st = STAGES[cur], inv = invOf(r), int = v => Math.max(0, Math.floor(Number(v) || 0));
       const p = Math.min(int(m.pedra), 50, inv.pedra || 0, st.p0 + st.pedra - db.castle.pedra), l = Math.min(int(m.lenha), 50, inv.lenha || 0, st.l0 + st.lenha - db.castle.lenha);
       if (p + l <= 0) return note(c, st.l0 + st.lenha > db.castle.lenha && !(inv.lenha > 0) ? `A etapa "${st.name}" precisa de lenha!` : 'Traga pedras para o castelo (quebre pedras na pedreira em frente).');
-      inv.pedra -= p; inv.lenha -= l; db.castle.pedra += p; db.castle.lenha += l; db.castle.by[c.user] = (db.castle.by[c.user] || 0) + p + l; save(); sendInv(c); track(c, 'castle', p + l);
+      inv.pedra -= p; inv.lenha -= l; db.castle.pedra += p; db.castle.lenha += l; db.castle.by[c.user] = (db.castle.by[c.user] || 0) + p + l; save(); sendInv(c); track(c, 'castle', p + l); markBuilder(c.user);
       const after = stageIdx(); all(castleState({ n: p + l, by: c.user }));
       if (p + l >= 10) all({ t: 'chat', id: c.id, username: c.user, text: `colocou ${p + l} blocos no castelo!`, ts: now });
       if (after > cur) { const txt = after >= STAGES.length ? 'O CASTELO DE ERYON ESTÁ PRONTO! Obrigado, comunidade!' : `O castelo ganhou: ${st.name}! Próxima etapa: ${STAGES[after].name}.`; all({ t: 'announce', text: txt }); const msg = { t: 'chat', id: 0, username: 'Castelo de Eryon', text: txt, ts: now, badge: 'criador' }; chatLog.push(msg); all(msg); }

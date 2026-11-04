@@ -66,7 +66,7 @@ code{background:#060b0a;padding:2px 6px;color:var(--gold);font-size:16px;letter-
     <label>Apoiadores (selo ★ + bichinho)</label>
     <div class="row"><input id="supPix" placeholder="Sua chave Pix (aparece no jogo)" style="flex:1;min-width:200px"></div>
     <div class="row"><input id="supUrl" placeholder="Link de apoio (LivePix, Apoia.se...) https://" style="flex:1;min-width:200px"><button class="sm" id="supCfg">Salvar forma de apoio</button></div>
-    <div class="row"><input id="supUser" placeholder="@de quem apoiou" style="flex:1;min-width:140px"><button class="sm" id="supOn">Dar selo de apoiador</button><button class="sm" id="supOff">Tirar selo</button></div>
+    <div class="row"><input id="supUser" placeholder="@de quem apoiou" style="flex:1;min-width:140px"><button class="sm" id="supOn">Dar selo de apoiador</button><button class="sm" id="supOff">Tirar selo</button><button class="sm" id="supThanks">Mostrar agradecimento de novo</button></div>
     <p id="supL" style="margin:0;color:#98a4ac;font-size:14px"></p>
   </section>
   <section>
@@ -142,6 +142,7 @@ $('staffOn').onclick = act(() => call('/api/admin/staff', { username: $('staffUs
 $('staffOff').onclick = act(() => call('/api/admin/staff', { username: $('staffUser').value, on: false }), 'Removido.');
 $('supCfg').onclick = act(() => call('/api/admin/supportcfg', { pix: $('supPix').value, url: $('supUrl').value }), 'Forma de apoio salva.');
 $('supOn').onclick = act(() => call('/api/admin/supporter', { username: $('supUser').value, on: true }), 'Selo de apoiador dado!');
+$('supThanks').onclick = act(() => call('/api/admin/thanks', { username: $('supUser').value }), 'Agradecimento mostrado para todos online!');
 $('supOff').onclick = act(() => call('/api/admin/supporter', { username: $('supUser').value, on: false }), 'Selo removido.');
 $('cGive').onclick = act(() => call('/api/admin/castle', { pedra: $('cP').value, lenha: $('cL').value }), 'Obra atualizada!');
 $('cReset').onclick = act(() => call('/api/admin/castle', { reset: true, confirm: $('cConf').value.trim().toUpperCase() }), 'Obra recomeçada.');

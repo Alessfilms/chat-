@@ -32,6 +32,10 @@ function onFeatureMsg(m) {
   if (m.t === 'rain') { startRain(m.gift || {}); return true; }
   if (m.t === 'signs') { SIGNS = m.list || []; return true; }
   if (m.t === 'castle') { onCastleMsg(m); return true; }
+  if (m.t === 'builders') { const L = m.list.map(u => u === me ? 'você' : '@' + u), txt = L.length === 1 ? L[0] : L.slice(0, -1).join(', ') + ' e ' + L[L.length - 1];
+    fxToast(`${txt}${m.more ? ' e mais ' + m.more : ''} ${L.length + m.more > 1 ? 'estão' : 'está'} construindo o castelo!`, 'Venha ajudar: pedreira ao sul da vila', '#ffd84a', '♜'); return true; }
+  if (m.t === 'thanks') { showThanks(m.username, m.look); return true; }
+  if (m.t === 'supnudge') { showNudge(m.supporters || []); return true; }
   if (m.t === 'tp') { const p = players.get(myId); if (p) { p.x = m.x; p.y = m.y; p.room = ''; target = null; follow(); fxToast('Whoosh!', 'O portal te levou de volta para a vila', '#d0a0ff', '✦'); } return true; }
   if (m.t === 'perk') { try { localStorage.setItem('eryon_perk', JSON.stringify(m.perk)); } catch { }
     // devolve o bichinho guardado no aparelho se o servidor tiver esquecido
@@ -174,3 +178,53 @@ $('supPill').onclick = () => { closePanels(); $('supPanel').hidden = false; rend
 $('repClose').onclick = () => $('repPanel').hidden = true;
 $('tutAgain').onclick = () => { closePanels(); startTutorial(true); };
 });
+
+// ---------- animação de agradecimento a um apoiador (real): personagem + bichinho + @ com luz atrás
+let thanksAnim = null;
+function showThanks(username, look) {
+  let cv2 = document.getElementById('thanksFx');
+  if (!cv2) { cv2 = document.createElement('canvas'); cv2.id = 'thanksFx'; cv2.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:9;cursor:pointer;touch-action:none'; cv2.addEventListener('pointerdown', e => { e.preventDefault(); if (thanksAnim && performance.now() - thanksAnim.t0 > 900) thanksAnim.t0 = performance.now() - 6.1 * 1000; }); document.body.appendChild(cv2); }
+  const D = Math.min(devicePixelRatio || 1, 2); cv2.width = Math.round(innerWidth * D); cv2.height = Math.round(innerHeight * D); cv2.hidden = false;
+  thanksAnim = { username, look: look || {}, ch: charFor(username, look), t0: performance.now(), D, parts: [], last: 0 }; fanfare(true); requestAnimationFrame(thanksFrame);
+}
+function thanksFrame(now) {
+  const A0 = thanksAnim, cv2 = document.getElementById('thanksFx'); if (!A0 || !cv2) return;
+  const t = (now - A0.t0) / 1000, T = 6.5, dt = Math.min(.05, (now - (A0.last || now)) / 1000); A0.last = now; if (t > T) { cv2.hidden = true; thanksAnim = null; return; }
+  const x = cv2.getContext('2d'), W = cv2.width, H = cv2.height, D = A0.D, A = Math.min(1, t / .35) * Math.min(1, (T - t) / .6), cx = W / 2, cy = H * .47;
+  x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H); x.imageSmoothingEnabled = false; x.globalAlpha = A;
+  const g = x.createRadialGradient(cx, cy, 10, cx, cy, Math.max(W, H) * .7); g.addColorStop(0, 'rgba(40,20,10,.55)'); g.addColorStop(1, 'rgba(6,4,10,.92)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // luz dourada atrás: raios girando + halo pulsando
+  x.globalCompositeOperation = 'lighter'; const R = Math.max(W, H);
+  for (let i = 0; i < 18; i++) { const a = -t * .3 + i / 18 * 6.283, w2 = .06 + .02 * Math.sin(t * 2 + i); x.globalAlpha = A * .11; x.fillStyle = i % 2 ? '#ffd84a' : '#ff9a3a'; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(a - w2) * R, cy + Math.sin(a - w2) * R); x.lineTo(cx + Math.cos(a + w2) * R, cy + Math.sin(a + w2) * R); x.fill(); }
+  const hal = x.createRadialGradient(cx, cy, 0, cx, cy, Math.min(W, H) * .38); hal.addColorStop(0, 'rgba(255,230,140,.9)'); hal.addColorStop(.45, 'rgba(255,170,60,.35)'); hal.addColorStop(1, 'rgba(0,0,0,0)');
+  x.globalAlpha = A * (.55 + .15 * Math.sin(t * 3)); x.fillStyle = hal; x.fillRect(0, 0, W, H); x.globalCompositeOperation = 'source-over';
+  // personagem grande acenando + bichinho pulando do lado
+  const fr = A0.ch.frame({ legs: 'stand', arm: 'wave', eyes: 0, br: Math.floor(t * 4) % 2 }), k = Math.max(4, Math.floor(Math.min(W * .62 / 16, H * .34 / 22))), pop = Math.max(.02, t < .8 ? eOutBack(clamp(t / .8)) : 1), kk = k * pop, bob = Math.sin(t * 2.4) * k * .6;
+  x.globalAlpha = A; x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(cx, cy + 4 * k, Math.max(.5, 9 * kk), Math.max(.5, 2 * kk), 0, 0, 6.283); x.fill();
+  x.drawImage(fr.c, Math.round(cx - fr.ax * kk), Math.round(cy - fr.ay * kk + bob), Math.round(fr.c.width * kk), Math.round(fr.c.height * kk));
+  const pet = A0.look.pet; if (pet && t > .5) { const ps = petSprite(pet, Math.floor(t * 6) % 2).l, pk = kk * .55, hop = Math.abs(Math.sin(t * 5)) * k * 1.2, fly = pet === 'coruja' || pet === 'dragao';
+    x.drawImage(ps, Math.round(cx + 5 * k), Math.round(cy + 4 * k - 13 * pk - hop - (fly ? 8 * k : 0)), Math.round(14 * pk), Math.round(14 * pk)); }
+  // corações e brilhos
+  if (t < T - 1 && Math.random() < .45) A0.parts.push({ x: cx + (Math.random() - .5) * W * .7, y: cy + H * .16, vy: -(40 + Math.random() * 60) * D, life: 0, max: 1.6 + Math.random(), heart: Math.random() < .4, a: Math.random() * 6 });
+  const u = Math.max(2, Math.round(k * .28));
+  for (let i = A0.parts.length - 1; i >= 0; i--) { const q = A0.parts[i]; q.life += dt; if (q.life > q.max) { A0.parts.splice(i, 1); continue; } q.y += q.vy * dt; const X = Math.round(q.x + Math.sin(q.life * 3 + q.a) * 14 * D), Y = Math.round(q.y);
+    x.globalAlpha = A * Math.sin(q.life / q.max * Math.PI);
+    if (q.heart) { x.fillStyle = '#e04a5a'; x.fillRect(X, Y, u, u); x.fillRect(X + 2 * u, Y, u, u); x.fillRect(X - u, Y + u, 5 * u, u); x.fillRect(X, Y + 2 * u, 3 * u, u); x.fillRect(X + u, Y + 3 * u, u, u); x.fillStyle = '#ff9aa8'; x.fillRect(X, Y, u, u); }
+    else { x.fillStyle = '#fff3b0'; const tw = .5 + .5 * Math.sin(q.life * 10 + q.a); x.fillRect(X - u * 1.5 * tw, Y, u * 3 * tw, u / 2 + 1); x.fillRect(X, Y - u * 1.5 * tw, u / 2 + 1, u * 3 * tw); } }
+  // textos
+  x.globalAlpha = A; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
+  const txt = (s2, X, Y, font, col, lw) => { x.font = font; x.lineWidth = lw; x.strokeStyle = '#140e06'; x.strokeText(s2, X, Y, W * .92); x.fillStyle = col; x.fillText(s2, X, Y, W * .92); };
+  const f1 = Math.round(Math.min(W * .06, 26 * D)), tp = t < .5 ? eOutBack(clamp(t / .5)) : 1;
+  x.save(); x.translate(cx, H * .15); x.scale(tp, tp); txt('NOVO APOIADOR!', 0, 0, `400 ${f1}px P2P, monospace`, '#ffd84a', f1 * .35); x.restore();
+  const name = '★ @' + A0.username, n = clamp(Math.floor((t - .4) * 26), 0, name.length), f2 = Math.round(Math.min(W * .08, 36 * D));
+  if (n) txt(name.slice(0, n), cx, H * .23, `700 ${f2}px Pix, monospace`, '#fff3b0', f2 * .3);
+  if (t > 1.2) { x.globalAlpha = A * clamp((t - 1.2) / .5); const f3 = Math.round(Math.min(W * .045, 18 * D)); txt('Obrigado por ajudar a manter Eryon vivo ♥', cx, H * .74, `700 ${f3}px Pix, monospace`, '#ffffff', f3 * .3); txt('Toque em "Apoiar PIX" para apoiar também', cx, H * .74 + f3 * 1.6, `700 ${Math.round(f3 * .8)}px Pix, monospace`, '#c3cad6', f3 * .25); }
+  x.globalAlpha = 1; requestAnimationFrame(thanksFrame);
+}
+// ---------- lembrete de apoio (só com apoiadores reais)
+function showNudge(sup) {
+  const el = $('nudge'); if (!el || !me) return;
+  el.querySelector('span').textContent = sup.length ? `${sup.map(u => '@' + u).join(', ')} já ${sup.length > 1 ? 'apoiaram' : 'apoiou'} Eryon ♥ Apoie também!` : 'Eryon é mantido pela comunidade. Apoie com um Pix ♥';
+  el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); clearTimeout(showNudge.t); showNudge.t = setTimeout(() => el.hidden = true, 8000);
+}
+addEventListener('DOMContentLoaded', () => { const el = $('nudge'); if (el) el.onclick = () => { el.hidden = true; closePanels(); $('supPanel').hidden = false; renderSupport(); }; });
