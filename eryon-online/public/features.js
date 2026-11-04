@@ -21,7 +21,7 @@ function fanfare(big) { if (!SND.ctx) return; const w = SND.ctx.currentTime, n =
 
 // ---------- mensagens do servidor
 function onFeatureMsg(m) {
-  if (m.t === 'prog') { PROG = m; if (!$('questPanel').hidden) renderQuests(); const me2 = players.get(myId); if (me2) me2.lv = m.lv; updBalloonBtn(); return true; }
+  if (m.t === 'prog') { PROG = m; if ($('achN')) $('achN').textContent = `${m.ach.length}/${m.achAll.length}`; if (!$('questPanel').hidden) renderQuests(); const me2 = players.get(myId); if (me2) me2.lv = m.lv; updBalloonBtn(); return true; }
   if (m.t === 'mission') { const r = Object.entries(m.rew || {}).map(([k, v]) => `+${v} ${k}`).join(' '); fxToast('Missão completa!', `${m.text} · +${m.xp} XP ${r}`, '#84c65a', '✔'); fanfare(); return true; }
   if (m.t === 'ach') { fxToast('Conquista: ' + m.name, m.desc + (m.coins ? ` · +${m.coins} moedas` : ''), '#ffd84a', '🏆'); fanfare(true); return true; }
   if (m.t === 'levelup') { fxToast('Nível ' + m.lv + '!', `Você ganhou ${m.coins || 0} moedas`, '#9ff3ff', '▲'); fanfare(true); if (m.balloon) { fxToast('VOCÊ GANHOU UM BALÃO!', 'Toque no botão do balão (no alto) para voar por Eryon', '#f2a04a', '◓'); updBalloonBtn(); } return true; }
@@ -58,7 +58,7 @@ function renderQuests() {
   if (CSTATE.stages.length) { const tot = CSTATE.stages.reduce((a, st) => a + st.pedra + st.lenha, 0), pc = Math.floor(100 * Math.min(tot, CSTATE.pedra + CSTATE.lenha) / tot), cur = curStage();
     h += `<h3>Castelo de Eryon</h3><div class="item"><b>${pc}% construído${cur < CSTATE.stages.length ? ' · Etapa ' + (cur + 1) + ': ' + esc(CSTATE.stages[cur].name) : ' · PRONTO!'}</b><div class="xpbar"><i style="width:${pc}%"></i></div><span>Quebre pedras e leve até a obra, ao sul da vila (Vale das Flores).</span>`;
     if (CSTATE.top.length) h += '<span>Mestres de obra: ' + CSTATE.top.map(([u, n], i) => `${i + 1}º @${esc(u)} (${n})`).join(' · ') + '</span>'; h += '</div>'; }
-  h += '<h3>Conquistas</h3><div class="achgrid">';
+  h += `<h3 id="achTop">Conquistas (${P2.ach.length}/${P2.achAll.length})</h3><div class="achgrid">`;
   for (const a of P2.achAll) { const got = P2.ach.includes(a.id); h += `<div class="ach${got ? ' got' : ''}" title="${esc(a.desc)}"><i>${got ? '🏆' : '🔒'}</i><b>${esc(a.name)}</b><span>${esc(a.desc)}</span></div>`; }
   $('questBody').innerHTML = h + '</div>';
 }
@@ -173,6 +173,7 @@ function startTutorial(force) {
 // ---------- botões (liga depois que a página carregou, quando $ já existe)
 addEventListener('DOMContentLoaded', () => {
 $('questBtn').onclick = () => { closePanels(); $('questPanel').hidden = false; renderQuests(); };
+$('achBtn').onclick = () => { closePanels(); $('questPanel').hidden = false; renderQuests(); const a = document.getElementById('achTop'); if (a) a.scrollIntoView({ block: 'start' }); };
 $('questClose').onclick = () => $('questPanel').hidden = true;
 $('supportBtn').onclick = () => { closePanels(); $('supPanel').hidden = false; renderSupport(); };
 $('supClose').onclick = () => $('supPanel').hidden = true;
@@ -241,8 +242,14 @@ function balloonSprite(ci) { if (BSPR[ci]) return BSPR[ci]; const [c, x] = canva
   px(x, '#ffffff', 9, 6, 2, 4); px(x, '#ffffff', 8, 10, 1, 3);
   for (const X of [11, 14, 20, 23]) for (let Y = 30; Y < 34; Y++) px(x, '#5a3420', X + Math.round((Y - 30) * (X < 17 ? .5 : -.5)), Y, 1, 1);
   return BSPR[ci] = c; }
-function drawBalloonShadows(x) { for (const q of players.values()) if (q.fly && !(q.room)) { x.fillStyle = 'rgba(8,20,16,.28)'; x.beginPath(); x.ellipse(Math.round(q.x), Math.round(q.y), 11, 4, 0, 0, 6.283); x.fill(); } }
+function drawBalloonShadows(x) { for (const q of players.values()) if (q.fly && !(q.room)) { const f = isFairy(q); x.fillStyle = 'rgba(8,20,16,.28)'; x.beginPath(); x.ellipse(Math.round(q.x), Math.round(q.y), f ? 5 : 11, f ? 2 : 4, 0, 0, 6.283); x.fill(); } }
 function drawBalloon(x, q, t) {
+  if (isFairy(q)) { // fada voando: flutua, asas batendo e rastro de brilhos
+    const Y = Math.round(q.y - 14 + Math.sin(t * 3 + (q.ph || 0)) * 2), X = Math.round(q.x), fl = Math.sin(t * 22 + (q.ph || 0));
+    x.globalAlpha = .7; for (const dir of [-1, 1]) { const w = 6 + Math.round(fl * 2), h = 7 + Math.round(-fl * 2); for (let k = 0; k < w; k++) { const hh = Math.max(1, Math.round(h * (1 - Math.abs(k - w * .35) / w))); px(x, k % 2 ? '#f6b6d8' : '#c8f0ff', X + dir * (3 + k), Y - 5 - hh, 1, hh + 1); } } x.globalAlpha = 1;
+    drawCharAt(x, q.ch, X, Y, { legs: 'stand', arm: q.moving ? 'fwd' : 'down', tool: 'wand', eyes: 0, br: Math.floor(t * 4) % 2 }, q.face || 1);
+    q.trail ||= []; if (q.moving || Math.random() < .2) q.trail.push({ x: q.x + (Math.random() - .5) * 6, y: Y - 6 + (Math.random() - .5) * 6, t }); q.trail = q.trail.filter(s2 => t - s2.t < 1.2);
+    for (const s2 of q.trail) { const k = (t - s2.t) / 1.2; x.globalAlpha = 1 - k; px(x, k < .3 ? '#ffffff' : '#fff3b0', Math.round(s2.x), Math.round(s2.y + k * 6), 1, 1); } x.globalAlpha = 1; return; }
   const ci = (q.username || '').split('').reduce((a, ch) => a + ch.charCodeAt(0), 0) % BALLOON_COLS.length, s = balloonSprite(ci), sway = Math.sin(t * 1.3 + (q.ph || 0)) * 1.5, X = Math.round(q.x + sway), Y = Math.round(q.y - 46 + Math.sin(t * .9 + (q.ph || 0)) * 2);
   drawCharAt(x, q.ch, X, Y + 1, { legs: 'stand', arm: q.moving ? 'wave' : 'down', eyes: 0, br: Math.floor(t * 3) % 2 }, q.face || 1);
   px(x, '#140e06', X - 6, Y - 6, 13, 9); px(x, '#8a5530', X - 5, Y - 5, 11, 7); px(x, '#b8814a', X - 5, Y - 5, 11, 1); for (let k = -4; k <= 4; k += 3) px(x, '#5a3420', X + k, Y - 4, 1, 6);
@@ -250,9 +257,10 @@ function drawBalloon(x, q, t) {
   const fl = Math.floor(t * 10 + (q.ph || 0)) % 4; if (q.moving || fl === 0) { px(x, '#ffd84a', X - 1, Y - 13, 3, 3); px(x, '#fff3b0', X, Y - 12, 1, 2); px(x, '#f2a33a', X - 1, Y - 11, 3, 1); }
 }
 function updBalloonBtn() { const b = $('balloonBtn'); if (!b) return; const ok = PROG && PROG.lv >= PROG.balloonLv; b.hidden = !ok; const p = players.get(myId); b.classList.toggle('on', !!(p && p.fly)); b.querySelector('span').textContent = p && p.fly ? 'Pousar' : 'Balão'; }
-function toggleBalloon() { const p = players.get(myId); if (!p) return; if (!PROG || PROG.lv < PROG.balloonLv) return sys(`O balão é o prêmio do nível ${PROG ? PROG.balloonLv : 8}.`);
+const isFairy = q => !!(q && classOf(q) && classOf(q).id === 'fada');
+function toggleBalloon() { const p = players.get(myId); if (!p) return; const fairy = isFairy(p); if (!fairy && (!PROG || PROG.lv < PROG.balloonLv)) return sys(`O balão é o prêmio do nível ${PROG ? PROG.balloonLv : 8}.`);
   if (p.room) return sys('Saia para o lado de fora para subir no balão.');
-  if (p.fly) { if (blocked(p.x, p.y)) return sys('Procure um lugar livre para pousar (fora da água e longe das árvores).'); p.fly = false; setZoom(zoomTarget / .72); sfx.door && sfx.door(false); }
-  else { p.fly = true; target = null; follow(); setZoom(zoomTarget * .72); fxToast('Voando por Eryon!', 'Ande para qualquer lado: o balão passa por cima de tudo', '#f2a04a', '◓'); play('whoosh', .5, .6); }
-  updBalloonBtn(); }
+  if (p.fly) { if (blocked(p.x, p.y)) return sys('Procure um lugar livre para pousar (fora da água e longe das árvores).'); p.fly = false; if (!fairy) setZoom(zoomTarget / .72); play('whoosh', .3, 1.4); }
+  else { p.fly = true; target = null; follow(); if (!fairy) setZoom(zoomTarget * .72); fxToast(fairy ? 'Voando com as asas!' : 'Voando por Eryon!', fairy ? 'Passe por cima de árvores, rio e lago' : 'Ande para qualquer lado: o balão passa por cima de tudo', fairy ? '#f6b6d8' : '#f2a04a', fairy ? '✦' : '◓'); play('whoosh', .5, fairy ? 1.6 : .6); }
+  updBalloonBtn(); skillLabel(); }
 addEventListener('DOMContentLoaded', () => { const b = $('balloonBtn'); if (b) b.onclick = () => { sndStart(); toggleBalloon(); }; });

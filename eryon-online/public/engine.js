@@ -215,6 +215,8 @@ function charBuilder(sp) {
     const big = !!sp.big;
     const [c, x] = canvas(30, 34);
     const OX = big ? 10 : 11, FY = 31;              // origem (coluna 0 da cabeça) e linha do pé
+    if (sp.wings) { const wy = FY - 4; for (const [sx, dir] of [[OX + 1, -1], [OX + 6, 1]]) { for (let k = 0; k < 5; k++) { const h = 7 - Math.abs(k - 1) - (k > 2 ? 1 : 0), X = sx + dir * k; px(x, '#5a3a7a', X, wy - h - 1, 1, h + 2); px(x, k % 2 ? '#f6b6d8' : '#c8f0ff', X, wy - h, 1, h); }
+      px(x, '#ffffff', sx + dir * 2, wy - 5, 1, 2); } }
     const rows = [];
     // cabeça
     const eyeRow = ['k', 's', 's', 's', 's', 's', 's', 'k']; eyeRow[2 + (po.eyes || 0)] = 'e'; eyeRow[5 + (po.eyes || 0)] = 'e'; eyeRow[6 + (po.eyes > 0 ? 0 : 0)] = eyeRow[6] === 'e' ? 'e' : 'S';
@@ -261,6 +263,9 @@ function charBuilder(sp) {
     if (sp.wolfEars) { for (const ex of [OX + 1, OX + 5]) { px(x, P.ink, ex - 1, hT - 3, 4, 4); px(x, M.h, ex, hT - 2, 2, 2); px(x, '#c4ccd0', ex, hT - 2, 1, 1); } }
     if (sp.hat === 'palha') { px(x, P.ink, OX - 2, hT + 1, 12, 2); px(x, '#e4c066', OX - 1, hT + 1, 10, 1); px(x, P.ink, OX + 1, hT - 2, 6, 3); px(x, '#e4c066', OX + 2, hT - 1, 4, 2); px(x, '#a83a32', OX + 2, hT, 4, 1); }
     if (sp.hat === 'bone') { px(x, P.ink, OX, hT - 1, 8, 3); px(x, sp.capColor || '#a83a32', OX + 1, hT, 6, 2); px(x, P.ink, OX + 6, hT + 1, 4, 2); px(x, sp.capColor || '#a83a32', OX + 7, hT + 1, 2, 1); }
+    if (sp.hat === 'mago') { px(x, P.ink, OX - 2, hT + 1, 12, 2); px(x, '#4a2a7a', OX - 1, hT + 1, 10, 1);
+      for (let k = 0; k < 8; k++) { const w = Math.max(1, 7 - k), x0 = OX + 4 - Math.ceil(w / 2) + (k > 4 ? 1 : 0); px(x, P.ink, x0 - 1, hT - k, w + 2, 1); px(x, k % 3 === 1 ? '#7a4ac0' : '#6e4a8a', x0, hT - k, w, 1); }
+      px(x, '#ffd84a', OX + 3, hT - 2, 1, 1); px(x, '#ffd84a', OX + 5, hT - 4, 1, 1); px(x, '#fff3b0', OX + 6, hT - 8, 1, 1); }
     if (sp.hat === 'chef') { px(x, P.ink, OX + 1, hT - 4, 6, 6); px(x, '#ffffff', OX + 2, hT - 3, 4, 4); px(x, '#c4ccd0', OX + 5, hT - 3, 1, 4); }
     if (sp.crown) { px(x, P.ink, OX + 1, hT - 2, 6, 3); px(x, P.fire3, OX + 2, hT - 1, 4, 1); px(x, P.fire3, OX + 2, hT - 2, 1, 1); px(x, P.fire3, OX + 5, hT - 2, 1, 1); px(x, P.cy2, OX + 3, hT - 1, 2, 1); }
     // braços e ferramentas (sem contorno automático; desenhados por cima)
@@ -293,6 +298,8 @@ function charBuilder(sp) {
         for (let i = -3; i <= 2; i++) px(x, 'rgba(255,255,255,.7)', a + 1, b + i); }
       if (T === 'torch') { arm([[a + 1, b, wd], [a + 1, b - 1, wd], [a + 1, b - 2, po.br ? P.fire3 : P.fire2], [a + 1, b - 3, P.fire4], [a, b - 2, P.fire1], [a + 2, b - 3, po.br ? P.fire1 : P.fire3]]); }
       if (T === 'lute') arm([[a + 1, b - 1, P.woodL], [a + 2, b - 1, P.woodL], [a + 3, b - 2, P.woodL], [a + 4, b - 3, P.woodL], [a + 5, b - 4, P.wood], [a, b, '#8b5e3c'], [a + 1, b, '#a3794b'], [a, b + 1, '#8b5e3c'], [a + 1, b + 1, '#6b4630'], [a - 1, b, '#6b4630'], [a, b + 2, '#6b4630'], [a + 1, b - 2, '#fff3b0']]);
+      if (T === 'staff') { for (let i = -6; i < 6; i++) arm([[a + 1, b + i, i % 3 ? '#6b4630' : '#8b5e3c']]); arm([[a, b - 8, P.ink], [a + 2, b - 8, P.ink], [a + 1, b - 9, P.ink], [a + 1, b - 7, '#3fd0e0'], [a + 1, b - 8, po.br ? '#ffffff' : '#9ff3ff'], [a, b - 7, P.ink], [a + 2, b - 7, P.ink]]); }
+      if (T === 'wand') arm([[a + 1, b, '#f4f0d8'], [a + 2, b - 1, '#f4f0d8'], [a + 3, b - 2, '#ffd84a'], [a + 4, b - 2, po.br ? '#ffffff' : '#fff3b0'], [a + 3, b - 3, '#fff3b0'], [a + 2, b - 2, '#fff3b0']]);
       if (T === 'machete') { if (A === 'up') arm([[a, b - 1, '#3a2216'], [a, b - 2, '#3a2216'], [a - 1, b - 3, W], [a, b - 3, W], [a - 1, b - 4, W], [a, b - 4, '#e8eef0'], [a - 1, b - 5, W], [a, b - 5, '#e8eef0'], [a, b - 6, W]]);
         else arm([[a + 1, b, '#3a2216'], [a + 1, b + 1, '#3a2216'], [a + 1, b + 2, W], [a + 2, b + 2, '#e8eef0'], [a + 1, b + 3, W], [a + 2, b + 3, '#e8eef0'], [a + 1, b + 4, W], [a + 2, b + 4, Wd], [a + 2, b + 5, Wd]]); }
       if (T === 'knife') arm([[a + 1, b, '#5a3420'], [a + 1, b + 1, W], [a + 2, b + 1, '#e8eef0'], [a + 1, b + 2, Wd]]);

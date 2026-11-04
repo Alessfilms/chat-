@@ -23,7 +23,7 @@ const HAIRS = ['#d0622a', '#ffd84a', '#1a1208', '#5a3a26', '#8b5e3c', '#c4ccd0',
 const SHIRTS = ['#a83a32', '#3f7ab0', '#6e4a8a', '#3c5d4a', '#d0622a', '#e4d0a0', '#4a535c', '#b06a9a'];
 const PANTS = ['#3c5f9a', '#4a2f22', '#2b3138', '#3c5d4a', '#6b4630', '#1d3550'];
 const SKINS = ['#e8b48c', '#f2c9a4', '#c08060', '#8b5e3c', '#5a3a26'];
-const HATS = [['', 'Nenhum'], ['palha', 'Palha'], ['bone', 'Boné'], ['chef', 'Chef']];
+const HATS = [['', 'Nenhum'], ['palha', 'Palha'], ['bone', 'Boné'], ['chef', 'Chef'], ['mago', 'Mago']];
 const CAPES = ['', '#4e6c4a', '#1d3550', '#a83a32', '#6e4a8a'];
 const shade = h => { const [r, g, b] = hex(h); return '#' + [r, g, b].map(v => Math.round(v * .6).toString(16).padStart(2, '0')).join(''); };
 const builders = new Map();
@@ -32,7 +32,7 @@ function charFor(username, look) {
   if (!builders.has(key)) {
     const l = look || {};
     const sp = NAMED[username] || { hair: l.hair || HAIRS[0], shirt: l.shirt || SHIRTS[1], shirtD: shade(l.shirt || SHIRTS[1]), pants: l.pants || PANTS[0], longHair: !!l.longHair,
-      skin: l.skin || SKINS[0], skinD: shade(l.skin || SKINS[0]), beard: l.beard ? (l.hair || HAIRS[0]) : undefined, hat: l.hat || undefined, elfEars: !!l.elfEars, cape: l.cape || undefined };
+      skin: l.skin || SKINS[0], skinD: shade(l.skin || SKINS[0]), beard: l.beard ? (l.hair || HAIRS[0]) : undefined, hat: l.hat || undefined, elfEars: !!l.elfEars, cape: l.cape || undefined, wings: l.cls === 'fada' };
     builders.set(key, charBuilder(sp));
   }
   return builders.get(key);
@@ -451,12 +451,13 @@ function connect() {
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, perk: readPerk() }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
     if (onFeatureMsg(m)) return;
-    if (m.t === 'welcome') { SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { setTimeout(skillLabel, 0); SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
     else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; p.fly = !!s.fly; } } }
     else if (m.t === 'act') { const p = players.get(m.id); if (p && !p.mine) { const t0 = performance.now() / 1000; p.act = { kind: m.kind, t0, end: t0 + (ACT_DUR[m.kind] || 1.5) }; const me2 = players.get(myId); if (me2 && (me2.room || '') === (p.room || '') && Math.hypot(me2.x - p.x, me2.y - p.y) < 120) actSound(m.kind); } }
     else if (m.t === 'trees') { CUT.clear(); m.cut.forEach(i => CUT.add(i)); }
+    else if (m.t === 'zap') { const q = players.get(m.id); if (q) { const t0 = performance.now() / 1000; q.act = { kind: 'zap', t0, end: t0 + ACT_DUR.zap, pts: m.pts }; const me2 = players.get(myId); if (me2 && !me2.room && Math.hypot(me2.x - q.x, me2.y - q.y) < 200) thunder(); } }
     else if (m.t === 'houses') setBuilt(m.list);
     else if (m.t === 'bridges') addBridges(m.list);
     else if (m.t === 'inv') setInv(m.inv);
@@ -634,7 +635,7 @@ function draw(t, p) {
   if (room) { ctx.font = `700 ${Math.round(fs * 1.1)}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06'; const ty = Math.max(fs * 3, Math.round((0 - T) * S) - 6); ctx.strokeText(room.name, cv.width / 2, ty); ctx.fillStyle = '#ffd84a'; ctx.fillText(room.name, cv.width / 2, ty); }
   for (const q of players.values()) {
     if ((q.room || '') !== myRoom) continue;
-    const sx = Math.round((q.x - L) * S), sy = Math.round((q.y - T - (q.ch.sp.big ? 22 : 17) - (q.fly ? 64 : 0)) * S);
+    const sx = Math.round((q.x - L) * S), sy = Math.round((q.y - T - (q.ch.sp.big ? 22 : 17) - (q.fly ? (classOf(q) && classOf(q).id === 'fada' ? 16 : 64) : 0)) * S);
     if (sx < -200 || sx > cv.width + 200 || sy < -100 || sy > cv.height + 100) continue;
     ctx.font = `700 ${fs}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06';
     const nm = (q.badge === 'criador' ? '♛ ' : q.badge === 'apoiador' ? '★ ' : '') + '@' + q.username; ctx.strokeText(nm, sx, sy); ctx.fillStyle = q.badge === 'criador' ? '#ff9a3a' : q.badge === 'apoiador' ? '#ffd84a' : q.mine ? '#fff3b0' : '#ffffff'; ctx.fillText(nm, sx, sy);
@@ -647,7 +648,7 @@ function draw(t, p) {
 let ctxAct = null;
 function updateContext(p, t) {
   let c = null;
-  if (p.fly) c = { kind: 'econ', label: 'Pousar o balão', fn: toggleBalloon };
+  if (p.fly) c = { kind: 'econ', label: isFairy(p) ? 'Pousar' : 'Pousar o balão', fn: toggleBalloon };
   else   if (p.room) {
     const r = roomOf(p.room);
     for (const s of r.spots) if (Math.abs(p.x - s.x) < s.rx && Math.abs(p.y - s.y) < s.ry) c = s.node && DEPL.has(s.node) ? { kind: 'none', label: 'Volta a crescer logo' } : { kind: s.kind, label: s.label, node: s.node };
@@ -702,8 +703,23 @@ function actSound(kind) {
   else if (kind === 'cook') sfx.pot(); else if (kind === 'heal') sfx.heal(); else if (kind === 'lute') sfx.lute(); else if (kind === 'serve') sfx.coins();
 }
 function exitRoom(p) { sfx.door(false); const r = roomOf(p.room); p.room = ''; p.x = r.outside.x; p.y = r.outside.y; target = null; follow(); sendNow(p); }
-function doSkill() { const p = players.get(myId); const c = classOf(p); doAct(c ? c.skill : 'magic'); }
-function skillLabel() { const p = players.get(myId), c = classOf(p); $('magicBtn').textContent = (c ? c.skillName : 'Magia') + (TOUCH ? '' : '  [Q]'); }
+function doSkill() { const p = players.get(myId); const c = classOf(p);
+  if (c && c.skill === 'zap') return castZap(p);
+  if (c && c.skill === 'flyfairy') return toggleBalloon();
+  doAct(c ? c.skill : 'magic'); }
+// raio do Mago: até 8 árvores num raio em frente a ele
+let zapReady = 0;
+function castZap(p) {
+  if (!p || p.room || p.fly) return; const now = performance.now(); if (now < zapReady) return sys(`O cajado ainda está carregando (${Math.ceil((zapReady - now) / 1000)} s).`);
+  const cx = p.x + (p.face || 1) * 30, cy = p.y - 2, near = TREE_POS.filter(tr => !CUT.has(tr.i) && !URBAN.has(tr.i) && Math.hypot(tr.x - cx, (tr.y - cy) * 1.1) < 40).sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy)).slice(0, 8);
+  const pts = near.length ? near.map(tr => [tr.x, tr.y]) : [[Math.round(cx), Math.round(cy)]], t = now / 1000;
+  p.act = { kind: 'zap', t0: t, end: t + ACT_DUR.zap, pts }; zapReady = now + 10000; thunder(); send({ t: 'act', kind: 'zap' });
+  send({ t: 'zap', trees: near.map(tr => tr.i), x: Math.round(cx), y: Math.round(cy), pts });
+  setTimeout(() => { for (const tr of near) CUT.add(tr.i); if (near.length) { sfx.fall(); sys(`Raio! ${near.length} árvore${near.length > 1 ? 's' : ''} no chão.`); } }, 700);
+}
+function thunder() { if (!SND.ctx) return; const c = SND.ctx, w = c.currentTime + .45, s2 = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s2.buffer = SND.noise; s2.loop = true; f.type = 'lowpass'; f.frequency.setValueAtTime(2400, w); f.frequency.exponentialRampToValueAtTime(140, w + 1.2);
+  g.gain.setValueAtTime(.0001, w); g.gain.exponentialRampToValueAtTime(.9, w + .02); g.gain.exponentialRampToValueAtTime(.001, w + 1.6); s2.connect(f); f.connect(g); g.connect(SND.sfx); s2.start(w); s2.stop(w + 1.7); }
+function skillLabel() { const p = players.get(myId), c = classOf(p); $('magicBtn').textContent = (c && c.skill === 'flyfairy' && p && p.fly ? 'Pousar' : c ? c.skillName : 'Magia') + (TOUCH ? '' : '  [Q]'); }
 const TOUCH = matchMedia('(hover:none) and (pointer:coarse)').matches;
 // casas construídas pelos jogadores
 function setBuilt(list) { BUILT = Array.isArray(list) ? list : []; for (const k in ROOM_CACHE) if (k.startsWith('h_')) delete ROOM_CACHE[k];

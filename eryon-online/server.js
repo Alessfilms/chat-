@@ -91,9 +91,9 @@ const HAIRS = ['#d0622a', '#ffd84a', '#1a1208', '#5a3a26', '#8b5e3c', '#c4ccd0',
 const SHIRTS = ['#a83a32', '#3f7ab0', '#6e4a8a', '#3c5d4a', '#d0622a', '#e4d0a0', '#4a535c', '#b06a9a'];
 const PANTS = ['#3c5f9a', '#4a2f22', '#2b3138', '#3c5d4a', '#6b4630', '#1d3550'];
 const SKINS = ['#e8b48c', '#f2c9a4', '#c08060', '#8b5e3c', '#5a3a26'];
-const HATS = ['', 'palha', 'bone', 'chef'];
+const HATS = ['', 'palha', 'bone', 'chef', 'mago'];
 const CAPES = ['', '#4e6c4a', '#1d3550', '#a83a32', '#6e4a8a'];
-const CLS = ['', 'lenhador', 'guerreiro', 'maga', 'arqueira', 'ferreiro', 'construtor', 'cozinheiro', 'curandeira', 'bardo', 'taverneiro'];
+const CLS = ['', 'lenhador', 'guerreiro', 'maga', 'arqueira', 'ferreiro', 'construtor', 'cozinheiro', 'curandeira', 'bardo', 'taverneiro', 'mago', 'fada'];
 function cleanLook(l) {
   if (!l || typeof l !== 'object') return null;
   const pick = (v, list) => list.includes(v) ? v : list[0];
@@ -325,7 +325,7 @@ const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', co
   cabana: { name: 'Cabana', cost: { lenha: 8 } }, casarao: { name: 'Casarão', cost: { lenha: 18, pedra: 8 } }, celeiro: { name: 'Celeiro', cost: { lenha: 14, pedra: 2 } }, torre_vigia: { name: 'Torre de vigia', cost: { lenha: 6, pedra: 14 } }, moinho: { name: 'Moinho', cost: { lenha: 12, pedra: 10 } } };
 const ROOM_OK = /^(|taverna|gruta|abismo|castelo|casa_[1-9]|h_[0-9]{1,6})$/;
 const LANDMARK_NAMES = { costela: 'a Costela de Dragão', ruinas: 'as Ruínas da Inscrição', torre: 'a Torre Antiga', caverna: 'a Caverna Escondida', buraco: 'o Buraco Misterioso', circulo: 'o Círculo de Pedras', arvore: 'a Árvore Ancestral', poco: 'o Poço da Lua', lago: 'o Lago Espelhado', gigante: 'a Estátua do Gigante', acampamento: 'o Acampamento Abandonado', cristais: 'o Jardim de Cristais', cemiterio: 'o Cemitério Antigo', portal: 'o Portal Esquecido', ninho: 'o Ninho do Dragão' };
-const ACTS = new Set(['mine', 'gather', 'eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
+const ACTS = new Set(['zap', 'mine', 'gather', 'eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
 db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
 let lunchState = null;
 const riverY = x => 212 + 16 * Math.sin(x * .021) + 7 * Math.sin(x * .057 + 1);
@@ -512,7 +512,7 @@ wss.on('connection', (ws, req) => {
       const max = (m.fly ? 110 : 70) * dt + 6, dx = nx - c.x, dy = ny - c.y, d = Math.hypot(dx, dy);
       if (!changed && d > max) { nx = c.x + dx / d * max; ny = c.y + dy / d * max; }
       c.x = Math.max(4, Math.min(WORLD.w - 4, nx)); c.y = Math.max(8, Math.min(WORLD.h - 4, ny));
-      c.face = m.face < 0 ? -1 : 1; c.moving = !!m.moving; c.carry = !!m.carry; c.fly = !!m.fly && !c.room && levelOf((db.users[c.user] || {}).xp || 0) >= BALLOON_LV; c.dirty = true;
+      c.face = m.face < 0 ? -1 : 1; c.moving = !!m.moving; c.carry = !!m.carry; { const ru = db.users[c.user] || {}; c.fly = !!m.fly && !c.room && (levelOf(ru.xp || 0) >= BALLOON_LV || (ru.look && ru.look.cls === 'fada')); } c.dirty = true;
     } else if (m.t === 'act') {
       const now = Date.now(); if (!ACTS.has(m.kind) || now - (c.lastAct || 0) < 1500) return; c.lastAct = now;
       all({ t: 'act', id: c.id, kind: m.kind }, c);
@@ -673,6 +673,12 @@ wss.on('connection', (ws, req) => {
       earn(d.owner, cost); const ro = db.users[d.owner]; if (ro) { ro.tot ||= {}; ro.tot.stall = (ro.tot.stall || 0) + n; } save(); sendInv(c); all({ t: 'decor', list: db.decor });
       note(c, `Você comprou ${n} ${goodName(it.k).toLowerCase()} de @${d.owner} por ${cost} moedas.`); track(c, 'buy', n);
       for (const o of clients) if (o.user === d.owner) { note(o, `@${c.user} comprou ${n} ${goodName(it.k).toLowerCase()} na sua barraca: +${cost} moedas!`); track(o, 'sell', n); }
+    } else if (m.t === 'zap') {          // raio do Mago: derruba várias árvores de uma vez
+      const now = Date.now(), r = db.users[c.user]; if (!r || !r.look || r.look.cls !== 'mago' || c.room || now - (c.lastZap || 0) < 10000) return; c.lastZap = now;
+      const list = (Array.isArray(m.trees) ? m.trees : []).map(Number).filter(i => Number.isInteger(i) && i >= 0 && i <= 20000 && !cutTrees.has(i)).slice(0, 8);
+      const X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!Number.isFinite(X) || !Number.isFinite(Y) || Math.hypot(X - c.x, Y - c.y) > 70) return;
+      for (const i of list) cutTrees.set(i, now + 5 * 60000); all({ t: 'zap', id: c.id, x: X, y: Y, pts: (Array.isArray(m.pts) ? m.pts : []).slice(0, 8).map(q => [Math.round(Number(q[0]) || X), Math.round(Number(q[1]) || Y)]) }, c);
+      if (list.length) { all({ t: 'trees', cut: cutList() }); addRes(c, 'lenha', list.length * 2); track(c, 'cut', list.length); }
     } else if (m.t === 'tp') {       // Portal Esquecido -> volta para a vila
       const pp = LM_POS.portal, now = Date.now(); if (c.room || Math.hypot(c.x - pp[0], c.y - pp[1]) > 40 || now - (c.lastTp || 0) < 3000) return; c.lastTp = now;
       c.x = SPAWN.x + (Math.random() * 30 - 15); c.y = SPAWN.y + Math.random() * 10; c.lastRoom = now; c.dirty = true; out(c.ws, { t: 'tp', x: c.x, y: c.y }); all({ t: 'act', id: c.id, kind: 'magic' }, c);
