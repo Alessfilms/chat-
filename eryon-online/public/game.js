@@ -22,12 +22,17 @@ const NAMED = {
 const HAIRS = ['#d0622a', '#ffd84a', '#1a1208', '#5a3a26', '#8b5e3c', '#c4ccd0', '#a83a32', '#e6efa0'];
 const SHIRTS = ['#a83a32', '#3f7ab0', '#6e4a8a', '#3c5d4a', '#d0622a', '#e4d0a0', '#4a535c', '#b06a9a'];
 const PANTS = ['#3c5f9a', '#4a2f22', '#2b3138', '#3c5d4a', '#6b4630', '#1d3550'];
+const SKINS = ['#e8b48c', '#f2c9a4', '#c08060', '#8b5e3c', '#5a3a26'];
+const HATS = [['', 'Nenhum'], ['palha', 'Palha'], ['bone', 'Boné'], ['chef', 'Chef']];
+const CAPES = ['', '#4e6c4a', '#1d3550', '#a83a32', '#6e4a8a'];
 const shade = h => { const [r, g, b] = hex(h); return '#' + [r, g, b].map(v => Math.round(v * .6).toString(16).padStart(2, '0')).join(''); };
 const builders = new Map();
 function charFor(username, look) {
   const key = username + JSON.stringify(look || {});
   if (!builders.has(key)) {
-    const sp = NAMED[username] || { hair: look?.hair || HAIRS[0], shirt: look?.shirt || SHIRTS[1], shirtD: shade(look?.shirt || SHIRTS[1]), pants: look?.pants || PANTS[0], longHair: !!look?.longHair };
+    const l = look || {};
+    const sp = NAMED[username] || { hair: l.hair || HAIRS[0], shirt: l.shirt || SHIRTS[1], shirtD: shade(l.shirt || SHIRTS[1]), pants: l.pants || PANTS[0], longHair: !!l.longHair,
+      skin: l.skin || SKINS[0], skinD: shade(l.skin || SKINS[0]), beard: l.beard ? (l.hair || HAIRS[0]) : undefined, hat: l.hat || undefined, elfEars: !!l.elfEars, cape: l.cape || undefined };
     builders.set(key, charBuilder(sp));
   }
   return builders.get(key);
@@ -92,7 +97,10 @@ const players = new Map();           // id -> {username, look, x, y, tx, ty, fac
 const keys = new Set(); let target = null;
 const cv = $('game'), ctx = cv.getContext('2d');
 let DPR = 1, S = 4;
-function resize() { DPR = Math.min(window.devicePixelRatio || 1, 3); cv.width = Math.round(innerWidth * DPR); cv.height = Math.round(innerHeight * DPR); ctx.imageSmoothingEnabled = false; S = Math.max(2, Math.round(Math.min(cv.width / 150, cv.height / 250))); }
+function resize() { DPR = Math.min(window.devicePixelRatio || 1, 3); cv.width = Math.round(innerWidth * DPR); cv.height = Math.round(innerHeight * DPR); ctx.imageSmoothingEnabled = false; baseS = Math.max(2, Math.round(Math.min(cv.width / 150, cv.height / 250))); applyZoom(); }
+let baseS = 4, zoomMul = 1;
+function applyZoom() { const smin = Math.max(1, Math.ceil(cv.width / 700), Math.ceil(cv.height / 1250)); S = clamp(Math.round(baseS * zoomMul), smin, baseS * 3); }
+function setZoom(z) { zoomMul = clamp(z, .3, 3); applyZoom(); }
 addEventListener('resize', resize); resize();
 const [view, vx] = canvas(Math.ceil(4000 / 2) + 4, Math.ceil(4000 / 2) + 4);
 const [light, lx] = canvas(view.width, view.height);
@@ -142,7 +150,7 @@ const randLook = () => ({ hair: HAIRS[Math.floor(Math.random() * HAIRS.length)],
 async function quickJoin() {
   for (let i = 0; i < 5; i++) {
     const r = await post('/api/join', { username: 'visitante' + Math.floor(1000 + Math.random() * 9000) });
-    if (r.ok) { token = r.data.token; store.set('eryon_token', token); myLook = randLook(); await post('/api/look', { token, look: myLook }); me = r.data.username; return start(); }
+    if (r.ok) { token = r.data.token; store.set('eryon_token', token); myLook = randLook(); await post('/api/look', { token, look: myLook }); me = r.data.username; start(); return openAvatar(true); }
     if (r.data && r.data.error && !/já está/.test(r.data.error)) break;
   }
   $('login').hidden = false;
@@ -180,9 +188,10 @@ function connect() {
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
     if (m.t === 'welcome') { myId = m.id; players.clear(); addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
-    else if (m.t === 'join') { addPlayer(m.p); sys(`@${m.p.username} chegou em Eryon`); }
+    else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
     else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; } } }
+    else if (m.t === 'look') { const p = players.get(m.id); if (p) { p.look = m.look; p.ch = charFor(p.username, m.look); if (p.mine) myLook = m.look; } }
     else if (m.t === 'chat') { const p = players.get(m.id); if (p) { p.say = m.text; p.sayT = performance.now(); } logChat(m); } };
   ws.onclose = ev => { if (ev.code === 4001) { store.del('eryon_token'); location.reload(); return; } if (ev.code === 4002) { sys('Você entrou em outro aparelho.'); return; } const wait = reconnectNow ? 50 : 2000; reconnectNow = false; setTimeout(connect, wait); };
 }
@@ -194,16 +203,35 @@ function sendChat() { const t = $('msg').value.trim(); if (!t || !ws || ws.ready
 $('sendBtn').onclick = sendChat; $('msg').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); e.stopPropagation(); });
 
 // ---------------------------------------------------------------- controles
-addEventListener('keydown', e => { if (document.activeElement === $('msg')) return; if (e.key === 'Enter') { $('msg').focus(); e.preventDefault(); return; } keys.add(e.key.toLowerCase()); target = null; });
+addEventListener('keydown', e => { if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; if (e.key === 'Enter') { $('msg').focus(); e.preventDefault(); return; } keys.add(e.key.toLowerCase()); target = null; if (cam.mode !== 'follow') follow(); });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
-cv.addEventListener('pointerdown', e => { if (!me) return; $('msg').blur(); const wx = cam.L + (e.clientX * DPR) / S, wy = cam.T + (e.clientY * DPR) / S; target = { x: wx, y: wy }; });
-const cam = { L: 0, T: 0 };
+const cam = { L: 0, T: 0, mode: 'follow', x: C.x, y: C.y, watch: null };
+const ptrs = new Map(); let drag = null, pinch0 = 0, zoom0 = 1;
+cv.addEventListener('pointerdown', e => { if (!me) return; $('msg').blur(); cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 1) drag = { x: e.clientX, y: e.clientY, moved: false, cx: cam.L + cv.width / S / 2, cy: cam.T + cv.height / S / 2 };
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); zoom0 = zoomMul; if (drag) drag.moved = true; } });
+cv.addEventListener('pointermove', e => { if (!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0 > 0) setZoom(zoom0 * d / pinch0); return; }
+  if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.moved && Math.hypot(dx, dy) > 8) drag.moved = true;
+  if (drag.moved) { cam.mode = 'free'; cam.watch = null; cam.x = drag.cx - dx * DPR / S; cam.y = drag.cy - dy * DPR / S; showRecenter(); } });
+const endPtr = e => { const was = drag; ptrs.delete(e.pointerId); if (ptrs.size === 0) { if (was && !was.moved) { target = { x: cam.L + (e.clientX * DPR) / S, y: cam.T + (e.clientY * DPR) / S }; follow(); } drag = null; pinch0 = 0; } };
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); drag = null; });
+cv.addEventListener('wheel', e => { e.preventDefault(); setZoom(zoomMul * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); }, { passive: false });
+function follow() { cam.mode = 'follow'; cam.watch = null; showRecenter(); }
+function showRecenter() { $('recenter').hidden = cam.mode === 'follow'; }
+$('recenter').onclick = follow; $('zin').onclick = () => setZoom(zoomMul * 1.25); $('zout').onclick = () => setZoom(zoomMul / 1.25);
+// lista de quem está online
+$('onlineBtn').onclick = () => { const l = $('plist'); l.hidden = !l.hidden; if (!l.hidden) renderList(); };
+function renderList() { const l = $('plist'); l.innerHTML = ''; const arr = [...players.values()].sort((a, b) => (b.mine - a.mine) || a.username.localeCompare(b.username));
+  for (const q of arr) { const b = document.createElement('button'); b.type = 'button'; b.className = 'pl'; b.textContent = '@' + q.username + (q.mine ? ' (você)' : '');
+    b.onclick = () => { if (q.mine) follow(); else { cam.mode = 'watch'; cam.watch = q.id; showRecenter(); } $('plist').hidden = true; }; l.appendChild(b); } }
 
 // ---------------------------------------------------------------- loop
 let last = performance.now(), sendT = 0, lastSent = '';
 function start() {
   if (me && !/^visitante\d+$/.test(me)) $('nameBtn').textContent = '@' + me;
-  $('login').style.display = 'none'; $('hud').style.display = 'flex'; $('chatlog').style.display = 'flex'; $('chatbar').style.display = 'flex';
+  $('login').style.display = 'none'; $('hud').style.display = 'flex'; $('camctl').style.display = 'flex'; $('chatlog').style.display = 'flex'; $('chatbar').style.display = 'flex';
   connect(); requestAnimationFrame(loop);
 }
 function loop(now) {
@@ -230,6 +258,8 @@ function loop(now) {
 function draw(t, p) {
   const vw = cv.width / S, vh = cv.height / S;
   let cx = p ? p.x : C.x, cy = p ? p.y - 8 : C.y;
+  if (cam.mode === 'free') { cx = cam.x; cy = cam.y; } else if (cam.mode === 'watch') { const w = players.get(cam.watch); if (w) { cx = w.x; cy = w.y - 8; } else follow(); }
+  cam.x = clamp(cx, vw / 2, WW - vw / 2); cam.y = clamp(cy, vh / 2, WH - vh / 2);
   cx = clamp(cx, vw / 2, WW - vw / 2); cy = clamp(cy, vh / 2, WH - vh / 2);
   const L = cx - vw / 2, T = cy - vh / 2, li = Math.floor(L), ti = Math.floor(T), cw = Math.ceil(vw) + 2, ch = Math.ceil(vh) + 2;
   cam.L = L; cam.T = T;
@@ -290,3 +320,29 @@ fetch('world.json').then(r => r.json()).then(async w => {
   const cfg = await API('/api/config'); if (cfg.ok && cfg.data.open) return quickJoin();
   $('login').hidden = false;
 });
+
+// ---------------------------------------------------------------- editor de avatar
+let draft = null, avT = 0;
+function openAvatar(first) {
+  draft = { hair: HAIRS[0], shirt: SHIRTS[1], pants: PANTS[0], skin: SKINS[0], longHair: false, beard: false, elfEars: false, hat: '', cape: '', ...(myLook || {}) };
+  $('avSkip').textContent = first ? 'Pular' : 'Cancelar'; $('avatar').hidden = false; buildAvatarUI(); avLoop();
+}
+function choice(id, opts, key) {
+  const el = $(id); el.innerHTML = '';
+  for (const [v, label] of opts) { const b = document.createElement('button'); b.type = 'button'; b.className = 'opt' + (draft[key] === v ? ' on' : '');
+    if (label === null) { b.className += ' sw'; b.style.background = v || 'transparent'; if (!v) b.textContent = '×'; b.setAttribute('aria-label', v || 'nenhum'); } else b.textContent = label;
+    b.onclick = () => { draft[key] = v; choice(id, opts, key); }; el.appendChild(b); }
+}
+function buildAvatarUI() {
+  const sw = list => list.map(c => [c, null]);
+  choice('avSkin', sw(SKINS), 'skin'); choice('avHair', sw(HAIRS), 'hair'); choice('avHairLen', [[false, 'Curto'], [true, 'Longo']], 'longHair');
+  choice('avBeard', [[false, 'Sem barba'], [true, 'Com barba']], 'beard'); choice('avHat', HATS, 'hat'); choice('avEars', [[false, 'Humanas'], [true, 'Élficas']], 'elfEars');
+  choice('avShirt', sw(SHIRTS), 'shirt'); choice('avPants', sw(PANTS), 'pants'); choice('avCape', sw(CAPES), 'cape');
+}
+function avLoop() { if ($('avatar').hidden) return; const c = $('avPrev'), x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.clearRect(0, 0, c.width, c.height);
+  const ch = charFor('_avatar', draft), t = performance.now() / 1000, walk = Math.floor(t / 2) % 2, f = Math.floor(t * 6) % 2;
+  const fr = ch.frame(walk ? { legs: f ? 'w1' : 'w2', arm: 'down', eyes: 0, br: 0 } : { legs: 'stand', arm: 'down', eyes: Math.floor(t) % 3 - 1, br: Math.floor(t * 1.3) % 2 });
+  x.drawImage(fr.c, -7, -14); requestAnimationFrame(avLoop); }
+$('avatarBtn').onclick = () => openAvatar(false);
+$('avSkip').onclick = () => { $('avatar').hidden = true; };
+$('avSave').onclick = async () => { myLook = { ...draft }; $('avatar').hidden = true; const r = await post('/api/look', { token, look: myLook }); if (r.ok) { myLook = r.data.look; const p = players.get(myId); if (p) { p.look = myLook; p.ch = charFor(p.username, myLook); } } };

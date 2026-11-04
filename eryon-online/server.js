@@ -37,10 +37,13 @@ const same = (a, b) => { const A = Buffer.from(String(a)), B = Buffer.from(Strin
 const HAIRS = ['#d0622a', '#ffd84a', '#1a1208', '#5a3a26', '#8b5e3c', '#c4ccd0', '#a83a32', '#e6efa0'];
 const SHIRTS = ['#a83a32', '#3f7ab0', '#6e4a8a', '#3c5d4a', '#d0622a', '#e4d0a0', '#4a535c', '#b06a9a'];
 const PANTS = ['#3c5f9a', '#4a2f22', '#2b3138', '#3c5d4a', '#6b4630', '#1d3550'];
+const SKINS = ['#e8b48c', '#f2c9a4', '#c08060', '#8b5e3c', '#5a3a26'];
+const HATS = ['', 'palha', 'bone', 'chef'];
+const CAPES = ['', '#4e6c4a', '#1d3550', '#a83a32', '#6e4a8a'];
 function cleanLook(l) {
   if (!l || typeof l !== 'object') return null;
   const pick = (v, list) => list.includes(v) ? v : list[0];
-  return { hair: pick(l.hair, HAIRS), shirt: pick(l.shirt, SHIRTS), pants: pick(l.pants, PANTS), longHair: !!l.longHair };
+  return { hair: pick(l.hair, HAIRS), shirt: pick(l.shirt, SHIRTS), pants: pick(l.pants, PANTS), skin: pick(l.skin, SKINS), longHair: !!l.longHair, beard: !!l.beard, elfEars: !!l.elfEars, hat: pick(l.hat || '', HATS), cape: pick(l.cape || '', CAPES) };
 }
 
 // ---------------------------------------------------------------- verificação pelo comentário no Instagram
@@ -163,7 +166,9 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/look' && req.method === 'POST') {
       const b = await body(req), u = userBySession(b.token);
       if (!u || !db.users[u]) return send(res, 401, { error: 'sessão expirada' });
-      db.users[u].look = cleanLook(b.look); save(); return send(res, 200, { ok: true, look: db.users[u].look });
+      db.users[u].look = cleanLook(b.look); save();
+      for (const c of clients) if (c.user === u) all({ t: 'look', id: c.id, look: db.users[u].look });
+      return send(res, 200, { ok: true, look: db.users[u].look });
     }
     if (p === '/api/logout' && req.method === 'POST') { const b = await body(req); if (b.token) delete db.sessions[b.token]; save(); return send(res, 200, { ok: true }); }
     // ------- API do admin
