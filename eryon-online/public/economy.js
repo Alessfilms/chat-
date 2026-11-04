@@ -117,7 +117,10 @@ function econContext(p) {
     return { kind: 'econ', label: `Fazer carinho (${A.name.toLowerCase()} de @${best.owner})`, fn: () => { best.heart = performance.now(); }, id: best.id }; }
   for (const d of DECOR) { const dd = Math.hypot(p.x - d.x, p.y - d.y); if (dd > 18) continue;
     if (d.kind === 'barraca') return d.owner === me ? { kind: 'econ', label: 'Minha barraca (vender)', fn: () => openEcon('stall', d.id), alt: { label: 'Mover', fn: () => startPlacing({ kind: 'barraca', id: d.id }) }, id: d.id } : { kind: 'econ', label: `Ver barraca de @${d.owner}`, fn: () => openEcon('stall', d.id), id: d.id };
-    if (d.kind === 'pomar' && d.owner === me) { const left = 4 * 60000 - (Date.now() - (d.lastH || 0)); return { kind: 'econ', label: left <= 0 ? 'Colher maçãs' : `Macieira: maçãs em ${Math.ceil(left / 60000)} min`, fn: () => { if (left <= 0) { send({ t: 'harvest', id: d.id }); doAct('gather'); } }, alt: { label: 'Mover', fn: () => startPlacing({ kind: 'pomar', id: d.id }) }, id: d.id }; } }
+    if (d.kind === 'pomar' && d.owner === me) { const left = 4 * 60000 - (Date.now() - (d.lastH || 0)), guardar = { label: 'Guardar', fn: () => { send({ t: 'pickup', id: d.id }); sys('Macieira guardada na mochila.'); } };
+      // maçãs prontas: Colher; ainda crescendo: Mover. O segundo botão sempre guarda a macieira na mochila
+      return left <= 0 ? { kind: 'econ', label: 'Colher maçãs', fn: () => { send({ t: 'harvest', id: d.id }); doAct('gather'); }, alt: guardar, id: d.id, k2: 'r' }
+        : { kind: 'econ', label: `Mover macieira (maçãs em ${Math.ceil(left / 60000)} min)`, fn: () => startPlacing({ kind: 'pomar', id: d.id }), alt: guardar, id: d.id, k2: 'g' }; } }
   return null;
 }
 
