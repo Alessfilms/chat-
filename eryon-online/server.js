@@ -492,8 +492,17 @@ wss.on('connection', (ws, req) => {
       const now = Date.now(), id = String(m.id || ''), r = db.users[c.user];
       if (!r || !/^([rh][0-9]{1,3}|[gamn][0-9])$/.test(id) || depleted.has(id) || now - (c.lastGather || 0) < 1500) return; c.lastGather = now;
       const stone = id[0] === 'r' || id[0] === 'g' || id[0] === 'a';
-      depleted.set(id, now + (stone ? (/^r1(6\d|7[01])$/.test(id) ? 2 : 6) : 3) * 60000); all({ t: 'nodes', dep: [...depleted.keys()] });
-      if (stone) addRes(c, 'pedra', (id[0] === 'r' ? 2 : 3) + (invOf(r).picareta ? 1 : 0)); else addRes(c, 'ervas', id[0] === 'h' ? 2 : 3); track(c, stone ? 'mine' : 'herb');
+      const quarry = /^r1(6\d|7[01])$/.test(id) && !c.room && c.x > 410 && c.x < 700 && c.y > 1470 && c.y < 1610;
+      depleted.set(id, now + (stone ? (quarry ? 1 : 6) : 3) * 60000); all({ t: 'nodes', dep: [...depleted.keys()] });
+      // pedreira do castelo: a pedra vira bloco direto na obra
+      const cur = stageIdx(), st = STAGES[cur], room = st ? st.p0 + st.pedra - db.castle.pedra : 0;
+      if (quarry && room > 0) { const n = Math.min(room, 3 + (invOf(r).picareta ? 1 : 0)); db.castle.pedra += n; db.castle.by[c.user] = (db.castle.by[c.user] || 0) + n; save();
+        track(c, 'mine'); track(c, 'castle', n); all(castleState({ n, by: c.user, fx: { x: c.x, y: c.y } }));
+        const after = stageIdx(); if (after > cur) { const txt = after >= STAGES.length ? 'O CASTELO DE ERYON ESTÁ PRONTO! Obrigado, comunidade!' : `O castelo ganhou: ${st.name}! Próxima etapa: ${STAGES[after].name}.`; all({ t: 'announce', text: txt }); const msg = { t: 'chat', id: 0, username: 'Castelo de Eryon', text: txt, ts: now, badge: 'criador' }; chatLog.push(msg); all(msg); }
+        else if (st.l0 + st.lenha > db.castle.lenha && st.p0 + st.pedra <= db.castle.pedra) note(c, `Pedras da etapa "${st.name}" completas! Agora falta lenha: leve lenha até a obra.`);
+      } else {
+        if (quarry && st) note(c, `A etapa "${st.name}" precisa de lenha antes de mais pedras. A pedra foi para a sua mochila.`);
+        if (stone) addRes(c, 'pedra', (id[0] === 'r' ? 2 : 3) + (invOf(r).picareta ? 1 : 0)); else addRes(c, 'ervas', id[0] === 'h' ? 2 : 3); track(c, stone ? 'mine' : 'herb'); }
     } else if (m.t === 'discover') {
       const r = db.users[c.user], id = String(m.id || ''); if (!r || !LANDMARK_NAMES[id]) return;
       r.found ||= []; if (r.found.includes(id)) return; r.found.push(id); db.firsts ||= {};

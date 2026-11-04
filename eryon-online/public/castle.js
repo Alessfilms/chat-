@@ -77,12 +77,13 @@ function drawCastle(x, t) {
     px(x, P.ink, sx + 25, 1446, 2, 14); px(x, P.ink, sx + 18, 1440, 16, 9); px(x, P.woodL, sx + 19, 1441, 14, 7); px(x, P.woodD, sx + 21, 1443, 10, 1); px(x, P.woodD, sx + 21, 1445, 8, 1);
   }
   // efeitos de blocos chegando
-  for (let i = CFX.length - 1; i >= 0; i--) { const e = CFX[i], k = (performance.now() - e.t0) / 700; if (k > 1) { CFX.splice(i, 1); continue; }
+  for (let i = CFX.length - 1; i >= 0; i--) { const e = CFX[i], k = (performance.now() - e.t0) / 900; if (k > 1) { CFX.splice(i, 1); continue; }
     const X = lerp(e.x, e.tx, k), Y = lerp(e.y, e.ty, k) - Math.sin(k * Math.PI) * 30; px(x, CO, Math.round(X) - 1, Math.round(Y) - 1, 6, 5); px(x, CS[2], Math.round(X), Math.round(Y), 4, 3); px(x, CS[3], Math.round(X), Math.round(Y), 4, 1); }
 }
 const CFX = [];
-function castleFx(n) { const cur = Math.min(curStage(), CSTATE.stages.length - 1), part = castleParts().find(p => p.st === cur) || castleParts()[0], f = stageFrac(cur), ty = CASTLE.oy + part.y1 - (part.y1 - part.y0) * f;
-  for (let i = 0; i < Math.min(12, 2 + Math.floor(n / 5)); i++) setTimeout(() => CFX.push({ x: CASTLE.spot.x + (Math.random() - .5) * 20, y: CASTLE.spot.y, tx: CASTLE.ox + 30 + Math.random() * 200, ty, t0: performance.now() }), i * 80); }
+const isQuarry = id => /^r1(6\d|7[01])$/.test(id);
+function castleFx(n, from) { const cur = Math.min(curStage(), CSTATE.stages.length - 1), part = castleParts().find(p => p.st === cur) || castleParts()[0], f = stageFrac(cur), ty = CASTLE.oy + part.y1 - (part.y1 - part.y0) * f;
+  for (let i = 0; i < Math.min(12, 2 + Math.floor(n / 5)); i++) setTimeout(() => CFX.push({ x: (from ? from.x : CASTLE.spot.x) + (Math.random() - .5) * 20, y: from ? from.y - 6 : CASTLE.spot.y, tx: CASTLE.ox + 30 + Math.random() * 200, ty, t0: performance.now() }), i * 80); }
 function castleLabel(ctx2, L, T, S, fs, p) {
   if (!p || p.room || !CSTATE.stages.length || Math.hypot(p.x - CASTLE.x, p.y - CASTLE.y + 60) > 230) return;
   const cur = curStage(), tot = CSTATE.stages.reduce((a, s) => a + s.pedra + s.lenha, 0), got = Math.min(tot, CSTATE.pedra + CSTATE.lenha), pct = Math.floor(100 * got / tot);
@@ -106,7 +107,7 @@ function castleGive() { const cur = curStage(), s = CSTATE.stages[cur]; if (!s) 
   send({ t: 'castle', pedra: needP ? Math.min(50, INV.pedra || 0) : 0, lenha: needL ? Math.min(50, INV.lenha || 0) : 0 }); doAct('hammer'); }
 function onCastleMsg(m) {
   const wasDone = castleDone(); CSTATE = { pedra: m.pedra, lenha: m.lenha, stages: m.stages || CSTATE.stages, top: m.top || CSTATE.top };
-  if (m.n) { const me2 = players.get(myId); if (me2 && !me2.room && Math.hypot(me2.x - CASTLE.x, me2.y - CASTLE.y) < 320) { castleFx(m.n); play('anvil_' + (Math.random() < .5 ? 0 : 1), .35); play('wood_hit', .3, .8); } }
+  if (m.n) { const me2 = players.get(myId); if (me2 && !me2.room && Math.hypot(me2.x - CASTLE.x, me2.y - CASTLE.y) < 320) { castleFx(m.n, m.fx); if (m.by === me && m.fx && !castleFx.told && (castleFx.told = 1)) fxToast('+' + m.n + ' blocos no castelo!', 'A pedra virou bloco na obra', '#ffd84a', '▣'); play('anvil_' + (Math.random() < .5 ? 0 : 1), .35); play('wood_hit', .3, .8); } }
   if (castleDone() && !wasDone && m.n) { fxToast('O CASTELO ESTÁ PRONTO!', 'Toda Eryon construiu junto. Entre pelo portão!', '#ffd84a', '♛'); fanfare(true); }
   if (!m.n) castleHint();
   if (castleDone()) { if (!DOORS.some(d => d.room === 'castelo')) DOORS.push({ room: 'castelo', x: CASTLE.x, y: CASTLE.y + 4, label: 'Entrar no castelo' }); }
