@@ -51,7 +51,7 @@ function giantSprite(f) {   // f: 0/1 andando, 2 braços erguidos, 3 pancada —
   const pebbles = [[cx - 34, 24, 3], [cx + 34, 20, 2], [cx - 30, 60, 2], [cx + 36, 52, 3]];
   return GSPR[f] = { r: c, l: flipped(c), W, H, eyes: [[cx - 5, 23], [cx + 5, 23]], pebbles };
 }
-function giantFrame(t) { const L = GIANT.live; if (!L) return 0; if (L.phase === 'stomp') { const k = ((performance.now() - (GFX.lastSmashT || 0)) / 1000); return k < .25 ? 3 : (k > 2.2 ? 2 : 0); } return Math.floor(t * 2.2) % 2; }
+function giantFrame(t) { const L = GIANT.live; if (!L) return 0; if (L.phase === 'stomp' || (L.phase === 'fight' && performance.now() - (GFX.lastSmashT || 0) < 1400)) { const k = ((performance.now() - (GFX.lastSmashT || 0)) / 1000); return k < .25 ? 3 : (k > 2.2 ? 2 : 0); } return Math.floor(t * 2.2) % 2; }
 function drawGiantAt(x, X, Y, f, face, t, flash) {
   const s = giantSprite(f), ox = X - s.W / 2, oy = Y - s.H + 4, flip = face > 0;
   x.fillStyle = 'rgba(8,20,16,.42)'; x.beginPath(); x.ellipse(X, Y, 30, 8, 0, 0, 6.283); x.fill();
@@ -99,12 +99,14 @@ function onGiantMsg(m) {
   if (m.t === 'giantHit') { GFX.lastHitT = performance.now(); if (GIANT.live) GFX.hits.push({ x: GIANT.live.x + (Math.random() - .5) * 30, y: GIANT.live.y - 70 - Math.random() * 24, d: m.d, t0: performance.now(), big: m.d >= 20 }); if (m.kind === 'zap' && SND.ctx) thunder(); return true; }
   if (m.t === 'giantSmash') { GFX.lastSmashT = performance.now(); GFX.smash.push({ x: m.x, y: m.y, t0: performance.now() }); const p = players.get(myId);
     if (p && !p.room && Math.hypot(p.x - m.x, p.y - m.y) < 260) { stomp(); shake(); } return true; }
+  if (m.t === 'stunned') { GFX.stunUntil = performance.now() + (m.ms || 2000); shake(); stomp(.6); sys('O gigante te acertou! Você ficou tonto...'); return true; }
   if (m.t === 'catShot') { GFX.catFire[m.id] = performance.now(); GFX.shots.push({ ...m, t0: performance.now() + 200 }); const p = players.get(myId); if (p && !p.room && Math.hypot(p.x - m.x, p.y - m.y) < 220) play('wood_hit', .5, .7); return true; }
   return false;
 }
 // ---------- desenho dos efeitos no mundo
 function bldPos(id) { if (id.startsWith('h_')) { const h = BUILT.find(q => 'h_' + q.id === id); return h ? { x: h.x, y: h.y } : null; } return B[id] ? { x: B[id].x, y: B[id].y } : null; }
 function drawGiantWorld(x, t, li, ti, cw, ch) {
+  drawStun(x, t);
   // construções danificadas: fuligem, rachaduras, fogo e fumaça
   for (const id of GIANT.damaged) { const b = bldPos(id); if (!b || b.x < li - 40 || b.x > li + cw + 40 || b.y < ti - 40 || b.y > ti + ch + 40) continue;
     x.globalAlpha = .45; x.fillStyle = '#140e06'; x.beginPath(); x.ellipse(b.x, b.y - 10, 15, 10, 0, 0, 6.283); x.fill(); x.globalAlpha = 1;
@@ -130,7 +132,7 @@ function giantLabels(ctx2, L, T, S, fs) {
 function fmtLeft(ms) { const m = Math.max(0, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h}h${String(m % 60).padStart(2, '0')}` : `${m} min`; }
 function updGiantHud() {
   const el = $('giantHud'); if (!el) return; const now = Date.now(), L = GIANT.live;
-  if (L) { el.hidden = false; el.className = 'gh battle'; el.innerHTML = `<div class="gl">GIGANTE <b>${Math.max(0, L.hp)}</b></div><div class="gb"><i style="width:${Math.max(0, 100 * L.hp / L.max)}%"></i></div><div class="gl">CIDADE <b>${L.city}%</b></div><div class="gb city"><i style="width:${L.city}%"></i></div>`; return; }
+  if (L) { el.hidden = false; el.className = 'gh battle'; el.innerHTML = (L.phase === 'leave' ? `<div class="gl">O GIGANTE ESTÁ INDO EMBORA</div>` : L.engaged ? `<div class="gl">⚔ LUTA ATÉ O FIM</div>` : `<div class="gl">Ataque o gigante para enfrentá-lo!</div>`) + `<div class="gl">GIGANTE <b>${Math.max(0, L.hp)}</b></div><div class="gb"><i style="width:${Math.max(0, 100 * L.hp / L.max)}%"></i></div><div class="gl">CIDADE <b>${L.city}%</b></div><div class="gb city"><i style="width:${L.city}%"></i></div>`; return; }
   if (GIANT.state === 'scheduled' && GIANT.at > now && GIANT.at - now < 36 * 3600e3) { const hh = new Date(GIANT.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); el.hidden = false; el.className = 'gh warn'; el.innerHTML = `⚠ O GIGANTE ATACA ÀS ${hh} · faltam <b>${fmtLeft(GIANT.at - now)}</b><small>Crie lanças e catapultas (botão Criar) e defenda Eryon!</small>`; return; }
   if (GIANT.damaged.size) { el.hidden = false; el.className = 'gh warn'; el.innerHTML = `A cidade foi danificada · ${GIANT.damaged.size} construções<small>Chegue perto de uma e toque em "Consertar" (2 lenhas)</small>`; return; }
   el.hidden = true;
@@ -140,9 +142,10 @@ setInterval(updGiantHud, 15000);
 let gHitReady = 0;
 function giantContext(p) {
   if (p.room || p.fly) return null; const L = GIANT.live;
+  if (L && L.phase === 'leave') return null;
   if (L) { const eq = (p.look && p.look.equip) || '', ranged = eq === 'arco' || (classOf(p) || {}).id === 'arqueira', reach = ranged ? 150 : 62, d = Math.hypot(p.x - L.x, p.y - L.y);
     for (const dd of DECOR) if (dd.kind === 'catapulta' && Math.hypot(p.x - dd.x, p.y - dd.y) < 24) return { kind: 'econ', label: 'Disparar catapulta (1 pedra)', fn: () => { send({ t: 'fireCat', id: dd.id }); doAct('hammer'); } };
-    if (d < reach) return { kind: 'econ', label: 'Atacar o gigante!', fn: () => { const now = performance.now(); if (now < gHitReady) return; gHitReady = now + 1400; p.face = L.x < p.x ? -1 : 1; doAct(ranged ? 'arrow' : eq === 'espada' || eq === 'lanca' ? 'sword' : 'chop'); send({ t: 'hitGiant' }); } };
+    if (d < reach) return { kind: 'econ', label: 'Atacar o gigante!', fn: () => { const now = performance.now(); if (now < gHitReady) return; gHitReady = now + 1400; p.face = L.x < p.x ? -1 : 1; doAct(ranged ? 'arrow' : eq === 'espada' || eq === 'lanca' || ['guarda', 'guerreiro'].includes((classOf(p) || {}).id) ? 'sword' : 'chop'); send({ t: 'hitGiant' }); } };
     return null; }
   for (const id of GIANT.damaged) { const b = bldPos(id); if (b && Math.hypot(p.x - b.x, p.y - (b.y + 4)) < 26) return { kind: 'econ', label: 'Consertar (2 lenhas)', fn: () => { send({ t: 'repair', id }); doAct('build'); } }; }
   return null;
@@ -152,3 +155,63 @@ function stomp(v = 1) { if (!SND.ctx) return; const c = SND.ctx, w = c.currentTi
 function giantHorn() { if (!SND.ctx) return; const c = SND.ctx, w = c.currentTime; for (const [f, d] of [[146.8, 0], [146.8, .9], [196, 1.8]]) { const o = c.createOscillator(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.value = f; g.gain.setValueAtTime(0, w + d); g.gain.linearRampToValueAtTime(.12, w + d + .1); g.gain.linearRampToValueAtTime(0, w + d + .8); const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; o.connect(lp); lp.connect(g); g.connect(SND.sfx); o.start(w + d); o.stop(w + d + .85); } }
 function shake() { const el = cv; let n = 0; const iv = setInterval(() => { el.style.transform = n++ > 8 ? '' : `translate(${(Math.random() - .5) * 10}px,${(Math.random() - .5) * 8}px)`; if (n > 9) clearInterval(iv); }, 40); }
 addEventListener('DOMContentLoaded', () => { const el = $('giantHud'); if (el) el.onclick = () => { if (GIANT.state === 'scheduled') { closePanels(); openPanel('craft'); } }; });
+
+// =====================================================================
+// GUARDAS DO REINO (NPCs) e ESTANDARTES DE ERYON
+// Guardas patrulham portões, praça e castelo. Quando o gigante chega perto
+// do posto deles, correm para cercá-lo e atacam com lanças.
+// =====================================================================
+const GUARDS = [
+  { a: [512, 1474], b: [512, 1474], face: 1, skin: '#c08060' },     // portão do castelo (fixos)
+  { a: [568, 1474], b: [568, 1474], face: -1, skin: '#e8b48c' },
+  { a: [470, 1500], b: [610, 1500], skin: '#8b5e3c' },              // ronda em frente ao castelo
+  { a: [470, 486], b: [500, 486], skin: '#f2c9a4' },                // portão nordeste
+  { a: [318, 676], b: [402, 676], skin: '#5a3a26' },                // praça da fogueira
+  { a: [336, 604], b: [390, 604], skin: '#c08060' },
+].map((g, i) => ({ ...g, i, x: g.a[0], y: g.a[1], moving: false, fc: g.face || 1, ch: null }));
+const BANNERS = [{ x: 380, y: 626, h: 30 }, { x: 498, y: 1470, h: 26 }, { x: 582, y: 1470, h: 26 }, { x: 456, y: 492, h: 24 }];
+function guardChar(g) { if (g.ch) return g.ch; const sp = { hair: '#5a3a26', shirt: '#3f7ab0', shirtD: '#264a6c', pants: '#2b3138', skin: g.skin, skinD: shadeHex(g.skin, .6), hat: 'elmo', cape: '#a83a32', beard: g.i % 3 === 1 ? '#5a3a26' : undefined };
+  return g.ch = charBuilder(sp); }
+function updGuards(t) {
+  const now = performance.now(), dt = Math.min(.05, (now - (updGuards.lt || now)) / 1000); updGuards.lt = now; const L = GIANT.live;
+  for (const g of GUARDS) {
+    let tx, ty, fight = false;
+    if (L && L.phase !== 'leave' && Math.hypot(L.x - g.a[0], L.y - g.a[1]) < 360) { const ang = g.i * 1.05 + t * .15, r = 44 + (g.i % 2) * 10; tx = L.x + Math.cos(ang) * r; ty = L.y + Math.sin(ang) * r * .5 + 4; fight = true; }
+    else { const per = 9 + g.i, k = ((t + g.i * 3.1) % (per * 2)) / per, u = k < 1 ? k : 2 - k, e = Math.min(1, Math.max(0, (u - .1) / .8)); tx = g.a[0] + (g.b[0] - g.a[0]) * e; ty = g.a[1] + (g.b[1] - g.a[1]) * e; }
+    const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy), sp = (fight ? 46 : 22) * dt;
+    if (d > 300) { g.x = tx; g.y = ty; g.moving = false; }
+    else if (d > .6) { const st = Math.min(d, sp); g.x += dx / d * st; g.y += dy / d * st; g.moving = d > 1.5; if (Math.abs(dx) > .3) g.fc = dx < 0 ? -1 : 1; }
+    else g.moving = false;
+    g.fight = fight && d < 6; if (g.fight) g.fc = L.x < g.x ? -1 : 1; else if (!g.moving && g.face) g.fc = g.face;
+  }
+}
+function kingdomObjs(list, li, ti, cw, ch, t) {
+  updGuards(t);
+  for (const g of GUARDS) if (g.x > li - 20 && g.x < li + cw + 20 && g.y > ti - 10 && g.y < ti + ch + 30) list.push({ y: g.y, guard: g });
+  for (const b of BANNERS) if (b.x > li - 30 && b.x < li + cw + 30 && b.y > ti - 10 && b.y < ti + ch + 50) list.push({ y: b.y, banner: b });
+}
+function drawGuard(x, g, t) {
+  const f4 = Math.floor(t * 9 + g.i) % 4, u = (t + g.i * .37) % .8;
+  const po = g.fight ? { legs: 'stand', arm: u < .4 ? 'up' : 'low', tool: 'spear', eyes: 0, br: 0 } : g.moving ? { legs: ['w1', 'stand', 'w2', 'stand'][f4], bob: f4 % 2 === 0, arm: 'down', tool: 'spear', eyes: 0, br: 0 } : { legs: 'stand', arm: 'down', tool: 'spear', eyes: 0, br: Math.floor(t * 1.3 + g.i) % 2 };
+  drawCharAt(x, guardChar(g), g.x, g.y, po, g.fc);
+}
+// estandarte de Eryon: campo vermelho, borda dourada e cristal azul, tremulando
+function drawBanner(x, X, Y, t, h = 28) {
+  const O = '#140e06', top = Y - h; x.fillStyle = 'rgba(5,10,8,.35)'; x.fillRect(X - 2, Y - 1, 5, 2);
+  px(x, O, X - 1, top - 1, 3, h + 1); px(x, '#6b4630', X, top, 1, h); px(x, O, X - 1, top - 3, 3, 3); px(x, '#ffd84a', X, top - 2, 1, 1);
+  const W = 14, H = 11;
+  for (let c = 0; c < W; c++) { const off = Math.round(Math.sin(t * 4 - c * .55) * (c / W) * 2.2), cx = X + 1 + c, y0 = top + 1 + off, edge = c === W - 1;
+    px(x, O, cx, y0 - 1, 1, H + 2);
+    for (let r = 0; r < H; r++) { const bord = r === 0 || r === H - 1 || c === 0 || edge, dx = Math.abs(c - 7), dy = Math.abs(r - 5), gem = dx + dy * .8 <= 3;
+      let col = bord ? '#ffd84a' : gem ? (dx + dy * .8 <= 1.2 ? '#e8ffff' : c < 7 ? '#9ff3ff' : '#3fa0c0') : (r > H - 4 ? '#8a1e20' : '#b0282a');
+      if (!bord && !gem && Math.sin(t * 4 - c * .55) > .6) col = r > H - 4 ? '#a02424' : '#c83a34';
+      px(x, col, cx, y0 + r, 1, 1); }
+    if (c % 3 === 1) { px(x, O, cx, y0 + H + 1, 1, 2); px(x, '#ffd84a', cx, y0 + H + 1, 1, 1); } }
+}
+function guardLabels(ctx2, L, T, S, fs) {
+  ctx2.textAlign = 'center'; ctx2.textBaseline = 'bottom'; ctx2.font = `700 ${Math.round(fs * .8)}px Pix, monospace`; ctx2.lineWidth = Math.max(2, fs / 5); ctx2.strokeStyle = '#140e06';
+  for (const g of GUARDS) { const sx = Math.round((g.x - L) * S), sy = Math.round((g.y - 24 - T) * S); if (sx < -80 || sx > cv.width + 80 || sy < -20 || sy > cv.height + 40) continue; ctx2.strokeText('Guarda do Reino', sx, sy); ctx2.fillStyle = '#9fc4ff'; ctx2.fillText('Guarda do Reino', sx, sy); }
+}
+// estrelinhas girando sobre a cabeça de quem foi atordoado
+function drawStun(x, t) { const p = players.get(myId); if (!p || p.room || performance.now() > (GFX.stunUntil || 0)) return;
+  for (let k = 0; k < 3; k++) { const a = t * 5 + k * 2.09, X = Math.round(p.x + Math.cos(a) * 7), Y = Math.round(p.y - 22 + Math.sin(a) * 2); px(x, '#140e06', X - 1, Y - 1, 3, 3); px(x, '#ffd84a', X, Y, 1, 1); px(x, '#ffd84a', X - 1, Y, 3, 1); } }

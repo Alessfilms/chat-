@@ -148,6 +148,7 @@ const CLASSES = [
   { id: 'bardo', name: 'Bardo', desc: 'Toca alaúde para a vila ouvir.', skill: 'lute', skillName: 'Tocar alaúde', tool: 'lute', look: { hair: '#ffd84a', skin: '#f2c9a4', shirt: '#d0622a', pants: '#1d3550', hat: 'palha', beard: false, longHair: false, elfEars: false, cape: '#6e4a8a' } },
   { id: 'mago', name: 'Mago', desc: 'Solta raios do céu: derruba várias árvores de uma vez.', skill: 'zap', skillName: 'Raio', tool: 'staff', look: { hair: '#c4ccd0', skin: '#e8b48c', shirt: '#6e4a8a', pants: '#1d3550', cape: '#1d3550', beard: true, longHair: true, elfEars: false, hat: 'mago' } },
   { id: 'fada', name: 'Fada', desc: 'Tem asas e voa por Eryon quando quiser.', skill: 'flyfairy', skillName: 'Voar', tool: 'wand', look: { hair: '#ffd84a', skin: '#f2c9a4', shirt: '#b06a9a', pants: '#3c5d4a', cape: '', longHair: true, beard: false, elfEars: true, hat: '' } },
+  { id: 'guarda', name: 'Guarda do Reino', desc: 'Protege Eryon com lança e elmo. Golpe mais forte contra o gigante.', skill: 'sword', skillName: 'Golpe de lança', tool: 'spear', look: { hair: '#5a3a26', skin: '#c08060', shirt: '#3f7ab0', pants: '#2b3138', cape: '#a83a32', beard: false, longHair: false, elfEars: false, hat: 'elmo' } },
   { id: 'taverneiro', name: 'Taverneiro', desc: 'Serve bebida na taverna.', skill: 'serve', skillName: 'Servir bebida', tool: 'mug', look: { hair: '#a83a32', skin: '#e8b48c', shirt: '#e4d0a0', pants: '#4a2f22', beard: true, longHair: false, elfEars: false, hat: '', cape: '' } },
 ];
 const CLASS_BY = Object.fromEntries(CLASSES.map(c => [c.id, c]));
@@ -157,6 +158,7 @@ const classOf = q => CLASS_BY[q && q.look && q.look.cls] || null;
 const ACT_DUR = { zap: 1.5, flyfairy: .1, mine: 2.0, gather: 1.6, eat: 2.2, bridge: 2.4,  chop: 2.4, split: 1.8, drink: 2.2, magic: 1.6, sword: 1.2, arrow: 1.2, hammer: 2.0, build: 2.0, cook: 2.4, heal: 2.0, lute: 2.8, serve: 2.0 };
 function poseFor(q, t) {
   const a = q.act;
+  if (q.mine && typeof GFX !== 'undefined' && performance.now() < (GFX.stunUntil || 0)) return { legs: 'sit', arm: 'low', tool: null, eyes: 1, br: 0 };
   if (a && t < a.end) {
     const u = t - a.t0;
     if (a.kind === 'chop' || a.kind === 'split') return { legs: 'stand', arm: (u % .56) < .32 ? 'up' : 'low', tool: 'axe', eyes: 0, br: 0 };
@@ -165,7 +167,7 @@ function poseFor(q, t) {
     if (a.kind === 'zap') return { legs: 'stand', arm: 'up', tool: 'staff', eyes: 0, br: Math.floor(u * 10) % 2 };
     if (a.kind === 'mine') return { legs: 'stand', arm: (u % .5) < .3 ? 'up' : 'low', tool: 'bighammer', eyes: 0, br: 0 };
     if (a.kind === 'gather') return { legs: 'sit', arm: (u % .6) < .3 ? 'low' : 'fwd', tool: null, eyes: 0, br: 0 };
-    if (a.kind === 'sword') return { legs: 'stand', arm: (u % .4) < .2 ? 'up' : 'low', tool: 'sword', eyes: 0, br: 0 };
+    if (a.kind === 'sword') return { legs: 'stand', arm: (u % .4) < .2 ? 'up' : 'low', tool: (classOf(q) || {}).id === 'guarda' ? 'spear' : 'sword', eyes: 0, br: 0 };
     if (a.kind === 'arrow') return { legs: 'stand', arm: 'bow', tool: 'bow', eyes: 1, br: 0 };
     if (a.kind === 'hammer') return { legs: 'stand', arm: (u % .5) < .3 ? 'up' : 'low', tool: 'bighammer', eyes: 0, br: 0 };
     if (a.kind === 'build') return { legs: 'stand', arm: (u % .4) < .22 ? 'up' : 'fwd', tool: 'hammer', eyes: 0, br: 0 };

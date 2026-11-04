@@ -20,7 +20,7 @@ function cTower(x, cx, y0, y1, r, pal) {
 }
 function cWindow(x, X, Y, lit = true) { px(x, CO, X - 1, Y - 1, 7, 10); px(x, lit ? '#f2a33a' : '#1a1208', X, Y + 2, 5, 7); px(x, lit ? '#ffd84a' : '#1a1208', X, Y, 5, 4); px(x, CO, X + 2, Y, 1, 9); px(x, lit ? '#fff3b0' : '#1a1208', X, Y, 1, 2); }
 function cRoof(x, cx, yb, r, h) { for (let Y = 0; Y < h; Y++) { const w = Math.round((Y + 1) / h * (r + 2)); for (let X = -w; X <= w; X++) { const u = X / Math.max(1, w), band = (Y + (X & 1)) % 3 === 0; px(x, Math.abs(X) === w ? '#101a2a' : band ? '#1d3550' : u < -.3 ? '#6f9be0' : u < .3 ? '#3f6fc0' : '#2c4f8a', cx + X, yb - h + Y); } } px(x, '#101a2a', cx - r - 3, yb, r * 2 + 7, 1); }
-function cFlag(x, X, Y, col = '#c0302a') { px(x, '#3a2216', X, Y, 1, 12); px(x, CO, X + 1, Y - 1, 11, 7); px(x, col, X + 1, Y, 10, 5); px(x, '#ffd84a', X + 4, Y + 1, 3, 3); px(x, shadeHex(col, .7), X + 1, Y + 4, 10, 1); }
+function cFlag(x, X, Y, col = '#b0282a') { px(x, '#3a2216', X, Y, 1, 14); px(x, '#ffd84a', X, Y - 1, 1, 1); px(x, CO, X + 1, Y - 1, 12, 9); px(x, '#ffd84a', X + 2, Y, 10, 7); px(x, col, X + 3, Y + 1, 8, 5); px(x, shadeHex(col, .7), X + 3, Y + 5, 8, 1); px(x, '#5fd0f0', X + 6, Y + 1, 2, 1); px(x, '#9ff3ff', X + 5, Y + 2, 4, 2); px(x, '#3fa0c0', X + 6, Y + 4, 2, 1); }
 // partes do castelo, na ordem de desenho (de trás para frente), cada uma ligada a uma etapa
 const CPARTS = [
   { st: 0, draw: x => { px(x, CO, 12, 96, 236, 112); for (let Y = 97; Y < 207; Y++) for (let X = 13; X < 247; X++) { const f = ((Math.floor(X / 10) + Math.floor(Y / 6)) & 1); px(x, Y > 196 ? (Y === 197 ? CS[3] : CS[1]) : f ? '#8a8270' : '#9a927e', X, Y); } for (let X = 13; X < 247; X += 10) px(x, '#6e6658', X, 97, 1, 99); } },

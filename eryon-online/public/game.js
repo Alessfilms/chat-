@@ -23,7 +23,7 @@ const HAIRS = ['#d0622a', '#ffd84a', '#1a1208', '#5a3a26', '#8b5e3c', '#c4ccd0',
 const SHIRTS = ['#a83a32', '#3f7ab0', '#6e4a8a', '#3c5d4a', '#d0622a', '#e4d0a0', '#4a535c', '#b06a9a'];
 const PANTS = ['#3c5f9a', '#4a2f22', '#2b3138', '#3c5d4a', '#6b4630', '#1d3550'];
 const SKINS = ['#e8b48c', '#f2c9a4', '#c08060', '#8b5e3c', '#5a3a26'];
-const HATS = [['', 'Nenhum'], ['palha', 'Palha'], ['bone', 'Boné'], ['chef', 'Chef'], ['mago', 'Mago']];
+const HATS = [['', 'Nenhum'], ['palha', 'Palha'], ['bone', 'Boné'], ['chef', 'Chef'], ['mago', 'Mago'], ['elmo', 'Elmo']];
 const CAPES = ['', '#4e6c4a', '#1d3550', '#a83a32', '#6e4a8a'];
 const shade = h => { const [r, g, b] = hex(h); return '#' + [r, g, b].map(v => Math.round(v * .6).toString(16).padStart(2, '0')).join(''); };
 const builders = new Map();
@@ -538,7 +538,7 @@ function loop(now) {
     if (keys.has('arrowleft') || keys.has('a')) ix--; if (keys.has('arrowright') || keys.has('d')) ix++;
     if (keys.has('arrowup') || keys.has('w')) iy--; if (keys.has('arrowdown') || keys.has('s')) iy++;
     if (!ix && !iy && target) { const dx = target.x - p.x, dy = target.y - p.y, d = Math.hypot(dx, dy); if (d < 2) target = null; else { ix = dx / d; iy = dy / d; } }
-    if (p.act && t < p.act.end) { ix = 0; iy = 0; target = null; }
+    if ((p.act && t < p.act.end) || performance.now() < (GFX.stunUntil || 0)) { ix = 0; iy = 0; target = null; }
     const blk0 = (x2, y2) => p.fly ? (x2 < 6 || y2 < 20 || x2 > WW - 6 || y2 > WH - 6) : p.room ? roomBlocked(p.room, x2, y2) : blocked(x2, y2);
     const stuck = !p.fly && blk0(p.x, p.y), blk = (x2, y2) => !stuck && blk0(x2, y2);
     const len = Math.hypot(ix, iy) || 1, sp = (p.fly ? 82 : 44) * dt, mx = ix / len * sp, my = iy / len * sp;
@@ -587,6 +587,7 @@ function draw(t, p) {
   if (!room) { for (const n of NODES) if (n.x > li - 20 && n.x < li + cw + 20 && n.y > ti - 10 && n.y < ti + ch + 20) list.push({ y: n.y, node: n }); for (const d of DECOR) if (d.x > li - 30 && d.x < li + cw + 30 && d.y > ti - 10 && d.y < ti + ch + 30) list.push({ y: d.y, decor: d }); }
   if (!room) for (const h of BUILT) if (h.x > li - 40 && h.x < li + cw + 40 && h.y > ti - 10 && h.y < ti + ch + 40) list.push({ y: h.y, built: h });
   if (!room && GIANT.live) list.push({ y: GIANT.live.y, giant: true });
+  if (!room) kingdomObjs(list, li, ti, cw, ch, t);
   if (!room) for (const a of ANIMALS_L) { const q = animalPos(a, t); if (q.X > li - 20 && q.X < li + cw + 20 && q.Y > ti - 10 && q.Y < ti + ch + 20) list.push({ y: q.Y, animal: a }); }
   if (!room) for (const sg of allSigns()) if (sg.x > li - 30 && sg.x < li + cw + 30 && sg.y > ti - 10 && sg.y < ti + ch + 30) list.push({ y: sg.y, sign: sg });
   if (!room) { drawDragonShadows(x, li, ti, cw, ch); drawBalloonShadows(x); }
@@ -598,6 +599,8 @@ function draw(t, p) {
     if (o.castle) { drawCastle(x, t); continue; }
     if (o.merchant) { drawMerchant(x, t); continue; }
     if (o.giant) { drawGiant(x, t); continue; }
+    if (o.guard) { drawGuard(x, o.guard, t); continue; }
+    if (o.banner) { drawBanner(x, o.banner.x, o.banner.y, t, o.banner.h); continue; }
     if (o.animal) { drawAnimal(x, o.animal, t); continue; }
     if (o.lm) { drawLandmark(x, o.lm, t); continue; }
     if (o.node) { drawNode(x, o.node); continue; }
@@ -655,7 +658,7 @@ function draw(t, p) {
     ctx.globalAlpha = 1;
   }
   ctx.globalAlpha = 1;
-  if (!room) { drawSignLabels(ctx, L, T, S, fs, p); castleLabel(ctx, L, T, S, fs, p); econLabels(ctx, L, T, S, fs, p); giantLabels(ctx, L, T, S, fs); }
+  if (!room) { drawSignLabels(ctx, L, T, S, fs, p); castleLabel(ctx, L, T, S, fs, p); econLabels(ctx, L, T, S, fs, p); giantLabels(ctx, L, T, S, fs); guardLabels(ctx, L, T, S, fs); }
 }
 // ---------------------------------------------------------------- ações e portas
 let ctxAct = null;

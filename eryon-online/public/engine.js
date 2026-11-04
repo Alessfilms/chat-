@@ -266,6 +266,8 @@ function charBuilder(sp) {
     if (sp.hat === 'mago') { px(x, P.ink, OX - 2, hT + 1, 12, 2); px(x, '#4a2a7a', OX - 1, hT + 1, 10, 1);
       for (let k = 0; k < 8; k++) { const w = Math.max(1, 7 - k), x0 = OX + 4 - Math.ceil(w / 2) + (k > 4 ? 1 : 0); px(x, P.ink, x0 - 1, hT - k, w + 2, 1); px(x, k % 3 === 1 ? '#7a4ac0' : '#6e4a8a', x0, hT - k, w, 1); }
       px(x, '#ffd84a', OX + 3, hT - 2, 1, 1); px(x, '#ffd84a', OX + 5, hT - 4, 1, 1); px(x, '#fff3b0', OX + 6, hT - 8, 1, 1); }
+    if (sp.hat === 'elmo') { px(x, P.ink, OX + 2, hT - 6, 4, 4); px(x, '#c0302a', OX + 3, hT - 5, 2, 3); px(x, '#e04a3a', OX + 3, hT - 5, 1, 1);
+      px(x, P.ink, OX - 1, hT - 2, 10, 6); px(x, '#939cae', OX, hT - 1, 8, 4); px(x, '#c3cad6', OX + 1, hT - 1, 4, 1); px(x, '#e8eef0', OX + 1, hT - 1, 1, 1); px(x, '#6e7789', OX, hT + 2, 8, 1); px(x, '#ffd84a', OX + 3, hT, 2, 1); px(x, '#6e7789', OX + 6, hT + 3, 1, 2); }
     if (sp.hat === 'chef') { px(x, P.ink, OX + 1, hT - 4, 6, 6); px(x, '#ffffff', OX + 2, hT - 3, 4, 4); px(x, '#c4ccd0', OX + 5, hT - 3, 1, 4); }
     if (sp.crown) { px(x, P.ink, OX + 1, hT - 2, 6, 3); px(x, P.fire3, OX + 2, hT - 1, 4, 1); px(x, P.fire3, OX + 2, hT - 2, 1, 1); px(x, P.fire3, OX + 5, hT - 2, 1, 1); px(x, P.cy2, OX + 3, hT - 1, 2, 1); }
     // braços e ferramentas (sem contorno automático; desenhados por cima)
