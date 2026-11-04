@@ -31,6 +31,7 @@ function onFeatureMsg(m) {
   if (m.t === 'announce') { showAnnounce(m.text); return true; }
   if (m.t === 'rain') { startRain(m.gift || {}); return true; }
   if (m.t === 'signs') { SIGNS = m.list || []; return true; }
+  if (m.t === 'tp') { const p = players.get(myId); if (p) { p.x = m.x; p.y = m.y; p.room = ''; target = null; follow(); fxToast('Whoosh!', 'O portal te levou de volta para a vila', '#d0a0ff', '✦'); } return true; }
   if (m.t === 'perk') { try { localStorage.setItem('eryon_perk', JSON.stringify(m.perk)); } catch { }
     // devolve o bichinho guardado no aparelho se o servidor tiver esquecido
     const me2 = players.get(myId), saved = (() => { try { return localStorage.getItem('eryon_pet') || ''; } catch { return ''; } })();

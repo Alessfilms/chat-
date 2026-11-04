@@ -50,7 +50,8 @@ function spawnFlight(li, ti, cw, ch) {
 }
 function updFlights(li, ti, cw, ch) {
   const now = performance.now();
-  if (now > nextFlight) { nextFlight = now + 35000 + Math.random() * 50000; spawnFlight(li, ti, cw, ch); }
+  if (now > nextFlight) { const me2 = typeof players !== 'undefined' && players.get(myId), nest = me2 && LM.ninho && Math.hypot(me2.x - LM.ninho.x, me2.y - LM.ninho.y) < 380;
+    nextFlight = now + (nest ? 12000 + Math.random() * 12000 : 35000 + Math.random() * 50000); spawnFlight(li, ti, cw, ch); }
   for (let i = FLIGHTS.length - 1; i >= 0; i--) { const f = FLIGHTS[i], t = (now - f.born) / 1000; if (now - f.born > f.life) { FLIGHTS.splice(i, 1); continue; } f.cx = f.x + f.dx * f.speed * t; f.cy = f.y + f.dy * f.speed * t; f.t = t; }
 }
 const flapFrame = f => { const k = Math.floor((f.t * 5 + f.ph) % 6); return Math.sin(f.t * .5 + f.ph) > .4 ? 0 : [0, 1, 2, 2, 1, 0][k]; };

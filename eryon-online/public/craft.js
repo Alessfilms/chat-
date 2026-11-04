@@ -13,17 +13,25 @@ function buildNodes() {
   const r = rng(777);
   let tries = 0;
   while (NODES.filter(n => n.kind === 'rock').length < 45 && tries++ < 4000) {
-    const x = 20 + r() * (WW - 40), y = 40 + r() * (WH - 80), dc = Math.hypot(x - C.x, (y - C.y) * 1.05);
+    const x = 20 + r() * (OW - 40), y = 40 + r() * (OH - 80), dc = Math.hypot(x - C.x, (y - C.y) * 1.05);
     if (dc < 225 || blocked(x, y) || blocked(x + 6, y) || blocked(x - 6, y) || Math.abs(y - riverY(x)) < 20) continue;
     if (NODES.some(n => Math.hypot(n.x - x, n.y - y) < 30)) continue;
     NODES.push({ id: 'r' + NODES.length, kind: 'rock', x: Math.round(x), y: Math.round(y), s: Math.floor(r() * 3) });
   }
   tries = 0; let hi = 0;
   while (hi < 50 && tries++ < 4000) {
-    const x = 20 + r() * (WW - 40), y = 40 + r() * (WH - 80), dc = Math.hypot(x - C.x, (y - C.y) * 1.05);
+    const x = 20 + r() * (OW - 40), y = 40 + r() * (OH - 80), dc = Math.hypot(x - C.x, (y - C.y) * 1.05);
     if (dc < 90 || blocked(x, y) || Math.abs(y - riverY(x)) < 16) continue;
     if (NODES.some(n => Math.hypot(n.x - x, n.y - y) < 26)) continue;
     NODES.push({ id: 'h' + hi++, kind: 'herb', x: Math.round(x), y: Math.round(y), s: Math.floor(r() * 3) });
+  }
+  // terras novas: mais pedra e ervas (ids continuam a numeração)
+  const r2 = rng(778); let ri = 45, hj = 50; tries = 0;
+  while ((ri < 160 || hj < 190) && tries++ < 20000) {
+    const x = 20 + r2() * (WW - 40), y = 40 + r2() * (WH - 80), herb = r2() < .55; if (biomeAt(x, y) === 0 || blocked(x, y) || blocked(x + 6, y) || Math.abs(y - riverY(x)) < 20 || inLake(x, y) || lakeVal(x, y) < 1.3) continue;
+    if (NODES.some(n => Math.abs(n.x - x) < 30 && Math.abs(n.y - y) < 30)) continue;
+    if (herb && hj < 190) NODES.push({ id: 'h' + hj++, kind: 'herb', x: Math.round(x), y: Math.round(y), s: Math.floor(r2() * 3) });
+    else if (!herb && ri < 160) NODES.push({ id: 'r' + ri++, kind: 'rock', x: Math.round(x), y: Math.round(y), s: Math.floor(r2() * 3) });
   }
 }
 const ROCK_SPR = [];

@@ -303,7 +303,7 @@ const server = http.createServer(async (req, res) => {
 function listUsers() { const online = new Set([...clients].map(c => c.user)); return Object.entries(db.users).filter(([, r]) => !r.removed).map(([u, r]) => ({ username: u, code: codeFor(u, r.v || 0), online: online.has(u), lastLogin: r.lastLogin || null })).sort((a, b) => a.username.localeCompare(b.username)); }
 
 // ---------------------------------------------------------------- tempo real
-const WORLD = { w: 720, h: 1280 }, SPAWN = { x: 360, y: 668 };
+const WORLD = { w: 1440, h: 2400 }, SPAWN = { x: 360, y: 668 };
 const clients = new Set();
 const chatLog = [];
 let nextId = 1;
@@ -314,7 +314,7 @@ const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || 
 const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', cost: { lenha: 14, pedra: 4 } }, mercado: { name: 'Mercado', cost: { lenha: 12, pedra: 4, ervas: 2 } }, hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 } },
   escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 } };
 const ROOM_OK = /^(|taverna|gruta|abismo|casa_[1-9]|h_[0-9]{1,6})$/;
-const LANDMARK_NAMES = { costela: 'a Costela de Dragão', ruinas: 'as Ruínas da Inscrição', torre: 'a Torre Antiga', caverna: 'a Caverna Escondida', buraco: 'o Buraco Misterioso', circulo: 'o Círculo de Pedras', arvore: 'a Árvore Ancestral', poco: 'o Poço da Lua' };
+const LANDMARK_NAMES = { costela: 'a Costela de Dragão', ruinas: 'as Ruínas da Inscrição', torre: 'a Torre Antiga', caverna: 'a Caverna Escondida', buraco: 'o Buraco Misterioso', circulo: 'o Círculo de Pedras', arvore: 'a Árvore Ancestral', poco: 'o Poço da Lua', lago: 'o Lago Espelhado', gigante: 'a Estátua do Gigante', acampamento: 'o Acampamento Abandonado', cristais: 'o Jardim de Cristais', cemiterio: 'o Cemitério Antigo', portal: 'o Portal Esquecido', ninho: 'o Ninho do Dragão' };
 const ACTS = new Set(['mine', 'gather', 'eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
 db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
 let lunchState = null;
@@ -381,7 +381,8 @@ const ACH = {
   artesao: { name: 'Artesão', desc: 'Crie 20 itens', test: r => (r.tot.craft || 0) >= 20 },
   construtor: { name: 'Primeiro teto', desc: 'Faça sua primeira construção', test: r => (r.tot.build || 0) >= 1 },
   arquiteto: { name: 'Arquiteto', desc: 'Faça 5 construções', test: r => (r.tot.build || 0) >= 5 },
-  explorador: { name: 'Explorador', desc: 'Descubra os 8 lugares secretos', test: r => (r.found || []).length >= 8 },
+  explorador: { name: 'Explorador', desc: 'Descubra 8 lugares secretos', test: r => (r.found || []).length >= 8 },
+  desbravador: { name: 'Desbravador', desc: 'Descubra todos os 15 lugares', test: r => (r.found || []).length >= 15 },
   social: { name: 'Boa prosa', desc: 'Mande 50 mensagens', test: r => (r.tot.chat || 0) >= 50 },
   generoso: { name: 'Coração de ouro', desc: 'Dê 10 itens', test: r => (r.tot.give || 0) >= 10 },
   dedicado: { name: 'Dedicado', desc: 'Complete 10 missões', test: r => (r.tot.missions || 0) >= 10 },
@@ -409,7 +410,7 @@ function track(c, kind, n = 1) {
   r.ach ||= []; for (const [id, a] of Object.entries(ACH)) if (!r.ach.includes(id) && a.test(r)) { r.ach.push(id); out(c.ws, { t: 'ach', id, name: a.name, desc: a.desc }); all({ t: 'chat', id: c.id, username: c.user, text: `ganhou a conquista "${a.name}"!`, ts: Date.now() }, c); }
   save(); sendProg(c);
 }
-const LM_POS = { costela: [170, 1060], ruinas: [520, 400], torre: [290, 118], caverna: [92, 812], buraco: [575, 1110], circulo: [610, 880], arvore: [110, 340], poco: [630, 120] };
+const LM_POS = { costela: [170, 1060], ruinas: [520, 400], torre: [290, 118], caverna: [92, 812], buraco: [575, 1110], circulo: [610, 880], arvore: [110, 340], poco: [630, 120], lago: [1090, 668], gigante: [1260, 372], acampamento: [232, 1560], cristais: [468, 1930], cemiterio: [636, 2232], portal: [1220, 1522], ninho: [1124, 2080] };
 
 // =====================================================================
 // APOIADORES, BICHINHOS, CRIADOR e PLACAS PATROCINADAS
@@ -449,6 +450,7 @@ wss.on('connection', (ws, req) => {
     if (m.t === 'move') {
       const now = Date.now(), dt = Math.min(1, (now - c.lastMove) / 1000); c.lastMove = now;
       let nx = Number(m.x), ny = Number(m.y); if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+      if (now - (c.lastTp || 0) < 1500 && Math.hypot(nx - c.x, ny - c.y) > 60) return;   // ignora posição antiga logo depois do portal
       const room = typeof m.room === 'string' && ROOM_OK.test(m.room) ? m.room : '';
       const changed = room !== (c.room || '') && now - (c.lastRoom || 0) > 400;
       if (changed) { c.room = room; c.lastRoom = now; }
@@ -463,7 +465,7 @@ wss.on('connection', (ws, req) => {
       if (m.kind === 'split') { addWood(c, 1); track(c, 'split'); }
     } else if (m.t === 'cut') {
       const i = Number(m.tree), now = Date.now();
-      if (!Number.isInteger(i) || i < 0 || i > 5000 || cutTrees.has(i) || now - (c.lastCut || 0) < 2000) return; c.lastCut = now;
+      if (!Number.isInteger(i) || i < 0 || i > 20000 || cutTrees.has(i) || now - (c.lastCut || 0) < 2000) return; c.lastCut = now;
       cutTrees.set(i, now + 5 * 60000); all({ t: 'trees', cut: cutList() }); addWood(c, 3); track(c, 'cut');
     } else if (m.t === 'gather') {
       const now = Date.now(), id = String(m.id || ''), r = db.users[c.user];
@@ -558,6 +560,9 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'visit') {
       const id = String(m.id || ''), lp = LM_POS[id], r = db.users[c.user]; if (!lp || !r || c.room || Math.hypot(c.x - lp[0], c.y - lp[1]) > 70) return;
       const dl = dailyOf(r, c.user); dl.v ||= []; if (dl.v.includes(id)) return; dl.v.push(id); track(c, 'visit');
+    } else if (m.t === 'tp') {       // Portal Esquecido -> volta para a vila
+      const pp = LM_POS.portal, now = Date.now(); if (c.room || Math.hypot(c.x - pp[0], c.y - pp[1]) > 40 || now - (c.lastTp || 0) < 3000) return; c.lastTp = now;
+      c.x = SPAWN.x + (Math.random() * 30 - 15); c.y = SPAWN.y + Math.random() * 10; c.lastRoom = now; c.dirty = true; out(c.ws, { t: 'tp', x: c.x, y: c.y }); all({ t: 'act', id: c.id, kind: 'magic' }, c);
     } else if (m.t === 'pet') {
       const r = db.users[c.user]; if (!r) return; const look = r.look || (r.look = {}); const pet = String(m.pet || '');
       if (!pet) delete look.pet; else { if (!PETS.has(pet)) return; if (!r.sup && !isStaff(c.user)) return note(c, 'Bichinhos são um presente para apoiadores de Eryon ♥'); look.pet = pet; }

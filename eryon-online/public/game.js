@@ -51,7 +51,7 @@ function buildWorld(world) {
   const [v, x] = canvas(WW, WH); villageLayer = v;
   x.drawImage(ground, 0, 0);
   x.save(); x.beginPath(); x.ellipse(C.x, C.y, VR, VR * .95, 0, 0, 6.283); x.clip(); x.drawImage(clearTex, 0, 0); x.restore();
-  paintDetails(x); paintRiver(x);
+  paintDetails(x); paintRiver(x); paintNewLands(x);
   const pts = [];
   const road = p => { for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1], d = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let s = 0; s < d; s += 2) pts.push([a[0] + (b[0] - a[0]) * s / d, a[1] + (b[1] - a[1]) * s / d]); } };
   road([[360, 622], [400, 566], [440, 520], [GATE.x, GATE.y], [496, 452], [508, 425], [520, 404]]);
@@ -74,7 +74,7 @@ function buildWorld(world) {
     px(x, P.ink, 522, 383, 13, 16); px(x, P.st1, 523, 384, 11, 14); [[0, 0, 1, 3], [4, 0, 1, 3], [7, 0, 1, 1], [1, 5, 3, 1], [6, 5, 2, 2], [2, 9, 3, 1]].forEach(([a, b, w, h]) => px(x, P.cy2, 524 + a, 385 + b, w, h)); }
   // árvores (as da área da vila foram derrubadas e viraram casas)
   const pathNear = (X, Y) => { const L = [[474, 498], [482, 476], [492, 456], [502, 438], [508, 425], [514, 414], [522, 404]]; for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((X - ax) * dx + (Y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(X - ax - dx * k, Y - ay - dy * k) < 15) return true; } return false; };
-  trees.forEach((t, i) => { if (t.dc < VR + 4 || (t.y - riverY(t.x) >= 0 && t.y - riverY(t.x) < 34) || pathNear(t.x, t.y + 6) || nearLandmark(t.x, t.y)) return; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay, tree: i }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5, tree: i }); TREE_POS.push({ i, x: t.x, y: t.y }); });
+  trees.forEach((t, i) => { if (t.dc < VR + 4 || (t.y - riverY(t.x) >= 0 && t.y - riverY(t.x) < 34) || pathNear(t.x, t.y + 6) || nearLandmark(t.x, t.y) || (t.bi && nearRoad(t.x, t.y + 4, 10))) return; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay, tree: i }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5, tree: i }); TREE_POS.push({ i, x: t.x, y: t.y }); });
   if (B.serraria) { const X = B.serraria.x, Y = B.serraria.y, [wc, wq] = canvas(26, 14);
     for (let k = 0; k < 6; k++) { const r = k % 3, c2 = Math.floor(k / 3); px(wq, P.ink, 2 + r * 6 + c2 * 3, 6 - c2 * 4, 7, 7); px(wq, P.wood, 3 + r * 6 + c2 * 3, 7 - c2 * 4, 5, 5); px(wq, P.woodL, 4 + r * 6 + c2 * 3, 8 - c2 * 4, 3, 3); }
     OBJ.push({ y: Y, x: X, img: wc, dx: X - 13, dy: Y - 12 }); const [bc, bq] = canvas(9, 7); px(bq, P.ink, 0, 0, 9, 7); px(bq, P.wood, 1, 2, 7, 4); px(bq, P.woodL, 1, 1, 7, 2); OBJ.push({ y: Y + 8, x: X + 18, img: bc, dx: X + 14, dy: Y + 2 });
@@ -90,7 +90,8 @@ function buildWorld(world) {
   placePalisade();
   const LB = { costela: [-42, 42, -12, 0], ruinas: [4, 20, -8, 0], torre: [-13, 13, -14, 0], caverna: [-36, 36, -22, -2], buraco: [-22, 22, -16, -2], poco: [-16, 16, -14, 2], arvore: [-4, 4, -5, 0], circulo: [-6, 8, -6, 0] };
   placeScenery(x);
-  for (const l of LANDMARKS) { OBJ.push({ y: l.y, x: l.x, lm: l }); const b = LB[l.id]; if (b) blockers.push({ k: 'r', x0: l.x + b[0], x1: l.x + b[1], y0: l.y + b[2], y1: l.y + b[3] }); }
+  Object.assign(LB, { lago: [[-10, 10, -10, 0]], gigante: [-40, 40, -14, 0], acampamento: [[-36, -12, -10, 0], [12, 36, -10, 0]], cristais: [-20, 20, -10, 0], cemiterio: [[-2, 2, -1, 0]], portal: [[-27, -16, -8, 0], [16, 27, -8, 0]], ninho: [-30, 30, -10, 0] });
+  for (const l of LANDMARKS) { OBJ.push({ y: l.y, x: l.x, lm: l }); const bb = LB[l.id]; if (bb) for (const b of (Array.isArray(bb[0]) ? bb : [bb])) blockers.push({ k: 'r', x0: l.x + b[0], x1: l.x + b[1], y0: l.y + b[2], y1: l.y + b[3] }); }
   OBJ.sort((a, b) => a.y - b.y);
 }
 function drawBridgeOn(x, X) { X = Math.round(X); const Y = Math.round(riverY(X)); px(x, P.ink, X - 8, Y - 17, 17, 34); for (let i = 0; i < 16; i++) px(x, i % 2 ? P.dirt3 : P.wood, X - 7, Y - 16 + i * 2, 15, 2); px(x, P.woodD, X - 8, Y - 17, 2, 34); px(x, P.woodD, X + 7, Y - 17, 2, 34); }
@@ -99,7 +100,7 @@ function addBridges(list) { for (const b of list) if (!BRIDGES.some(o => o.id ==
 function paintDetails(x) {
   const r = rng(2024);
   for (let i = 0; i < 9000; i++) {
-    const X = Math.floor(r() * WW), Y = Math.floor(r() * WH), kind = r(); if (Math.abs(Y - riverY(X)) < 15) continue;
+    const X = Math.floor(r() * OW), Y = Math.floor(r() * OH), kind = r(); if (Math.abs(Y - riverY(X)) < 15) continue;
     const dc = Math.hypot(X - C.x, (Y - C.y) / .95), open = dc < VR - 4;
     if (open) {
       if (kind < .55) { const c1 = r() < .5 ? P.f7 : P.f8; px(x, c1, X, Y, 1, 2); px(x, c1, X + 1, Y - 1, 1, 3); px(x, P.f5, X + 2, Y, 1, 2); }
@@ -112,6 +113,25 @@ function paintDetails(x) {
       else if (kind < .6) { px(x, '#d0622a', X, Y - 1, 3, 1); px(x, '#a83a32', X, Y - 2, 3, 1); px(x, '#eef0ea', X + 1, Y - 2, 1, 1); px(x, '#e4d0a0', X + 1, Y, 1, 1); }   // cogumelos
     }
   }
+}
+// detalhes das terras novas: folhas secas no outono, flores no vale, juncos e cogumelos no brejo, gelo e pedrinhas na neve
+function paintNewLands(x) {
+  const r = rng(2025);
+  for (let i = 0; i < 30000; i++) {
+    const X = Math.floor(r() * WW), Y = Math.floor(r() * WH), kind = r(), b = biomeAt(X, Y); if (b === 0 || Math.abs(Y - riverY(X)) < 15 || lakeVal(X, Y) < 1.15) continue;
+    if (b === 1) { if (kind < .45) px(x, ['#d8702a', '#c0442a', '#e09a2a', '#a8441c'][Math.floor(r() * 4)], X, Y, 2, 1); else if (kind < .7) { px(x, '#6e7e30', X, Y, 1, 2); px(x, '#a0a048', X + 1, Y - 1, 1, 2); } else if (kind < .76) { px(x, '#d0622a', X, Y - 1, 3, 1); px(x, '#eef0ea', X + 1, Y - 1, 1, 1); px(x, '#e4d0a0', X + 1, Y, 1, 1); } }
+    else if (b === 2) { if (kind < .5) { const fc = ['#f6b6d8', '#fff3b0', '#9ff3ff', '#f4f0d8', '#e04a5a', '#d0a0ff'][Math.floor(r() * 6)]; px(x, '#3c8e42', X, Y + 1, 1, 2); px(x, fc, X - 1, Y, 3, 1); px(x, fc, X, Y - 1, 1, 3); px(x, '#ffd84a', X, Y, 1, 1); } else if (kind < .85) { px(x, '#80c85e', X, Y, 1, 2); px(x, '#a0da70', X + 1, Y - 1, 1, 3); px(x, '#4fa24a', X + 2, Y, 1, 2); } }
+    else if (b === 3) { if (kind < .35) { px(x, '#3e6242', X, Y - 3, 1, 4); px(x, '#5a7a4a', X + 1, Y - 4, 1, 4); if (r() < .4) px(x, '#6b4630', X + 1, Y - 5, 1, 2); } else if (kind < .45) { px(x, '#7a4a8a', X, Y - 1, 3, 1); px(x, '#a07ab0', X + 1, Y - 2, 1, 1); px(x, '#c8b8a0', X + 1, Y, 1, 1); } else if (kind < .6) px(x, '#16281e', X, Y, 2, 1); }
+    else { if (kind < .35) { px(x, '#8a92a2', X, Y, 2, 1); px(x, '#c8d8e8', X, Y - 1, 1, 1); } else if (kind < .55) px(x, '#ffffff', X, Y, 1, 1); else if (kind < .62) { px(x, '#9fd8ff', X, Y, 2, 1); px(x, '#e8f8ff', X, Y, 1, 1); } }
+  }
+  // margem do lago: juncos, nenúfares e pedrinhas
+  for (let i = 0; i < 260; i++) { const a = r() * 6.283, k = 1 + r() * .14, X = Math.round(LAKE.x + Math.cos(a) * LAKE.rx * Math.sqrt(k)), Y = Math.round(LAKE.y + Math.sin(a) * LAKE.ry * Math.sqrt(k));
+    if (r() < .5) { px(x, '#2f7a40', X, Y - 3, 1, 4); px(x, '#5aa84e', X + 1, Y - 4, 1, 4); if (r() < .3) px(x, '#8b5e3c', X + 1, Y - 5, 1, 2); } else { px(x, '#2a2e3a', X - 1, Y - 1, 4, 3); px(x, P.st2, X, Y, 2, 1); } }
+  for (let i = 0; i < 40; i++) { const a = r() * 6.283, k = r() * .7, X = Math.round(LAKE.x + Math.cos(a) * LAKE.rx * k), Y = Math.round(LAKE.y + Math.sin(a) * LAKE.ry * k); px(x, '#2f7a40', X - 1, Y, 4, 2); px(x, '#5aa84e', X, Y, 2, 1); if (r() < .4) px(x, '#f6b6d8', X + 1, Y - 1, 1, 1); }
+  // estradas novas
+  for (const L of EXT_ROADS) for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dd = Math.hypot(bx - ax, by - ay);
+    for (let t = 0; t < dd; t += 2) { const X = Math.round(ax + (bx - ax) * t / dd), Y = Math.round(ay + (by - ay) * t / dd), snow = biomeAt(X, Y) === 4; px(x, snow ? '#a2aab8' : P.dirt2, X - 3, Y - 2, 7, 5); }
+    for (let t = 0; t < dd; t += 2) { const X = Math.round(ax + (bx - ax) * t / dd), Y = Math.round(ay + (by - ay) * t / dd), hx = h2(X, Y); if (hx > .72) { px(x, P.st1, X - 1, Y + 1, 3, 1); px(x, hx > .86 ? P.st3 : P.sand, X - 1, Y, 3, 1); } } }
 }
 function paintRiver(x) {
   const r = rng(99);
@@ -176,11 +196,11 @@ const BOULDERS = Array.from({ length: 8 }, (_, i) => boulderSprite(300 + i * 17)
 const WALLS = [wallSprite(28, 12, 5), wallSprite(36, 14, 6), wallSprite(22, 10, 7)];
 const PILLARS = Array.from({ length: 4 }, (_, i) => pillarSprite(40 + i));
 function placeScenery(x) {
-  const r = rng(4242), placed = [];
+  const rOrig = rng(4242), placed = [];
   const free = (X, Y, rad) => {
     if (X < 16 || X > WW - 16 || Y < 30 || Y > WH - 12) return false;
     if (Math.hypot(X - C.x, (Y - C.y) / .95) < 392) return false;          // espaço para a cidade crescer
-    if (Math.abs(Y - riverY(X)) < 26 || nearLandmark(X, Y, 16)) return false;
+    if (Math.abs(Y - riverY(X)) < 26 || nearLandmark(X, Y, 16) || lakeVal(X, Y) < 1.5 || nearRoad(X, Y, 22)) return false;
     if (Y > 690 && Math.abs(X - pathS(Y)) < 18) return false;
     if (Math.hypot(X - BRIDGE.x, Y - BRIDGE.y) < 40) return false;
     if (placed.some(p => Math.hypot(p.x - X, p.y - Y) < rad + p.r)) return false;
@@ -189,11 +209,13 @@ function placeScenery(x) {
   };
   const clearTrees = (X, Y, rx, ry) => { for (let i = OBJ.length - 1; i >= 0; i--) { const o = OBJ[i]; if (o.tree !== undefined && Math.abs(o.x - X) < rx && o.y > Y - ry && o.y < Y + 8) { OBJ.splice(i, 1); const bi = blockers.findIndex(b => b.tree === o.tree); if (bi >= 0) blockers.splice(bi, 1); const ti = TREE_POS.findIndex(t => t.i === o.tree); if (ti >= 0) TREE_POS.splice(ti, 1); } } };
   // clareirinhas: terra + lajes, sem árvores, com pedras e ruínas
-  for (let k = 0, n = 0; k < 900 && n < 34; k++) {
-    const X = Math.round(r() * WW), Y = Math.round(r() * WH); if (!free(X, Y, 28)) continue; n++;
+  const r2 = rng(4244);
+  for (let k = 0, n = 0; k < 4000 && n < 110; k++) {
+    const second = k >= 900 || n >= 34, rr2 = second ? r2 : rOrig;
+    const X = Math.round(rr2() * (second ? WW : OW)), Y = Math.round(rr2() * (second ? WH : OH)); if (!free(X, Y, 28) || (second && biomeAt(X, Y) === 0)) continue; n++;
     placed.push({ x: X, y: Y, r: 28 });
     clearTrees(X, Y, 26, 22);
-    const kind = r();
+    const bio = biomeAt(X, Y), r = rr2, kind = bio === 4 || bio === 3 ? .6 + r() * .4 : r();
     if (kind < .55) { const sp = BOULDERS[Math.floor(r() * BOULDERS.length)]; OBJ.push({ y: Y, x: X, img: sp.c, dx: X - sp.ax, dy: Y - sp.ay }); blockers.push({ k: 'r', x0: X - 14, x1: X + 14, y0: Y - 7, y1: Y + 1 });
       if (r() < .5) { const s2 = BOULDERS[Math.floor(r() * BOULDERS.length)], X2 = X + (r() < .5 ? -20 : 20), Y2 = Y + 8; OBJ.push({ y: Y2, x: X2, img: s2.c, dx: X2 - s2.ax, dy: Y2 - s2.ay }); blockers.push({ k: 'r', x0: X2 - 14, x1: X2 + 14, y0: Y2 - 7, y1: Y2 + 1 }); } }
     else if (kind < .8) { const sp = WALLS[Math.floor(r() * WALLS.length)], w = sp.c.width; OBJ.push({ y: Y, x: X, img: sp.c, dx: X - Math.floor(w / 2), dy: Y - sp.ay }); blockers.push({ k: 'r', x0: X - w / 2, x1: X + w / 2, y0: Y - 4, y1: Y + 1 });
@@ -207,7 +229,7 @@ function placeScenery(x) {
   OBJ.sort((a, b) => a.y - b.y);
 }
 // ---- vida ambiente: brilho na água, vagalumes, folhas, fumaça das chaminés e sombra das nuvens
-const FIREFLIES = Array.from({ length: 420 }, (_, i) => ({ x: h2(i, 1) * WW, y: h2(i, 2) * WH, ph: h2(i, 3) * 6.283, sp: .5 + h2(i, 4), r: 8 + h2(i, 5) * 18 }));
+const FIREFLIES = Array.from({ length: 1100 }, (_, i) => ({ x: h2(i, 1) * WW, y: h2(i, 2) * WH, ph: h2(i, 3) * 6.283, sp: .5 + h2(i, 4), r: 8 + h2(i, 5) * 18 }));
 // vagalumes: desenhados por cima da escuridão para brilharem de verdade à noite
 function drawFireflies(x, t, li, ti, cw, ch, night) {
   if (night < .05) return; x.globalCompositeOperation = 'lighter';
@@ -280,6 +302,7 @@ function indexBlockers() { for (const b of blockers) { const key = b.k === 'c' ?
 function blocked(x, y) {
   if (x < 4 || y < 10 || x > WW - 4 || y > WH - 4) return true;
   if (Math.abs(y - riverY(x)) < 10 && Math.abs(x - BRIDGE.x) > 7 && !BRIDGES.some(b => Math.abs(x - b.x) <= 7)) return true;
+  if (inLake(x, y)) return true;
   const dx = x - C.x, dy = (y - C.y) / .95, r = Math.hypot(dx, dy);
   if (r > PAL_R - 3 && r < PAL_R + 3 && Math.abs(y - riverY(x)) >= 14) { const a = Math.atan2(dy, dx); if (Math.abs(Math.atan2(Math.sin(a - GATE_A), Math.cos(a - GATE_A))) > .07 && Math.abs(Math.atan2(Math.sin(a - SOUTH_A), Math.cos(a - SOUTH_A))) > .05) return true; }
   for (const b of treeGrid.get('r') || []) if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return true;
@@ -459,7 +482,7 @@ function renderList() { const l = $('plist'); l.innerHTML = ''; const arr = [...
     l.appendChild(row); } }
 
 // ---------------------------------------------------------------- loop
-let last = performance.now(), sendT = 0, lastSent = '', stepT = 0, revT = 1;
+let curBiome = -1, last = performance.now(), sendT = 0, lastSent = '', stepT = 0, revT = 1;
 function start() {
   if (me && !/^visitante\d+$/.test(me)) $('nameBtn').textContent = '@' + me;
   $('login').style.display = 'none'; $('hud').style.display = 'flex'; $('camctl').style.display = 'flex'; $('chatlog').style.display = 'flex'; $('chatbar').style.display = 'flex';
@@ -483,7 +506,7 @@ function loop(now) {
     if (p.room && moved && iy > 0) { const r = roomOf(p.room); if (p.y > r.door.y + 1 && Math.abs(p.x - r.door.x) < 10) exitRoom(p); }
     if (moved) { stepT += dt; if (stepT > .34) { stepT = 0; sfx.step(!!p.room); } } else stepT = .3;
     updateContext(p, t);
-    if (!p.room) { revT += dt; if (revT > .25) { revT = 0; if (fogKey) revealAt(p.x, p.y, 72); checkDiscover(p); checkVisit(p); } }
+    if (!p.room) { revT += dt; if (revT > .25) { revT = 0; if (fogKey) revealAt(p.x, p.y, 72); checkDiscover(p); checkVisit(p); const bz = biomeAt(p.x, p.y); if (bz !== curBiome) { if (curBiome !== -1) fxToast(BIOME_NAMES[bz], 'Você entrou numa nova região', ['#84c65a', '#f2a04a', '#f6b6d8', '#6ad0a0', '#e8f4ff'][bz], '⚑'); curBiome = bz; } } }
     setFireLevel(p.room ? (p.room === 'taverna' ? .7 : 0) : 1 - Math.hypot(p.x - C.x, p.y - C.y) / 110);
     if ((ix || iy) && !moved) target = null;
     p.moving = moved; if (ix) p.face = ix < 0 ? -1 : 1;
@@ -585,6 +608,7 @@ function updateContext(p, t) {
     if (!c) c = { kind: 'exit', label: 'Sair' };
   } else {
     for (const d of DOORS) if (Math.hypot(p.x - d.x, p.y - d.y) < 10) c = { kind: 'enter', label: d.label, room: d.room };
+    { const pl = LM.portal; if (!c && pl && Math.abs(p.x - pl.x) < 13 && p.y > pl.y - 22 && p.y < pl.y + 10) c = { kind: 'portal', label: 'Atravessar o portal' }; }
     if (!c && B.serraria && Math.hypot(p.x - (B.serraria.x + 18), p.y - (B.serraria.y + 8)) < 18) c = { kind: 'split', label: 'Rachar lenha' };
     const kit = B.cozinha, nearKit = kit && Math.hypot(p.x - kit.x, p.y - (kit.y + 8)) < 24, lunchOn = lunch && Date.now() < lunch.until;
     if (!c && nearKit) c = lunchOn ? { kind: 'eat', label: 'Comer o almoço' } : { kind: 'lunch', label: 'Cozinhar e chamar para o almoço' };
@@ -604,6 +628,7 @@ function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; c
   if (c.kind === 'cmine' || c.kind === 'cherb') { const kind = c.kind === 'cmine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
   if (c.kind === 'mine' || c.kind === 'herb') { p.face = c.tx < p.x ? -1 : 1; const kind = c.kind === 'mine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
   if (c.kind === 'pickup') { send({ t: 'pickup', id: c.id }); return; }
+  if (c.kind === 'portal') { send({ t: 'tp', to: 'vila' }); doAct('magic'); return; }
   if (c.kind === 'movedecor') { startPlacing({ kind: c.d.kind, id: c.d.id, rot: c.d.rot }); return; }
   if (c.kind === 'bridge') { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'bridge', x: Math.round(p.x) })); doAct('build'); return; }
   if (c.kind === 'lunch') { doAct('cook'); if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'lunch' })); return; }
@@ -726,7 +751,7 @@ $('toastNo').onclick = () => { $('toast').hidden = true; };
 $('foundBtn').onclick = () => { closePanels(); $('mapPanel').hidden = false; drawMap(); };
 $('mapClose').onclick = () => { $('mapPanel').hidden = true; };
 function drawMap() {
-  const c = $('mapCv'), x = c.getContext('2d'), k = c.width / WW; x.imageSmoothingEnabled = false;
+  const c = $('mapCv'), x = c.getContext('2d'), k = c.width / WW; c.height = Math.round(WH * k); x.imageSmoothingEnabled = false;
   x.drawImage(villageLayer, 0, 0, c.width, c.height); x.globalAlpha = .55; for (const o of OBJ) if (o.tree !== undefined && !CUT.has(o.tree)) { x.fillStyle = '#1c3831'; x.fillRect(o.x * k - 1, o.y * k - 2, 3, 3); } x.globalAlpha = 1;
   x.font = '700 11px Pix, monospace'; x.textAlign = 'center';
   for (const l of LANDMARKS) if (FOUND.has(l.id)) { x.fillStyle = '#140e06'; x.fillRect(l.x * k - 3, l.y * k - 3, 7, 7); x.fillStyle = '#ffd84a'; x.fillRect(l.x * k - 2, l.y * k - 2, 5, 5); x.lineWidth = 3; x.strokeStyle = '#140e06'; x.strokeText(l.name, l.x * k, l.y * k - 6); x.fillStyle = '#fff3b0'; x.fillText(l.name, l.x * k, l.y * k - 6); }

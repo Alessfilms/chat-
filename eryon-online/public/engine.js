@@ -32,7 +32,8 @@ const P = { ink: '#1a120c', f0: '#0f3328', f1: '#174433', f2: '#1f5638', f3: '#2
   cy: '#3fd0e0', cy2: '#9ff3ff', fire1: '#d0622a', fire2: '#f2a33a', fire3: '#ffd84a', fire4: '#fff3b0', wall: '#e4d0a0', wallD: '#c9a46a', skin: '#e8b48c', skinD: '#c08060' };
 
 // ---------- mundo (idêntico ao Episódio 1)
-const WW = 720, WH = 1280, C = { x: 360, y: 640 };
+// mundo: a parte original (720×1280) fica idêntica; as terras novas ficam a leste e ao sul
+const OW = 720, OH = 1280, WW = 1440, WH = 2400, C = { x: 360, y: 640 };
 const VW = 360, VH = 640, OUT = 3;
 const riverY = x => 212 + 16 * Math.sin(x * .021) + 7 * Math.sin(x * .057 + 1);
 const pathS = y => 362 + 6 * Math.sin(y * .03);
@@ -40,38 +41,90 @@ const BRIDGE = { x: 430, y: Math.round(riverY(430)) }, TOWER = { x: 290, y: 118 
 const SEAT = { x: 360, y: 668 };
 const FOUNDER_A = { x: 341, y: 646 }, FOUNDER_B = { x: 380, y: 646 };
 
+// ruído pré-calculado nos pontos da grade: dá exatamente o mesmo valor que vn(), só que muito mais rápido
+function noiseGrid(f, ox = 0, oy = 0, M = 12) {
+  const x0 = Math.floor(-M * f + ox) - 1, y0 = Math.floor(-M * f + oy) - 1, w = Math.ceil((WW + M) * f + ox) - x0 + 3, h = Math.ceil((WH + M) * f + oy) - y0 + 3, g = new Float32Array(w * h);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) g[j * w + i] = h2(x0 + i, y0 + j);
+  return (x, y) => { const X = x * f + ox, Y = y * f + oy, xi = Math.floor(X), yi = Math.floor(Y), xf = X - xi, yf = Y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), o = (yi - y0) * w + (xi - x0);
+    return lerp(lerp(g[o], g[o + 1], u), lerp(g[o + w], g[o + w + 1], u), v); };
+}
+// regiões: 0 vila/floresta original · 1 Floresta de Outono · 2 Vale das Flores · 3 Brejo Sombrio · 4 Picos Gelados
+const BIOME_NAMES = ['Floresta de Eryon', 'Floresta de Outono', 'Vale das Flores', 'Brejo Sombrio', 'Picos Gelados'];
+function biomeAt(x, y) {
+  const ex = OW + 25 + (vn(y * .02, 31) - .5) * 50, ey = OH + 25 + (vn(x * .02, 37) - .5) * 50;
+  if (x < ex && y < ey) return 0;
+  if (x < ex) return 2;
+  if (y < 1250 + (vn(x * .02, 41) - .5) * 70) return 1;
+  if (y < 1800 + (vn(x * .02, 43) - .5) * 80) return 3;
+  return 4;
+}
+const LAKE = { x: 1090, y: 770, rx: 125, ry: 78 };
+const lakeVal = (x, y) => ((x - LAKE.x) / LAKE.rx) ** 2 + ((y - LAKE.y) / LAKE.ry) ** 2 + (vn(x * .05 + 200, y * .05) - .5) * .35;
+const inLake = (x, y) => Math.abs(x - LAKE.x) < LAKE.rx + 30 && Math.abs(y - LAKE.y) < LAKE.ry + 30 && lakeVal(x, y) < 1;
+// estradas novas (terra batida) ligando a vila às terras novas
+const EXT_ROADS = [
+  [[530, 712], [620, 742], [720, 760], [830, 772], [940, 752], [1010, 712], [1060, 684], [1088, 674]],
+  [[1100, 672], [1150, 600], [1200, 500], [1240, 420], [1258, 378]],
+  [[1100, 672], [1230, 700], [1262, 800], [1252, 1000], [1236, 1250], [1222, 1490]],
+  [[1220, 1545], [1200, 1700], [1160, 1900], [1124, 2052]],
+  [[362, 1450], [600, 1462], [800, 1472], [1000, 1482], [1200, 1505]],
+  [[360, 1562], [300, 1562], [262, 1566]],
+  [[362, 1900], [420, 1918], [452, 1930]],
+  [[362, 2200], [500, 2218], [608, 2232]],
+];
+function nearRoad(x, y, d = 10) { for (const L of EXT_ROADS) for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(x - ax - dx * k, y - ay - dy * k) < d) return true; } return false; }
+
 // chão no estilo pixel art: manchas de grama em tons chapados (com borda pontilhada), clareiras de terra e rio com margem de pedras
 const GRASS = ['#2a6a3c', '#357c40', '#3f8f45', '#4f9f4a', '#66b350', '#84c65a'].map(hex);
 const DIRT = ['#8a5430', '#b0703f', '#cf8d50', '#e2aa68'].map(hex);
-function grassAt(x, y, base) {
-  const n = vn(x * .03, y * .03) * .7 + vn(x * .09 + 9, y * .09) * .3, dith = ((x + y) & 1) ? .045 : -.045;
+const BG = [GRASS,
+  ['#4a5a24', '#5c6c2a', '#6e7e30', '#86903a', '#a0a048', '#bcb45a'].map(hex),        // outono
+  ['#2f7a3c', '#3c8e42', '#4fa24a', '#64b652', '#80c85e', '#a0da70'].map(hex),        // vale
+  ['#1a3428', '#223e2e', '#2a4a34', '#34563a', '#3e6242', '#4a6e4a'].map(hex),        // brejo
+  ['#9fb4c8', '#b4c8da', '#c8d8e8', '#dce8f2', '#eef4fa', '#ffffff'].map(hex)];       // neve
+const BDIRT = [DIRT, DIRT, DIRT, ['#3a2e1e', '#4a3a24', '#5a4a30', '#6a5838'].map(hex), ['#6e7688', '#8a92a2', '#a2aab8', '#bcc4d0'].map(hex)];
+const NG = { g1: noiseGrid(.03), g2: noiseGrid(.09, 9), g3: noiseGrid(.08), d1: noiseGrid(.045, 50, 20), d2: noiseGrid(.2), sw: noiseGrid(.06, 90, 40) };
+function grassAt(x, y, base, pal = GRASS) {
+  const n = NG.g1(x, y) * .7 + NG.g2(x, y) * .3, dith = ((x + y) & 1) ? .045 : -.045;
   let k = base + Math.floor(n * 3 + dith); k = Math.max(0, Math.min(5, k));
-  return GRASS[k];
+  return pal[k];
 }
 const [ground, gx] = canvas(WW, WH);
 {
-  const img = gx.createImageData(WW, WH), d = img.data, Wt = [P.w1, P.w2, '#2a4ea8', '#7fb0f5'].map(hex), BANK = ['#4a5060', '#6e7688', '#959eb0'].map(hex);
+  const img = gx.createImageData(WW, WH), d = img.data, Wt = [P.w1, P.w2, '#2a4ea8', '#7fb0f5'].map(hex), BANK = ['#4a5060', '#6e7688', '#959eb0'].map(hex), MUD = ['#2a4038', '#34504a', '#4a6a62'].map(hex), cream = hex('#f4f0d8');
+  const exA = new Float32Array(WH), eyA = new Float32Array(WW), b1 = new Float32Array(WW), b2 = new Float32Array(WW), rY = new Float32Array(WW), wobA = new Float32Array(WW);
+  for (let y = 0; y < WH; y++) exA[y] = OW + 25 + (vn(y * .02, 31) - .5) * 50;
+  const pS = new Float32Array(WH); for (let y = 0; y < WH; y++) pS[y] = pathS(y);
+  for (let x = 0; x < WW; x++) { eyA[x] = OH + 25 + (vn(x * .02, 37) - .5) * 50; b1[x] = 1250 + (vn(x * .02, 41) - .5) * 70; b2[x] = 1800 + (vn(x * .02, 43) - .5) * 80; rY[x] = riverY(x); wobA[x] = vn(x * .15, 7) * 2; }
   for (let y = 0; y < WH; y++) for (let x = 0; x < WW; x++) {
-    const r = h2(x, y), dc = Math.hypot(x - C.x, (y - C.y) * 1.05) + (vn(x * .08, y * .08) - .5) * 14;
-    let c = grassAt(x, y, dc < 64 ? 2 : 1);
-    // manchas de terra laranja espalhadas
-    const dp = vn(x * .045 + 50, y * .045 + 20) + (vn(x * .2, y * .2) - .5) * .12;
-    if (dp > .8) c = DIRT[dp > .86 ? (dp > .9 ? 3 : 2) : 1]; else if (dp > .78 && ((x + y) & 1)) c = DIRT[0];
-    if (dc < 64 && r > .994) c = hex('#f4f0d8');
+    const bi = (x < exA[y] && y < eyA[x]) ? 0 : x < exA[y] ? 2 : y < b1[x] ? 1 : y < b2[x] ? 3 : 4, pal = BG[bi], dirt = BDIRT[bi];
+    const raw = Math.hypot(x - C.x, (y - C.y) * 1.05), dc = raw < 90 ? raw + (NG.g3(x, y) - .5) * 14 : raw, r = (bi === 2 || bi === 3 || dc < 64) ? h2(x, y) : 0;
+    let c = grassAt(x, y, bi === 4 ? 2 : dc < 64 ? 2 : 1, pal);
+    // manchas de terra (lama no brejo, pedra na neve)
+    const dp = NG.d1(x, y) + (NG.d2(x, y) - .5) * .12;
+    if (dp > .8) c = dirt[dp > .86 ? (dp > .9 ? 3 : 2) : 1]; else if (dp > .78 && ((x + y) & 1)) c = dirt[0];
+    if (bi === 3) { const sw = NG.sw(x, y); if (sw > .7) c = MUD[sw > .76 ? (r > .97 ? 2 : 1) : 0]; }
+    if (bi === 2 && r > .992) c = r > .996 ? hex('#f6b6d8') : cream;
+    if (dc < 64 && r > .994) c = cream;
     if (dc < 18) c = DIRT[1 + Math.floor(r * 2.2)];
-    if (y > 690 && Math.abs(x - pathS(y)) < 4 + vn(y * .1, 3) * 3) c = DIRT[1 + Math.floor(vn(x * .3, y * .3) * 2.4)];
-    const dr = Math.abs(y - riverY(x)), wob = vn(x * .15, 7) * 2;
-    if (dr < 13 + wob) c = BANK[vn(x * .4, y * .4) > .6 ? 2 : vn(x * .4, y * .4) > .3 ? 1 : 0];
-    if (dr < 10 + wob * .5) { const w = vn(x * .08 + y * .01, y * .25), e = 10 + wob * .5 - dr; c = e < 1.6 ? Wt[3] : e < 3.2 ? Wt[1] : Wt[w > .7 ? 1 : 0]; if (e >= 3.2 && w < .2 && ((x + y) & 1)) c = Wt[2]; }
+    if (y > 690 && Math.abs(x - pS[y]) < 8 && Math.abs(x - pS[y]) < 4 + vn(y * .1, 3) * 3) c = (bi === 4 ? BDIRT[4] : DIRT)[1 + Math.floor(vn(x * .3, y * .3) * 2.4)];
+    const dr = Math.abs(y - rY[x]);
+    if (dr < 16) { const wob = wobA[x];
+      if (dr < 13 + wob) c = BANK[vn(x * .4, y * .4) > .6 ? 2 : vn(x * .4, y * .4) > .3 ? 1 : 0];
+      if (dr < 10 + wob * .5) { const w = vn(x * .08 + y * .01, y * .25), e = 10 + wob * .5 - dr; c = e < 1.6 ? Wt[3] : e < 3.2 ? Wt[1] : Wt[w > .7 ? 1 : 0]; if (e >= 3.2 && w < .2 && ((x + y) & 1)) c = Wt[2]; } }
+    // Lago Espelhado
+    if (Math.abs(x - LAKE.x) < LAKE.rx + 30 && Math.abs(y - LAKE.y) < LAKE.ry + 30) { const lv = lakeVal(x, y);
+      if (lv < 1.14) c = BANK[vn(x * .4, y * .4) > .6 ? 2 : vn(x * .4, y * .4) > .3 ? 1 : 0];
+      if (lv < 1) { const w = vn(x * .06, y * .2); c = lv > .9 ? Wt[3] : lv > .8 ? Wt[1] : lv < .35 ? Wt[2] : Wt[w > .72 ? 1 : 0]; if (lv < .8 && w > .8 && ((x + y) % 3 === 0)) c = Wt[3]; } }
     const i = (y * WW + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
   }
   gx.putImageData(img, 0, 0);
 }
-const [clearTex, ctx2] = canvas(WW, WH);
+const [clearTex, ctx2] = canvas(OW + 40, OH);
 {
-  const img = ctx2.createImageData(WW, WH), d = img.data, cream = hex('#f4f0d8');
-  for (let y = 0; y < WH; y++) for (let x = 0; x < WW; x++) { let c = grassAt(x + 7, y, 2); if (h2(x + 7, y) > .995) c = cream;
-    const i = (y * WW + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+  const img = ctx2.createImageData(OW + 40, OH), d = img.data, cream = hex('#f4f0d8');
+  for (let y = 0; y < OH; y++) for (let x = 0; x < OW + 40; x++) { let c = grassAt(x + 7, y, 2); if (h2(x + 7, y) > .995) c = cream;
+    const i = (y * (OW + 40) + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
   ctx2.putImageData(img, 0, 0);
 }
 function roundTree(r, pal, seed) {
@@ -110,7 +163,7 @@ const trees = [];
 {
   const grid = new Map(), cell = 12;
   for (let k = 0; k < 9000 && trees.length < 1500; k++) {
-    const x = rr(-10, WW + 10), y = rr(-10, WH + 20);
+    const x = rr(-10, OW + 10), y = rr(-10, OH + 20);
     const dc = Math.hypot(x - C.x, (y - C.y) * 1.05);
     if (dc < 74) continue;
     if (Math.abs(y - riverY(x)) < 18) continue;
@@ -126,9 +179,27 @@ const trees = [];
   }
   trees.sort((a, b) => a.y - b.y);
 }
-const [staticTrees, stx] = canvas(WW, WH);
-for (const t of trees) if (!t.dyn) { const sp = treeSprites[t.s]; stx.drawImage(sp.c, t.x - sp.ax, t.y - sp.ay); }
-const dynTrees = trees.filter(t => t.dyn);
+// árvores das terras novas (entram DEPOIS das originais: a numeração das antigas não muda)
+const LEAF_A = [['#6a2a10', '#a8441c', '#d8702a', '#f2a04a'], ['#7a3a10', '#b86a1a', '#e09a2a', '#f8cc5a'], ['#5a1a14', '#8a2a1c', '#c0442a', '#e8704a'], ['#4a4a14', '#7a7a1e', '#a8a02a', '#d8c84a']];
+for (let i = 0; i < 8; i++) treeSprites.push(roundTree(7 + (i % 4) * 2, LEAF_A[i % 4], i * 2.3 + 50));                                    // 24..31 outono
+for (let i = 0; i < 6; i++) treeSprites.push(pineTree(6 + (i % 3) * 2, i % 2 ? ['#123d32', '#1d5a40', '#c8dcea', '#ffffff'] : ['#174836', '#24644a', '#b4c8da', '#eef4fa'], i + 30));   // 32..37 neve
+for (let i = 0; i < 6; i++) treeSprites.push(roundTree(6 + (i % 3) * 2, [['#1a2a1c', '#2a3a24', '#3a4a2c', '#4e5e36'], ['#22301e', '#34442a', '#465632', '#5a6a3e']][i % 2], i * 3.1 + 80));   // 38..43 brejo
+{
+  const R2 = rng(4343), grid = new Map(), cell = 12, add = [];
+  for (const t of trees) { const k = Math.floor(t.x / cell) + ',' + Math.floor(t.y / cell); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(t); }
+  for (let k = 0; k < 60000 && add.length < 3600; k++) {
+    const x = R2() * WW, y = R2() * WH, bi = biomeAt(x, y), roll = R2(), pick = R2(); if (bi === 0) continue;
+    if (roll > [0, .95, .3, .6, .75][bi]) continue;
+    if (Math.abs(y - riverY(x)) < 18 || (y > 690 && Math.abs(x - pathS(y)) < 10) || lakeVal(x, y) < 1.3 || nearRoad(x, y, 11)) continue;
+    const gxk = Math.floor(x / cell), gyk = Math.floor(y / cell); let ok = true;
+    for (let a = -1; a <= 1 && ok; a++) for (let b = -1; b <= 1 && ok; b++) for (const o of grid.get((gxk + a) + ',' + (gyk + b)) || []) if (Math.hypot(o.x - x, o.y - y) < 11) { ok = false; break; }
+    if (!ok) continue;
+    const s = bi === 1 ? (pick < .2 ? 14 + Math.floor(pick * 50) : 24 + Math.floor(pick * 8)) : bi === 2 ? Math.floor(pick * 14) : bi === 3 ? 38 + Math.floor(pick * 6) : 32 + Math.floor(pick * 6);
+    const t = { x: Math.round(x), y: Math.round(y), s, dc: Math.hypot(x - C.x, (y - C.y) * 1.05), dyn: false, bi };
+    add.push(t); const key = gxk + ',' + gyk; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(t);
+  }
+  add.sort((a, b) => a.y - b.y); trees.push(...add);
+}
 
 // =====================================================================
 // PERSONAGENS — construídos pixel a pixel, com poses animáveis
