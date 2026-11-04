@@ -1,77 +1,72 @@
 // =====================================================================
-// DRAGÕES voando sobre Eryon. A posição vem do relógio, então todos os jogadores
-// veem os mesmos dragões no mesmo lugar. Sombra no chão, asas batendo e som quando passam perto.
+// DRAGÕES vistos de cima: de vez em quando um (ou um bando) atravessa a tela voando alto,
+// com a sombra passando no chão, e some do outro lado.
 // =====================================================================
 const DRAGON_PALS = [
-  { body: ['#5a1a14', '#8a2a1c', '#c0442a', '#e8704a'], belly: '#f2c27a', wing: ['#4a1410', '#7a2418'], memb: '#b8402a', eye: '#ffd84a' },   // vermelho
-  { body: ['#103a34', '#1d5a4a', '#2f8a6a', '#5ac08e'], belly: '#d8e8a0', wing: ['#0c2a26', '#1a4a40'], memb: '#2a7a62', eye: '#ff7a3a' },   // verde-esmeralda
-  { body: ['#2a1640', '#46286a', '#6e4a9a', '#9a7ad0'], belly: '#e0c8f0', wing: ['#1e0f30', '#38205a'], memb: '#5a3a8a', eye: '#9ff3ff' },   // roxo
+  { body: ['#5a1a14', '#8a2a1c', '#c0442a', '#e8704a'], memb: ['#4a1410', '#7a2418', '#a8382a', '#c85a3a'], horn: '#efe2bf', eye: '#ffd84a' },   // vermelho
+  { body: ['#103a34', '#1d5a4a', '#2f8a6a', '#5ac08e'], memb: ['#0c2a26', '#164a3e', '#227060', '#3a9a7a'], horn: '#efe2bf', eye: '#ff7a3a' },   // esmeralda
+  { body: ['#2a1640', '#46286a', '#6e4a9a', '#9a7ad0'], memb: ['#1e0f30', '#33205a', '#4e3480', '#7058a8'], horn: '#e8e0ff', eye: '#9ff3ff' },   // roxo
+  { body: ['#2a2e36', '#454b58', '#6a7282', '#9aa2b2'], memb: ['#1c1f26', '#30343e', '#4a505e', '#646c7c'], horn: '#fff3d6', eye: '#ffd84a' },   // cinza
 ];
-const DRAGON_SPR = {};
-function dragonFrame(pi, f) {   // f: 0 asas em cima, 1 meio, 2 embaixo
-  const key = pi + '_' + f; if (DRAGON_SPR[key]) return DRAGON_SPR[key];
-  const D = DRAGON_PALS[pi], [c, x] = canvas(60, 40), O = '#140a08', pt = painter(x);
-  const sh = [28, 17], tips = [[[14, 1], [24, 0], [35, 3]], [[8, 12], [20, 9], [37, 11]], [[13, 34], [23, 36], [34, 31]]][f];
-  const wing = (dx, dy, dark) => {   // membrana + ossos da asa
-    const T = tips.map(([a, b]) => [a + dx, b + dy]), S = [sh[0] + dx, sh[1] + dy];
-    x.fillStyle = dark ? D.wing[0] : D.memb; x.beginPath(); x.moveTo(S[0], S[1]); T.forEach(([a, b]) => x.lineTo(a, b)); x.lineTo(S[0] - 10, S[1] + 3); x.closePath(); x.fill();
-    x.fillStyle = dark ? D.wing[0] : D.wing[1]; for (let i = 0; i < T.length - 1; i++) { const m = [(T[i][0] + T[i + 1][0]) / 2, (T[i][1] + T[i + 1][1]) / 2]; x.beginPath(); x.moveTo(T[i][0], T[i][1]); x.lineTo(m[0] + (S[0] - m[0]) * .25, m[1] + (S[1] - m[1]) * .25); x.lineTo(T[i + 1][0], T[i + 1][1]); x.fill(); }
-    pt.tube([[S[0], S[1], 1.4], [T[2][0], T[2][1], .6]], 1, dark ? [D.wing[0], D.wing[0], D.wing[1], D.wing[1]] : D.body, O);
-    for (const [a, b] of T.slice(0, 2)) pt.tube([[T[2][0] + (S[0] - T[2][0]) * .3, T[2][1] + (S[1] - T[2][1]) * .3, .9], [a, b, .5]], .8, dark ? [D.wing[0], D.wing[0], D.wing[1], D.wing[1]] : D.body, O);
-    pt.done();
+const DSPR = {}, DIRS = 16;
+// desenha o dragão (cabeça para cima no desenho) girado no ângulo da direção, ponto a ponto: fica nítido em qualquer direção
+function dragonTop(pi, f, di) {
+  const key = pi + '_' + f + '_' + di; if (DSPR[key]) return DSPR[key];
+  const D = DRAGON_PALS[pi], N = 80, [c, x] = canvas(N, N), O = '#140a08', pt = painter(x), a = di / DIRS * 6.283, ca = Math.cos(a), sa = Math.sin(a);
+  const R = ([px0, py0, r]) => [N / 2 + px0 * ca - py0 * sa, N / 2 + px0 * sa + py0 * ca, r];   // gira (direção 0 = para cima)
+  const sp = [1, .72, .42][f], fw = [0, -3, 2][f];      // abertura das asas em cada quadro do bater
+  const wing = s => {   // s = -1 esquerda, 1 direita
+    const sh = [s * 4, -3], wr = [s * 15 * sp + s * 2, -10 + fw], t1 = [s * 31 * sp + s * 3, -6 + fw * .5], t2 = [s * 29 * sp + s * 3, 4], t3 = [s * 21 * sp + s * 2, 11], back = [s * 5, 8];
+    const mem = [sh, wr, t1, [s * 25 * sp + s * 2, 1], t2, [s * 22 * sp + s * 2, 7], t3, [s * 12 * sp + s, 9], back].map(p => R(p));
+    pt.poly(mem, D.memb, O, s > 0 ? -.05 : .1);
+    pt.tube([R([...sh, 2]), R([...wr, 1.5]), R([...t1, .6])], 1.4, D.body, O);
+    for (const tp of [t2, t3]) pt.tube([R([...wr, 1.2]), R([...tp, .5])], 1, D.body, O);
   };
-  wing(-4, f === 2 ? -2 : 2, true);                       // asa de trás (mais escura)
-  // cauda com ponta de flecha
-  pt.tube([[18, 21, 3], [10, 23, 2.2], [4, 21, 1.4], [1, 17, .9]], 2, D.body, O).done();
-  x.fillStyle = O; x.beginPath(); x.moveTo(-1, 14); x.lineTo(4, 16); x.lineTo(0, 20); x.fill(); x.fillStyle = D.body[2]; x.fillRect(0, 16, 2, 2);
+  wing(-1); wing(1); pt.done();
+  // cauda balançando um pouco, com ponta de flecha
+  const tw = [0, 2, -2][f];
+  pt.tube([R([0, 7, 3.4]), R([tw * .5, 15, 2.4]), R([tw, 22, 1.6]), R([tw * .3, 29, .9])], 2, D.body, O).poly([R([tw * .3 - 3, 29]), R([tw * .3, 34]), R([tw * .3 + 3, 29]), R([tw * .3, 27])], D.body, O).done();
   // corpo, pescoço e cabeça
-  pt.ell(27, 21, 11, 5.5, D.body, O).done();
-  pt.tube([[35, 19, 3], [41, 14, 2.4], [44, 11, 2.2]], 2.4, D.body, O).done();
-  pt.poly([[42, 7], [49, 8], [56, 11], [56, 14], [48, 15], [42, 14]], D.body, O, .1).done();
-  pt.tube([[44, 8, 1.1], [39, 4, .8], [36, 3, .4]], 1, ['#a88a5a', '#d6c094', '#efe2bf', '#fffaf0'], O).done();   // chifre
-  x.fillStyle = D.belly; x.fillRect(19, 24, 16, 2); x.fillRect(36, 18, 3, 3); x.fillRect(48, 14, 7, 1);
-  for (let X = 18; X < 36; X += 3) px(x, D.body[0], X, 24, 1, 2);                        // escamas da barriga
-  for (let X = 20; X < 34; X += 3) { px(x, O, X, 14, 2, 2); px(x, D.body[3], X, 14, 1, 1); }   // espinhos nas costas
-  px(x, D.eye, 50, 10, 2, 1); px(x, O, 51, 10, 1, 1); px(x, O, 54, 12, 1, 1);           // olho e narina
-  // patas recolhidas
-  pt.tube([[24, 25, 1.5], [22, 29, 1]], 1, D.body, O).tube([[31, 25, 1.5], [30, 29, 1]], 1, D.body, O).done();
-  wing(0, 0, false);                                      // asa da frente
-  const fl = flipped(c);
-  return DRAGON_SPR[key] = { r: c, l: fl };
+  pt.tube([R([0, -5, 5]), R([0, 1, 5.5]), R([0, 7, 3.6])], 5, D.body, O).done();
+  pt.tube([R([0, -8, 3]), R([0, -14, 2.4])], 2.5, D.body, O).done();
+  pt.tube([R([-2, -15, 1.2]), R([-4, -10, .5])], 1, [D.horn, D.horn, D.horn, '#ffffff'], O).tube([R([2, -15, 1.2]), R([4, -10, .5])], 1, [D.horn, D.horn, D.horn, '#ffffff'], O);
+  pt.tube([R([0, -15, 3.6]), R([0, -19, 3]), R([0, -23, 1.6])], 3, D.body, O).done();
+  // espinhos nas costas e olhos
+  for (let k = -12; k <= 18; k += 3) { const [X, Y] = R([0, k]); px(x, k < 6 ? D.body[3] : D.body[2], Math.round(X), Math.round(Y), 1, 1); }
+  for (const s of [-1.6, 1.6]) { const [X, Y] = R([s, -19]); px(x, D.eye, Math.round(X), Math.round(Y), 1, 1); }
+  // sombra = mesma silhueta escura
+  const [sc, sx] = canvas(N, N); sx.drawImage(c, 0, 0); sx.globalCompositeOperation = 'source-in'; sx.fillStyle = 'rgba(8,18,14,1)'; sx.fillRect(0, 0, N, N);
+  return DSPR[key] = { c, s: sc };
 }
-// rotas: oito grandes e ovais pelo mapa, cada dragão com seu tempo
-const DRAGONS = [
-  { pal: 0, period: 150, phase: 0, rx: 300, ry: 520, alt: 70, sx: 1 },
-  { pal: 1, period: 190, phase: 2.1, rx: 260, ry: 460, alt: 95, sx: -1 },
-  { pal: 2, period: 230, phase: 4.2, rx: 320, ry: 580, alt: 120, sx: 1 },
-];
-function dragonPos(d, T) {
-  const a = (T / d.period) * 6.283 + d.phase;
-  return { x: WW / 2 + Math.sin(a) * d.rx * d.sx, y: WH / 2 + Math.sin(a * 2) * d.ry * .5 + Math.cos(a * .5) * 120, a };
+// voos: de tempos em tempos um dragão (às vezes um bando) cruza a tela e vai embora
+const FLIGHTS = []; let nextFlight = performance.now() + 9000 + Math.random() * 9000, dragonSnd = 0;
+function spawnFlight(li, ti, cw, ch) {
+  const di = Math.floor(Math.random() * DIRS), a = di / DIRS * 6.283, dx = Math.sin(a), dy = -Math.cos(a);      // direção do voo
+  const cx = li + cw / 2 + (Math.random() - .5) * cw * .5, cy = ti + ch / 2 + (Math.random() - .5) * ch * .4, back = Math.hypot(cw, ch) / 2 + 160;
+  const n = Math.random() < .25 ? 3 : Math.random() < .3 ? 2 : 1, pal = Math.floor(Math.random() * DRAGON_PALS.length), speed = 75 + Math.random() * 35, alt = 80 + Math.random() * 60;
+  for (let i = 0; i < n; i++) { const side = i === 0 ? 0 : (i % 2 ? -1 : 1), off = i === 0 ? 0 : 34;
+    FLIGHTS.push({ x: cx - dx * (back + off) - dy * side * 30, y: cy - dy * (back + off) + dx * side * 30, dx, dy, di, speed, alt: alt + i * 8, pal: n > 1 && i ? (pal + i) % DRAGON_PALS.length : pal, ph: Math.random() * 4, born: performance.now(), life: (back * 2 + 200) / speed * 1000 }); }
+  if (SND.ctx && performance.now() - dragonSnd > 25000) { dragonSnd = performance.now(); setTimeout(() => dragonRoar(.28), 900); }
 }
-function dragonState(d) {
-  const T = Date.now() / 1000, p = dragonPos(d, T), q = dragonPos(d, T + .2), vx = q.x - p.x;
-  const glide = Math.sin(T * .3 + d.phase) > .55, flap = glide ? 1 : Math.floor((T * 6 + d.phase) % 4), f = flap === 3 ? 1 : flap;
-  return { x: p.x, y: p.y, alt: d.alt + Math.sin(T * 1.4 + d.phase) * 6, right: vx >= 0, f, flapPhase: (T * 6 + d.phase) % 4, glide };
+function updFlights(li, ti, cw, ch) {
+  const now = performance.now();
+  if (now > nextFlight) { nextFlight = now + 35000 + Math.random() * 50000; spawnFlight(li, ti, cw, ch); }
+  for (let i = FLIGHTS.length - 1; i >= 0; i--) { const f = FLIGHTS[i], t = (now - f.born) / 1000; if (now - f.born > f.life) { FLIGHTS.splice(i, 1); continue; } f.cx = f.x + f.dx * f.speed * t; f.cy = f.y + f.dy * f.speed * t; f.t = t; }
 }
+const flapFrame = f => { const k = Math.floor((f.t * 5 + f.ph) % 6); return Math.sin(f.t * .5 + f.ph) > .4 ? 0 : [0, 1, 2, 2, 1, 0][k]; };
 function drawDragonShadows(x, li, ti, cw, ch) {
-  for (const d of DRAGONS) { const s = dragonState(d); if (s.x < li - 60 || s.x > li + cw + 60 || s.y < ti - 40 || s.y > ti + ch + 40) continue;
-    const k = 1 - d.alt / 260; x.fillStyle = `rgba(8,20,16,${(.22 * k).toFixed(3)})`;
-    const w = (s.f === 1 ? 26 : 16) * k; x.beginPath(); x.ellipse(Math.round(s.x), Math.round(s.y), w, 5 * k, 0, 0, 6.283); x.fill(); x.fillRect(Math.round(s.x + (s.right ? -26 : 8) * k), Math.round(s.y - 1), Math.round(18 * k), 2); }
+  updFlights(li, ti, cw, ch);
+  for (const f of FLIGHTS) { if (f.cx === undefined) continue; const s = dragonTop(f.pal, flapFrame(f), f.di);
+    x.globalAlpha = .26; x.drawImage(s.s, Math.round(f.cx - 40 + 10), Math.round(f.cy - 40 + 6)); }
+  x.globalAlpha = 1;
 }
-let dragonSnd = 0;
 function drawDragons(x, li, ti, cw, ch, me) {
-  for (const d of DRAGONS) { const s = dragonState(d), Y = s.y - s.alt;
-    if (s.x < li - 60 || s.x > li + cw + 60 || Y < ti - 50 || Y > ti + ch + 50) continue;
-    const spr = dragonFrame(d.pal, s.f), img = s.right ? spr.r : spr.l;
-    x.drawImage(img, Math.round(s.x - 30), Math.round(Y - 20));
-    // som: bater de asas e um rugido distante de vez em quando, quando passa perto
-    if (me && SND.ctx && !me.room) { const dist = Math.hypot(me.x - s.x, me.y - s.y); const now = performance.now();
-      if (dist < 140 && !s.glide && Math.floor(s.flapPhase) === 2 && now - (d.lastFlap || 0) > 500) { d.lastFlap = now; play('whoosh', .25 * (1 - dist / 140), .55); }
-      if (dist < 200 && now - dragonSnd > 45000) { dragonSnd = now; dragonRoar(.35 * (1 - dist / 200)); } }
+  for (const f of FLIGHTS) { if (f.cx === undefined) continue; const fr = flapFrame(f), s = dragonTop(f.pal, fr, f.di), X = f.cx, Y = f.cy - f.alt;
+    x.drawImage(s.c, Math.round(X - 40), Math.round(Y - 40));
+    if (me && SND.ctx && !me.room && fr === 2 && performance.now() - (f.lastFlap || 0) > 700) { const d = Math.hypot(me.x - X, me.y - f.cy); if (d < 160) { f.lastFlap = performance.now(); play('whoosh', .22 * (1 - d / 160), .5); } }
   }
 }
-function dragonRoar(g) {   // rugido sintetizado: ruído grave filtrado com tremor
+function dragonRoar(g) {   // rugido distante sintetizado
   const c = SND.ctx, w = c.currentTime, s = c.createBufferSource(), f = c.createBiquadFilter(), v = c.createGain(), o = c.createOscillator(), og = c.createGain();
   s.buffer = SND.noise; s.loop = true; f.type = 'lowpass'; f.frequency.setValueAtTime(300, w); f.frequency.linearRampToValueAtTime(900, w + .4); f.frequency.linearRampToValueAtTime(200, w + 1.8);
   v.gain.setValueAtTime(0, w); v.gain.linearRampToValueAtTime(g, w + .25); v.gain.exponentialRampToValueAtTime(.001, w + 2);
