@@ -6,13 +6,14 @@ const GOOD_NAMES = { machado: 'Machado', picareta: 'Picareta', facao: 'Facão', 
 const MERCH_BUY = { frutas: 1, leite: 3, ovos: 2, trufas: 6 };
 const ANIM = { vaca: { name: 'Vaca', price: 30, prod: 'leite', act: 'Ordenhar a vaca', w: 18 }, porco: { name: 'Porco', price: 18, prod: 'trufas', act: 'Procurar trufas com o porco', w: 14 }, galinha: { name: 'Galinha', price: 8, prod: 'ovos', act: 'Pegar os ovos', w: 9 } };
 const MERCH = { x: 640, y: 650 }, FAIR = { x: 640, y: 684, r: 62 };
-const ROT_KINDS = new Set(['cerca', 'muro', 'portao']);
+const ROT_KINDS = new Set(['cerca', 'muro', 'portao', 'muralha_rei']);
 let ANIMALS_L = [];
 const nameOf = k => GOOD_NAMES[k] || (RBY[k] || {}).name || k;
 
 // ---------- sprites dos objetos novos (muro, portão, barraca, macieira)
 function econDecor(k) {
   if (k === 'catapulta') return catapultSprite();
+  { const rs = royalDecor(k); if (rs) return rs; }
   const mk = (W, H) => canvas(W, H), O = '#1a1d24', ST = ['#4d5566', '#6e7789', '#939cae', '#c3cad6'];
   if (k === 'muro') { const [c, x] = mk(16, 13); x.fillStyle = 'rgba(10,30,20,.3)'; x.fillRect(1, 11, 15, 2); px(x, O, 0, 2, 16, 10);
     for (let Y = 0; Y < 3; Y++) for (let X = 0; X < 4; X++) { const bx = 1 + X * 4 - (Y % 2) * 2, bw = 3; if (bx < 1 || bx > 13) continue; px(x, ST[(X + Y) % 2 ? 1 : 2], bx, 3 + Y * 3, bw, 2); px(x, ST[3], bx, 3 + Y * 3, bw, 1); }

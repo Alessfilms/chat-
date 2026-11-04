@@ -27,14 +27,15 @@ const HATS = [['', 'Nenhum'], ['palha', 'Palha'], ['bone', 'Boné'], ['chef', 'C
 const CAPES = ['', '#4e6c4a', '#1d3550', '#a83a32', '#6e4a8a'];
 const shade = h => { const [r, g, b] = hex(h); return '#' + [r, g, b].map(v => Math.round(v * .6).toString(16).padStart(2, '0')).join(''); };
 const builders = new Map();
-let KING = '';
+let KING = ''; const RGS = new Set();
 function charFor(username, look) {
-  const isK = !!KING && username === KING, key = username + (isK ? '#rei' : '') + JSON.stringify(look || {});
+  const isK = !!KING && username === KING, key = username + (isK ? '#rei' : RGS.has(username) ? '#rg' : '') + JSON.stringify(look || {});
   if (!builders.has(key)) {
     const l = look || {};
     const sp = NAMED[username] || { hair: l.hair || HAIRS[0], shirt: l.shirt || SHIRTS[1], shirtD: shade(l.shirt || SHIRTS[1]), pants: l.pants || PANTS[0], longHair: !!l.longHair,
       skin: l.skin || SKINS[0], skinD: shade(l.skin || SKINS[0]), beard: l.beard ? (l.hair || HAIRS[0]) : undefined, hat: l.hat || undefined, elfEars: !!l.elfEars, cape: isK ? (l.cape || '#a83a32') : l.cape || undefined, wings: l.cls === 'fada' };
     if (isK) { sp.crown = true; sp.hat = undefined; }
+    else if (RGS.has(username)) { sp.hat = 'elmo'; sp.cape = '#1d3550'; }
     builders.set(key, charBuilder(sp));
   }
   return builders.get(key);
@@ -459,10 +460,10 @@ function connect() {
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, perk: readPerk() }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
     if (onFeatureMsg(m)) return;
-    if (m.t === 'welcome') { KING = m.king || ''; setTimeout(() => kingWelcome(), 3500); if (m.giant) setTimeout(() => onGiantMsg({ t: 'giant', ...m.giant }), 0); NOTICE.cfg = m.notice || null; if (!connect.told) { connect.told = 1; diag('connected'); } setTimeout(skillLabel, 0); SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { KING = m.king || ''; RGS.clear(); (m.rgs || []).forEach(u => RGS.add(u)); setTimeout(updHorseBtn, 600); setTimeout(() => kingWelcome(), 3500); if (m.giant) setTimeout(() => onGiantMsg({ t: 'giant', ...m.giant }), 0); NOTICE.cfg = m.notice || null; if (!connect.told) { connect.told = 1; diag('connected'); } setTimeout(skillLabel, 0); SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
-    else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; p.fly = !!s.fly; } } }
+    else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; p.fly = !!s.fly; p.horse = !!s.horse; } } }
     else if (m.t === 'act') { const p = players.get(m.id); if (p && !p.mine) { const t0 = performance.now() / 1000; p.act = { kind: m.kind, t0, end: t0 + (ACT_DUR[m.kind] || 1.5) }; const me2 = players.get(myId); if (me2 && (me2.room || '') === (p.room || '') && Math.hypot(me2.x - p.x, me2.y - p.y) < 120) actSound(m.kind); } }
     else if (m.t === 'trees') { CUT.clear(); m.cut.forEach(i => CUT.add(i)); }
     else if (m.t === 'zap') { const q = players.get(m.id); if (q) { const t0 = performance.now() / 1000; q.act = { kind: 'zap', t0, end: t0 + ACT_DUR.zap, pts: m.pts }; const me2 = players.get(myId); if (me2 && !me2.room && Math.hypot(me2.x - q.x, me2.y - q.y) < 200) thunder(); } }
@@ -520,6 +521,7 @@ $('onlineBtn').onclick = () => { const l = $('plist'); l.hidden = !l.hidden; if 
 function renderList() { const l = $('plist'); l.innerHTML = ''; const arr = [...players.values()].sort((a, b) => (b.mine - a.mine) || a.username.localeCompare(b.username));
   for (const q of arr) { const row = document.createElement('div'); row.className = 'plrow'; const b = document.createElement('button'); b.type = 'button'; b.className = 'pl'; b.textContent = (KING && q.username === KING ? '👑 ' : '') + (q.badge === 'apoiador' ? '★ ' : q.badge === 'criador' ? '♛ ' : '') + '@' + q.username + (q.lv ? ' · Nv ' + q.lv : '') + (q.mine ? ' (você)' : '');
     b.onclick = () => { if (q.mine) follow(); else { cam.mode = 'watch'; cam.watch = q.id; showRecenter(); } $('plist').hidden = true; }; row.appendChild(b);
+    if (me && me === KING && !q.mine) { const a = document.createElement('button'); a.type = 'button'; a.className = 'pl rgbtn'; const on = RGS.has(q.username); a.textContent = on ? 'Dispensar guarda' : '🛡 Nomear guarda'; a.onclick = e => { e.stopPropagation(); send({ t: 'appoint', username: q.username, on: !on }); $('plist').hidden = true; }; row.appendChild(a); }
     if (!q.mine) { const r = document.createElement('button'); r.type = 'button'; r.className = 'repb'; r.textContent = 'Denunciar'; r.onclick = () => { $('plist').hidden = true; openReport(q); }; row.appendChild(r); }
     l.appendChild(row); } }
 
@@ -543,7 +545,7 @@ function loop(now) {
     if ((p.act && t < p.act.end) || performance.now() < (GFX.stunUntil || 0)) { ix = 0; iy = 0; target = null; }
     const blk0 = (x2, y2) => p.fly ? (x2 < 6 || y2 < 20 || x2 > WW - 6 || y2 > WH - 6) : p.room ? roomBlocked(p.room, x2, y2) : blocked(x2, y2);
     const stuck = !p.fly && blk0(p.x, p.y), blk = (x2, y2) => !stuck && blk0(x2, y2);
-    const len = Math.hypot(ix, iy) || 1, sp = (p.fly ? 82 : 44) * dt, mx = ix / len * sp, my = iy / len * sp;
+    const len = Math.hypot(ix, iy) || 1, sp = (p.fly ? 82 : p.horse ? 84 : 44) * dt, mx = ix / len * sp, my = iy / len * sp;
     let moved = false;
     if (mx && !blk(p.x + mx, p.y)) { p.x += mx; moved = true; }
     if (my && !blk(p.x, p.y + my)) { p.y += my; moved = true; }
@@ -554,8 +556,8 @@ function loop(now) {
     setFireLevel(p.room ? (p.room === 'taverna' ? .7 : 0) : 1 - Math.hypot(p.x - C.x, p.y - C.y) / 110);
     if ((ix || iy) && !moved) target = null;
     p.moving = moved; if (ix) p.face = ix < 0 ? -1 : 1;
-    sendT += dt; const sig = `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.face},${p.moving},${p.room},${p.carry},${!!p.fly}`;
-    if (sendT > .1 && sig !== lastSent && ws && ws.readyState === 1) { ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: p.moving, room: p.room || '', carry: !!p.carry, fly: !!p.fly })); lastSent = sig; sendT = 0; }
+    sendT += dt; const sig = `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.face},${p.moving},${p.room},${p.carry},${!!p.fly},${!!p.horse}`;
+    if (sendT > .1 && sig !== lastSent && ws && ws.readyState === 1) { ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: p.moving, room: p.room || '', carry: !!p.carry, fly: !!p.fly, horse: !!p.horse })); lastSent = sig; sendT = 0; }
   }
   for (const q of players.values()) if (!q.mine) { q.x += (q.tx - q.x) * Math.min(1, dt * 12); q.y += (q.ty - q.y) * Math.min(1, dt * 12); }
   draw(t, p);
@@ -596,7 +598,7 @@ function draw(t, p) {
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
     if (o.fire) { drawFire(x, C.x, C.y + 1, t); continue; }
-    if (o.pl) { const q = o.pl; if (q.fly) continue; drawPet(x, q, t); drawCharAt(x, q.ch, q.x, q.y, poseFor(q, t), q.face || 1); continue; }
+    if (o.pl) { const q = o.pl; if (q.fly) continue; if (q.horse && !q.room) { drawRider(x, q, t); continue; } drawPet(x, q, t); drawCharAt(x, q.ch, q.x, q.y, poseFor(q, t), q.face || 1); continue; }
     if (o.sign) { drawSign(x, o.sign); continue; }
     if (o.castle) { drawCastle(x, t); continue; }
     if (o.merchant) { drawMerchant(x, t); continue; }
@@ -655,8 +657,8 @@ function draw(t, p) {
     const sx = Math.round((q.x - L) * S), sy = Math.round((q.y - T - (q.ch.sp.big ? 22 : 17) - (q.fly ? (classOf(q) && classOf(q).id === 'fada' ? 16 : 64) : 0)) * S);
     if (sx < -200 || sx > cv.width + 200 || sy < -100 || sy > cv.height + 100) continue;
     ctx.font = `700 ${fs}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06';
-    const isK = !!KING && q.username === KING, nm = (isK ? '👑 ' : q.badge === 'criador' ? '♛ ' : q.badge === 'apoiador' ? '★ ' : '') + '@' + q.username; ctx.strokeText(nm, sx, sy); ctx.fillStyle = isK ? '#ffd84a' : q.badge === 'criador' ? '#ff9a3a' : q.badge === 'apoiador' ? '#ffd84a' : q.mine ? '#fff3b0' : '#ffffff'; ctx.fillText(nm, sx, sy);
-    const role0 = q.roleText || (isK ? 'Rei de Eryon' : q.badge === 'criador' ? 'Criador' : NAMED[q.username]?.role || classOf(q)?.name), role = (q.lv ? 'Nv ' + q.lv + (role0 ? ' · ' : '') : '') + (role0 || ''); if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
+    const isK = !!KING && q.username === KING, isRG = RGS.has(q.username), nm = (isK ? '👑 ' : isRG ? '🛡 ' : q.badge === 'criador' ? '♛ ' : q.badge === 'apoiador' ? '★ ' : '') + '@' + q.username; ctx.strokeText(nm, sx, sy); ctx.fillStyle = isK ? '#ffd84a' : isRG ? '#9fc4ff' : q.badge === 'criador' ? '#ff9a3a' : q.badge === 'apoiador' ? '#ffd84a' : q.mine ? '#fff3b0' : '#ffffff'; ctx.fillText(nm, sx, sy);
+    const role0 = q.roleText || (isK ? 'Rei de Eryon' : isRG ? 'Guarda Real' : q.badge === 'criador' ? 'Criador' : NAMED[q.username]?.role || classOf(q)?.name), role = (q.lv ? 'Nv ' + q.lv + (role0 ? ' · ' : '') : '') + (role0 || ''); if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
     if (q.say && now - q.sayT < 6000) bubble(q.say, sx, sy - fs * 1.2, fs);
     ctx.globalAlpha = 1;
   }

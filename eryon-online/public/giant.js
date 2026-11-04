@@ -179,7 +179,7 @@ function guardChar(g) { if (g.ch) return g.ch; const sp = { hair: '#5a3a26', shi
   return g.ch = charBuilder(sp); }
 function updGuards(t) {
   const now = performance.now(), dt = Math.min(.05, (now - (updGuards.lt || now)) / 1000); updGuards.lt = now; const L = GIANT.live;
-  for (const g of GUARDS) {
+  for (const g of allGuards()) {
     let tx, ty, fight = false;
     if (L && L.phase !== 'leave' && Math.hypot(L.x - g.a[0], L.y - g.a[1]) < 360) { const ang = g.i * 1.05 + t * .15, r = 44 + (g.i % 2) * 10; tx = L.x + Math.cos(ang) * r; ty = L.y + Math.sin(ang) * r * .5 + 4; fight = true; }
     else { const per = 9 + g.i, k = ((t + g.i * 3.1) % (per * 2)) / per, u = k < 1 ? k : 2 - k, e = Math.min(1, Math.max(0, (u - .1) / .8)); tx = g.a[0] + (g.b[0] - g.a[0]) * e; ty = g.a[1] + (g.b[1] - g.a[1]) * e; }
@@ -192,7 +192,7 @@ function updGuards(t) {
 }
 function kingdomObjs(list, li, ti, cw, ch, t) {
   updGuards(t);
-  for (const g of GUARDS) if (g.x > li - 20 && g.x < li + cw + 20 && g.y > ti - 10 && g.y < ti + ch + 30) list.push({ y: g.y, guard: g });
+  for (const g of allGuards()) if (g.x > li - 20 && g.x < li + cw + 20 && g.y > ti - 10 && g.y < ti + ch + 30) list.push({ y: g.y, guard: g });
   for (const b of BANNERS) if (b.x > li - 30 && b.x < li + cw + 30 && b.y > ti - 10 && b.y < ti + ch + 50) list.push({ y: b.y, banner: b });
 }
 function drawGuard(x, g, t) {
@@ -215,7 +215,7 @@ function drawBanner(x, X, Y, t, h = 28) {
 }
 function guardLabels(ctx2, L, T, S, fs) {
   ctx2.textAlign = 'center'; ctx2.textBaseline = 'bottom'; ctx2.font = `700 ${Math.round(fs * .8)}px Pix, monospace`; ctx2.lineWidth = Math.max(2, fs / 5); ctx2.strokeStyle = '#140e06';
-  for (const g of GUARDS) { const sx = Math.round((g.x - L) * S), sy = Math.round((g.y - 24 - T) * S); if (sx < -80 || sx > cv.width + 80 || sy < -20 || sy > cv.height + 40) continue; ctx2.strokeText('Guarda do Reino', sx, sy); ctx2.fillStyle = '#9fc4ff'; ctx2.fillText('Guarda do Reino', sx, sy); }
+  for (const g of allGuards()) { const sx = Math.round((g.x - L) * S), sy = Math.round((g.y - 24 - T) * S); if (sx < -80 || sx > cv.width + 80 || sy < -20 || sy > cv.height + 40) continue; ctx2.strokeText('Guarda do Reino', sx, sy); ctx2.fillStyle = '#9fc4ff'; ctx2.fillText('Guarda do Reino', sx, sy); }
 }
 // estrelinhas girando sobre a cabeça de quem foi atordoado
 function drawStun(x, t) { const p = players.get(myId); if (!p || p.room || performance.now() > (GFX.stunUntil || 0)) return;

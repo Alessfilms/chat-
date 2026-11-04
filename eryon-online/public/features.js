@@ -37,6 +37,7 @@ function onFeatureMsg(m) {
   if (m.t === 'builders') { const L = m.list.map(u => u === me ? 'você' : '@' + u), txt = L.length === 1 ? L[0] : L.slice(0, -1).join(', ') + ' e ' + L[L.length - 1];
     fxToast(`${txt}${m.more ? ' e mais ' + m.more : ''} ${L.length + m.more > 1 ? 'estão' : 'está'} construindo o castelo!`, 'Venha ajudar: pedreira ao sul da vila', '#ffd84a', '♜'); return true; }
   if (m.t === 'thanks') { showThanks(m.username, m.look); return true; }
+  if (onKingdomMsg(m)) return true;
   if (m.t === 'king') { KING = m.username || ''; builders.clear(); for (const q of players.values()) q.ch = charFor(q.username, q.look); if (m.crowned) setTimeout(() => showCoronation(true), 800); return true; }
   if (m.t === 'notice') { NOTICE.cfg = m.notice || null; if (m.now) showNotice(true); return true; }
   if (m.t === 'supnudge') { showNudge(m.supporters || []); return true; }

@@ -30,7 +30,7 @@ function initDb() {
   db.notice ||= { on: false, title: '', text: '', every: 10 };
   db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
   db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {}; db.animals ||= []; db.nextAnimal ||= 1;
-  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; if (db.king === undefined) db.king = 'emanuel01.f'; db.giant.burned ||= []; db.giant.rebuild ||= {};
+  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; if (db.king === undefined) db.king = 'emanuel01.f'; db.rguards ||= {}; db.giant.burned ||= []; db.giant.rebuild ||= {};
   if (db.giant.state === 'battle') db.giant.state = 'scheduled', db.giant.at = Date.now() + 60000;   // reiniciou no meio da batalha: recomeça em 1 min
   for (const r of Object.values(db.users)) if (r && typeof r === 'object') { if (r.tot && typeof r.tot !== 'object') r.tot = {}; }
 }
@@ -346,7 +346,7 @@ const wss = new WebSocketServer({ server, maxPayload: 4096 });
 const out = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
 const all = (m, except) => { const s = JSON.stringify(m); for (const c of clients) if (c !== except && c.ws.readyState === 1) c.ws.send(s); };
 let kingSeenT = 0;
-const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, lv: levelOf(db.users[c.user]?.xp || 0), badge: badgeOf(c.user), king: !!db.king && c.user === db.king, fly: !!c.fly });
+const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, lv: levelOf(db.users[c.user]?.xp || 0), badge: badgeOf(c.user), king: !!db.king && c.user === db.king, rg: !!db.rguards[c.user], horse: !!c.horse, fly: !!c.fly });
 const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', cost: { lenha: 14, pedra: 4 } }, mercado: { name: 'Mercado', cost: { lenha: 12, pedra: 4, ervas: 2 } }, hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 } },
   escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 },
   cabana: { name: 'Cabana', cost: { lenha: 8 } }, casarao: { name: 'Casarão', cost: { lenha: 18, pedra: 8 } }, celeiro: { name: 'Celeiro', cost: { lenha: 14, pedra: 2 } }, torre_vigia: { name: 'Torre de vigia', cost: { lenha: 6, pedra: 14 } }, moinho: { name: 'Moinho', cost: { lenha: 12, pedra: 10 } } };
@@ -545,7 +545,7 @@ function dragonTick(now) {
   else G.alt = Math.min(1, G.alt + .15);
 }
 function catAuto(now) { if (!G || G.phase === 'leave') return; for (const d of db.decor) if (d.kind === 'catapulta' && Math.hypot(d.x - G.x, d.y - G.y) < 280 && now - (G.catCd[d.id] || 0) > 7000) { G.catCd[d.id] = now; all({ t: 'catShot', id: d.id, x: d.x, y: d.y, tx: Math.round(G.x), ty: Math.round(G.y) }); setTimeout(() => hurtGiant(null, 18, 'cat'), 800); } }
-function guardsHit(now) { if (!G || G.phase === 'leave' || now - G.lastGuard < 2000) return; const nearVila = Math.hypot(G.x - 360, G.y - 640) < 330, nearCastelo = Math.hypot(G.x - 540, G.y - 1420) < 260; if (!nearVila && !nearCastelo) return; G.lastGuard = now; hurtGiant(null, 3, 'guard'); }
+function guardsHit(now) { if (!G || G.phase === 'leave' || now - G.lastGuard < 2000) return; { const n = db.decor.filter(d => d.kind === 'posto_guarda' && Math.hypot(d.x - G.x, d.y - G.y) < 300).length; if (n) { G.lastGuard = now; return hurtGiant(null, Math.min(60, 3 + 2 * n), 'guard'); } } const nearVila = Math.hypot(G.x - 360, G.y - 640) < 330, nearCastelo = Math.hypot(G.x - 540, G.y - 1420) < 260; if (!nearVila && !nearCastelo) return; G.lastGuard = now; hurtGiant(null, 3, 'guard'); }
 function hurtGiant(c, d, kind) { if (!G || d <= 0 || G.phase === 'leave') return;
   if (c && !G.engaged) { G.engaged = true; all({ t: 'announce', from: 'ALERTA DE ERYON', text: `@${c.user} atacou ${GNAME(G.kind)}! Agora ${G.kind === 'fogo' ? 'ela' : 'ele'} vai lutar até o fim!` }); }
   G.hp -= d; if (c) G.dmg[c.user] = (G.dmg[c.user] || 0) + d; all({ t: 'giantHit', id: c ? c.id : 0, d: Math.round(d), kind }); if (G.hp <= 0) endGiant(true); }
@@ -617,7 +617,7 @@ wss.on('connection', (ws, req) => {
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c); if (clients.size > DIAG.peak) { DIAG.peak = clients.size; DIAG.peakAt = Date.now(); }
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), giant: giantPub(), notice: db.notice, king: db.king || '', lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), giant: giantPub(), notice: db.notice, king: db.king || '', rgs: Object.keys(db.rguards), lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
       all({ t: 'join', p: pub(c) }, c); sendProg(c); out(ws, { t: 'perk', perk: perkFor(u) });
       if (db.king && u === db.king && Date.now() - (kingSeenT || 0) > 10 * 60000) { kingSeenT = Date.now(); setTimeout(() => all({ t: 'announce', from: '👑 REINO DE ERYON', text: `O Rei @${u} chegou! Todos saúdem o Rei do Castelo de Eryon!` }), 1500); }
       return;
@@ -629,7 +629,8 @@ wss.on('connection', (ws, req) => {
       const room = typeof m.room === 'string' && ROOM_OK.test(m.room) ? m.room : '';
       const changed = room !== (c.room || '') && now - (c.lastRoom || 0) > 400;
       if (changed) { c.room = room; c.lastRoom = now; }
-      const max = (m.fly ? 110 : 70) * dt + 6, dx = nx - c.x, dy = ny - c.y, d = Math.hypot(dx, dy);
+      const canHorse = c.user === db.king || !!db.rguards[c.user] || (db.users[c.user]?.look?.cls === 'guarda'); c.horse = !!m.horse && canHorse && !c.room && !m.fly;
+      const max = (m.fly ? 110 : c.horse ? 115 : 70) * dt + 6, dx = nx - c.x, dy = ny - c.y, d = Math.hypot(dx, dy);
       if (!changed && d > max) { nx = c.x + dx / d * max; ny = c.y + dy / d * max; }
       c.x = Math.max(4, Math.min(WORLD.w - 4, nx)); c.y = Math.max(8, Math.min(WORLD.h - 4, ny));
       c.face = m.face < 0 ? -1 : 1; c.moving = !!m.moving; c.carry = !!m.carry; { const ru = db.users[c.user] || {}; c.fly = !!m.fly && !c.room && (levelOf(ru.xp || 0) >= BALLOON_LV || (ru.look && ru.look.cls === 'fada')); } c.dirty = true;
@@ -666,7 +667,8 @@ wss.on('connection', (ws, req) => {
       addXp(c, 30); track(c, 'visit');
     } else if (m.t === 'craft') {
       const rc = RBY[m.id], r = db.users[c.user], now = Date.now(); if (!rc || !r || now - (c.lastCraft || 0) < 1200) return; c.lastCraft = now;
-      if (rc.cls !== 'todos' && (!r.look || r.look.cls !== rc.cls)) return note(c, 'Só o ' + rc.cls + ' sabe criar isso.');
+      if (rc.cls === 'rei') { if (c.user !== db.king) return note(c, 'Só o Rei pode construir isso.'); }
+      else if (rc.cls !== 'todos' && (!r.look || r.look.cls !== rc.cls)) return note(c, 'Só o ' + rc.cls + ' sabe criar isso.');
       if (rc.where) { const b = WB[rc.where === 'forja' ? 'forja' : 'cozinha']; if (c.room || !b || Math.hypot(c.x - b.x, c.y - b.y) > (rc.where === 'forja' ? 55 : 46)) return note(c, rc.where === 'forja' ? 'Vá até a forja para forjar.' : 'Vá até a cozinha para cozinhar.'); }
       if (!pay(r, rc.cost)) { sendInv(c); return note(c, 'Faltam recursos.'); }
       const inv = invOf(r); inv[rc.id] = Math.min(999, (inv[rc.id] || 0) + (rc.make || 1)); save(); sendInv(c);
@@ -688,7 +690,7 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'place') {
       const rc = RBY[m.id], r = db.users[c.user], X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!rc || !r || rc.type !== 'decor' || c.room || !(invOf(r)[rc.id] > 0)) return;
       if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
-      if (db.decor.filter(d => d.owner === c.user).length >= 60) return note(c, 'Você já colocou 60 objetos. Recolha algum antes.');
+      { const lim = c.user === db.king ? 800 : 60; if (db.decor.filter(d => d.owner === c.user).length >= lim) return note(c, `Você já colocou ${lim} objetos. Recolha algum antes.`); }
       track(c, 'place'); invOf(r)[rc.id]--; db.decor.push({ id: db.nextDecor++, kind: rc.id, x: X, y: Y, owner: c.user, ...(m.rot ? { rot: 1 } : {}), ...(rc.id === 'pomar' ? { lastH: Date.now() } : {}) }); save(); sendInv(c); all({ t: 'decor', list: db.decor });
     } else if (m.t === 'move') {      // mudar um objeto seu de lugar (ex.: cercas)
       const d = db.decor.find(d => d.id === Number(m.id)), X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!d || d.owner !== c.user || c.room) return;
@@ -805,13 +807,18 @@ wss.on('connection', (ws, req) => {
       const eq = (r.look && r.look.equip) || '', cls = r.look && r.look.cls, ranged = eq === 'arco' || cls === 'arqueira', reach = ranged ? 150 : 62;
       if (G.kind === 'dragao' && G.alt > .5 && !ranged) return note(c, 'O Dragão está voando alto! Use arco, catapulta ou o raio do Mago — ou espere ele descer para cuspir fogo.');
       if (Math.hypot(c.x - G.x, c.y - G.y) > reach) return note(c, G.kind === 'fogo' ? 'Chegue mais perto da fera!' : G.kind === 'dragao' ? 'Chegue mais perto do Dragão!' : 'Chegue mais perto do gigante!');
-      const d = cls === 'guarda' ? 5 : eq === 'espada' || eq === 'lanca' ? 4 : ranged ? 3 : invOf(r).machado || cls === 'lenhador' || cls === 'guerreiro' ? 3 : 1;
+      const d = db.rguards[c.user] || c.user === db.king ? (c.horse ? 7 : 6) : cls === 'guarda' ? 5 : eq === 'espada' || eq === 'lanca' ? 4 : ranged ? 3 : invOf(r).machado || cls === 'lenhador' || cls === 'guerreiro' ? 3 : 1;
       hurtGiant(c, d, ranged ? 'arrow' : 'melee');
     } else if (m.t === 'fireCat') {       // disparar uma catapulta (1 pedra)
       const now = Date.now(), r = db.users[c.user], d = db.decor.find(q => q.id === Number(m.id)); if (!G || !r || !d || d.kind !== 'catapulta' || c.room || Math.hypot(c.x - d.x, c.y - d.y) > 30) return;
       if (now - (G.catCd[d.id] || 0) < 4000) return note(c, 'A catapulta está recarregando...'); if (Math.hypot(d.x - G.x, d.y - G.y) > 300) return note(c, 'O gigante está longe demais para esta catapulta.');
       const inv = invOf(r); if (!(inv.pedra > 0)) return note(c, 'Precisa de 1 pedra para disparar.'); inv.pedra--; sendInv(c); G.catCd[d.id] = now;
       all({ t: 'catShot', id: d.id, x: d.x, y: d.y, tx: Math.round(G.x), ty: Math.round(G.y), by: c.id }); setTimeout(() => hurtGiant(c, 45, 'cat'), 800);
+    } else if (m.t === 'appoint') {       // o Rei nomeia (ou dispensa) um Guarda Real
+      if (!db.king || c.user !== db.king) return note(c, 'Só o Rei pode nomear guardas.'); const u = norm(m.username); if (!validUser(u) || !db.users[u] || u === db.king) return;
+      if (m.on) { db.rguards[u] = Date.now(); all({ t: 'announce', from: '👑 REINO DE ERYON', text: `O Rei @${db.king} nomeou @${u} GUARDA REAL! Agora protege a cidade e anda a cavalo.` }); }
+      else { delete db.rguards[u]; note(c, `@${u} não é mais Guarda Real.`); }
+      save(); for (const o of clients) if (o.user === u) { o.dirty = true; if (!m.on) o.horse = false; all({ t: 'rg', id: o.id, rg: !!m.on }); out(o.ws, { t: 'rgMe', rg: !!m.on }); }
     } else if (m.t === 'rebuild') {       // reconstruir casa queimada: várias pessoas ajudam (3 lenhas + 2 pedras cada vez)
       const r = db.users[c.user], id = String(m.id || ''); if (!r || G || !db.giant.burned.includes(id)) return; const b = giantBuildings().find(q => q.id === id); if (!b || c.room || Math.hypot(c.x - b.x, c.y - b.y) > 50) return;
       const now = Date.now(); if (now - (c.lastRebuild || 0) < 1500) return; c.lastRebuild = now;
@@ -840,7 +847,7 @@ wss.on('connection', (ws, req) => {
 setInterval(() => { for (const w of wss.clients) { if (w.isAlive === false) { w.terminate(); continue; } w.isAlive = false; try { w.ping(); } catch { } } }, 25000).unref();
 // estado 10x por segundo (só quem mudou)
 setInterval(() => {
-  const ch = []; for (const c of clients) if (c.dirty) { ch.push({ id: c.id, x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, fly: !!c.fly }); c.dirty = false; }
+  const ch = []; for (const c of clients) if (c.dirty) { ch.push({ id: c.id, x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, fly: !!c.fly, horse: !!c.horse }); c.dirty = false; }
   if (ch.length) all({ t: 'state', p: ch, online: clients.size });
 }, 100);
 // mantém conexões vivas e salva posições

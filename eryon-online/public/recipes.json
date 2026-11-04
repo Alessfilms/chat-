@@ -338,5 +338,48 @@
   },
   "type": "decor",
   "desc": "Coloque perto da vila. Atira sozinha no gigante, e qualquer um pode disparar (1 pedra)."
+ },
+ {
+  "id": "muralha_rei",
+  "name": "Muralha do castelo",
+  "cls": "rei",
+  "cost": {
+   "pedra": 4
+  },
+  "type": "decor",
+  "desc": "Muralha alta com ameias. Gire e emende para cercar o seu castelo do tamanho que quiser."
+ },
+ {
+  "id": "torre_rei",
+  "name": "Torre do castelo",
+  "cls": "rei",
+  "cost": {
+   "pedra": 10,
+   "lenha": 2
+  },
+  "type": "decor",
+  "desc": "Torre redonda com telhado azul e a bandeira de Eryon."
+ },
+ {
+  "id": "portao_rei",
+  "name": "Portão do castelo",
+  "cls": "rei",
+  "cost": {
+   "pedra": 6,
+   "lenha": 4
+  },
+  "type": "decor",
+  "desc": "Grande portão em arco com grade de ferro. Dá para passar."
+ },
+ {
+  "id": "posto_guarda",
+  "name": "Posto de guarda",
+  "cls": "rei",
+  "cost": {
+   "lenha": 4,
+   "pedra": 2
+  },
+  "type": "decor",
+  "desc": "Uma guarita com um Guarda do Rei que vigia e defende a cidade. Coloque quantos quiser."
  }
 ]

@@ -95,8 +95,8 @@ function decorSprite(k) {
   if (k === 'barril') { box(1, 1, 8, 9, P.wood); px(x, '#2b3138', 1, 3, 8, 1); px(x, '#2b3138', 1, 7, 8, 1); px(x, P.woodL, 2, 1, 2, 9); }
   return DECOR_SPR[k] = { c, ax: Math.floor(W / 2), ay: H - 1 };
 }
-const DECOR_BLOCK = { catapulta: 11, muro: 8, barraca: 13, pomar: 3, portao: 0, banco: 7, barril: 4, boneco: 3, alvo: 3, runa: 4, cristal: 3, palco: 11, tabuas: 7, cerca: 7, fogueira: 6, lanterna: 2, estandarte: 1, canteiro: 7 };
-function decorBlocked(x, y) { for (const d of DECOR) { if (d.kind === 'portao') continue; if (ROT_KINDS.has(d.kind) && d.rot) { if (x > d.x - 3 && x < d.x + 3 && y > d.y - 15 && y < d.y + 1) return true; continue; }
+const DECOR_BLOCK = { muralha_rei: 15, torre_rei: 12, portao_rei: 0, posto_guarda: 6, catapulta: 11, muro: 8, barraca: 13, pomar: 3, portao: 0, banco: 7, barril: 4, boneco: 3, alvo: 3, runa: 4, cristal: 3, palco: 11, tabuas: 7, cerca: 7, fogueira: 6, lanterna: 2, estandarte: 1, canteiro: 7 };
+function decorBlocked(x, y) { for (const d of DECOR) { if (d.kind === 'portao' || d.kind === 'portao_rei') continue; if (ROT_KINDS.has(d.kind) && d.rot) { const hw = d.kind === 'muralha_rei' ? 5 : 3, hh = d.kind === 'muralha_rei' ? 30 : 15; if (x > d.x - hw && x < d.x + hw && y > d.y - hh && y < d.y + 1) return true; continue; }
   const w = DECOR_BLOCK[d.kind] || 3; if (x > d.x - w && x < d.x + w && y > d.y - 4 && y < d.y + 1) return true; } return false; }
 const sprKey = d => ROT_KINDS.has(d.kind) && d.rot ? d.kind + '_v' : d.kind;
 function drawDecor(x, d, t) {
@@ -141,7 +141,7 @@ function renderCraft() {
   const p = players.get(myId); if (!p) return; const c = classOf(p), list = $('craftList'); list.innerHTML = '';
   $('craftTitle').textContent = c ? `Criar · ${c.name}` : 'Criar';
   if (!c) list.innerHTML = '<p class="hint">Escolha um personagem em "Meu avatar" para criar os itens especiais da sua classe. Abaixo, o que todo mundo pode criar:</p>';
-  for (const rc of RECIPES.filter(r => (c && r.cls === c.id) || r.cls === 'todos')) {
+  for (const rc of RECIPES.filter(r => (c && r.cls === c.id) || r.cls === 'todos' || (r.cls === 'rei' && me && me === KING)).sort((a, b) => (b.cls === 'rei') - (a.cls === 'rei'))) {
     const row = document.createElement('div'); row.className = 'item'; const t = document.createElement('div'); t.innerHTML = '<b></b><span></span><em></em>';
     t.querySelector('b').textContent = rc.name + (rc.make ? ` (×${rc.make})` : ''); t.querySelector('span').textContent = rc.desc || '';
     const okW = wherOk(rc, p), okC = hasCost(rc.cost);
