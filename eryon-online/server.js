@@ -43,6 +43,50 @@ function cleanLook(l) {
   return { hair: pick(l.hair, HAIRS), shirt: pick(l.shirt, SHIRTS), pants: pick(l.pants, PANTS), longHair: !!l.longHair };
 }
 
+// ---------------------------------------------------------------- verificação pelo comentário no Instagram
+// O seguidor recebe uma palavra única (ex.: "ERYON 7KQ2") e comenta no post. O servidor lê os comentários
+// pela API oficial do Instagram e libera quem comentou a palavra com o próprio @ (prova que é ele mesmo).
+const IG_HOST = (process.env.IG_GRAPH_HOST || 'https://graph.instagram.com/v21.0').replace(/\/$/, '');
+const IG_USER_ID = process.env.IG_USER_ID || 'me';
+const IG_MEDIA_IDS = (process.env.IG_MEDIA_IDS || '').split(',').map(x => x.trim()).filter(Boolean);
+const IG_POST_URL = process.env.IG_POST_URL || '';
+const igToken = () => db.igToken || process.env.IG_ACCESS_TOKEN || '';
+const igOn = () => !!igToken();
+let igCache = { at: 0, comments: [], err: null }, igBusy = null;
+async function igGet(u) { const r = await fetch(u); const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status)); return j; }
+function igComments() {
+  if (Date.now() - igCache.at < 12000) return Promise.resolve(igCache.comments);
+  if (igBusy) return igBusy;
+  igBusy = (async () => {
+    try {
+      const tk = encodeURIComponent(igToken());
+      let media = IG_MEDIA_IDS;
+      if (!media.length) { const j = await igGet(`${IG_HOST}/${IG_USER_ID}/media?fields=id&limit=3&access_token=${tk}`); media = (j.data || []).map(m => m.id); }
+      const all = [];
+      for (const id of media) {
+        let next = `${IG_HOST}/${id}/comments?fields=id,text,username,from,timestamp&limit=50&access_token=${tk}`, pages = 0;
+        while (next && pages < 8) { const j = await igGet(next); for (const c of j.data || []) all.push({ u: norm(c.username || (c.from && c.from.username)), text: String(c.text || '') }); next = j.paging && j.paging.next; pages++; }
+      }
+      igCache = { at: Date.now(), comments: all, err: null };
+    } catch (e) { igCache = { ...igCache, at: Date.now(), err: e.message }; console.warn('[instagram]', e.message); }
+    finally { igBusy = null; }
+    return igCache.comments;
+  })();
+  return igBusy;
+}
+// renova o token do Instagram (vale 60 dias) uma vez por dia
+async function igRefresh() {
+  if (!igOn() || !IG_HOST.includes('graph.instagram.com')) return;
+  try { const j = await igGet(`https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(igToken())}`); if (j.access_token) { db.igToken = j.access_token; save(); } }
+  catch (e) { console.warn('[instagram] renovação do token:', e.message); }
+}
+setInterval(igRefresh, 24 * 3600e3).unref(); setTimeout(igRefresh, 60e3).unref();
+const pending = new Map();      // id -> { u, word, exp }
+const WORD_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newWord = () => 'ERYON ' + Array.from({ length: 4 }, () => WORD_ALPHA[crypto.randomInt(WORD_ALPHA.length)]).join('');
+setInterval(() => { const n = Date.now(); for (const [k, v] of pending) if (v.exp < n) pending.delete(k); }, 60e3).unref();
+const squash = t => String(t).toUpperCase().replace(/[^A-Z0-9]+/g, '');
+
 // ---------------------------------------------------------------- limites de tentativas
 const hits = new Map();
 function limited(key, max, ms) { const now = Date.now(); let h = hits.get(key); if (!h || h.reset < now) { h = { n: 0, reset: now + ms }; hits.set(key, h); } h.n++; return h.n > max; }
@@ -71,6 +115,30 @@ const server = http.createServer(async (req, res) => {
       const tok = newToken(); db.sessions[tok] = u; rec.lastLogin = Date.now(); save();
       return send(res, 200, { token: tok, username: u, look: rec.look || null });
     }
+    if (p === '/api/config') return send(res, 200, { verify: igOn(), postUrl: IG_POST_URL });
+    if (p === '/api/start' && req.method === 'POST') {
+      if (limited('start:' + ipOf(req), 15, 10 * 60000)) return send(res, 429, { error: 'Muitas tentativas. Espere alguns minutos.' });
+      if (!igOn()) return send(res, 503, { error: 'A verificação pelo Instagram ainda não foi configurada. Use um código de acesso.' });
+      const b = await body(req), u = norm(b.username);
+      if (!validUser(u)) return send(res, 400, { error: 'Esse @ não parece válido.' });
+      if (db.users[u] && db.users[u].removed) return send(res, 403, { error: 'Esse @ não tem acesso a Eryon.' });
+      const id = crypto.randomBytes(12).toString('hex'), word = newWord();
+      pending.set(id, { u, word, exp: Date.now() + 40 * 60000 });
+      return send(res, 200, { id, word, postUrl: IG_POST_URL });
+    }
+    if (p === '/api/check' && req.method === 'POST') {
+      if (limited('check:' + ipOf(req), 200, 10 * 60000)) return send(res, 429, { error: 'Muitas tentativas.' });
+      const b = await body(req), pd = pending.get(String(b.id || ''));
+      if (!pd) return send(res, 404, { error: 'Essa verificação expirou. Comece de novo.' });
+      const list = await igComments(), want = squash(pd.word);
+      const ok = list.some(c => c.u === pd.u && squash(c.text).includes(want));
+      if (!ok) return send(res, 200, { waiting: true, problem: igCache.err ? 'instagram' : null });
+      pending.delete(String(b.id));
+      let rec = db.users[pd.u]; if (!rec) rec = db.users[pd.u] = { v: 0, createdAt: Date.now() };
+      rec.verified = true; rec.lastLogin = Date.now();
+      const tok = newToken(); db.sessions[tok] = pd.u; save();
+      return send(res, 200, { token: tok, username: pd.u, look: rec.look || null });
+    }
     if (p === '/api/me' && req.method === 'GET') {
       const u = userBySession(url.searchParams.get('token'));
       if (!u || !db.users[u] || db.users[u].removed) return send(res, 401, { error: 'sessão expirada' });
@@ -87,7 +155,7 @@ const server = http.createServer(async (req, res) => {
       if (!ADMIN_KEY) return send(res, 503, { error: 'Defina a variável ADMIN_KEY no servidor.' });
       if (limited('admin:' + ipOf(req), 60, 60000)) return send(res, 429, { error: 'Muitas requisições.' });
       if (!isAdmin(req)) return send(res, 401, { error: 'Chave de admin incorreta.' });
-      if (p === '/api/admin/list') return send(res, 200, { users: listUsers() });
+      if (p === '/api/admin/list') return send(res, 200, { users: listUsers(), instagram: { on: igOn(), error: igCache.err, comments: igCache.comments.length, postUrl: IG_POST_URL } });
       if (p === '/api/admin/add' && req.method === 'POST') {
         const b = await body(req), raw = Array.isArray(b.usernames) ? b.usernames : String(b.usernames || '').split(/[\s,;]+/);
         const added = [], invalid = [];

@@ -33,6 +33,7 @@ code{background:#060b0a;padding:2px 6px;color:var(--gold);font-size:16px;letter-
 <body>
 <main>
   <h1>Eryon · Painel do criador</h1>
+  <section><label>Verificação pelo Instagram</label><p id="ig" style="margin:0">Entre com a chave para ver o status.</p></section>
   <section>
     <label for="key">Chave de admin (ADMIN_KEY)</label>
     <div class="row"><input id="key" type="password" autocomplete="current-password" style="flex:1;min-width:200px"><button id="load">Entrar</button></div>
@@ -69,7 +70,7 @@ function render() {
   }
 }
 async function copy(text) { try { await navigator.clipboard.writeText(text); $('msg').textContent = 'Copiado!'; } catch { $('msg').textContent = text; } }
-$('load').onclick = async () => { try { users = (await call('/api/admin/list')).users; render(); $('msg').textContent = 'Conectado.'; try { sessionStorage.setItem('k', $('key').value); } catch { } } catch (e) { $('msg').textContent = e.message; } };
+$('load').onclick = async () => { try { const d = await call('/api/admin/list'); users = d.users; render(); const ig = d.instagram || {}; $('ig').textContent = !ig.on ? 'Desligada: configure IG_ACCESS_TOKEN no Render (veja o README). Enquanto isso, use os códigos abaixo.' : ig.error ? 'Ligada, mas com erro: ' + ig.error : `Ligada. Comentários lidos: ${ig.comments}. Post: ${ig.postUrl || 'últimos 3 posts'}`; $('msg').textContent = 'Conectado.'; try { sessionStorage.setItem('k', $('key').value); } catch { } } catch (e) { $('msg').textContent = e.message; } };
 $('add').onclick = async () => { try { const d = await call('/api/admin/add', { usernames: $('list').value }); users = d.users; render(); $('list').value = ''; $('msg').textContent = `${d.added.length} liberado(s).` + (d.invalid.length ? ` Inválidos: ${d.invalid.join(', ')}` : ''); } catch (e) { $('msg').textContent = e.message; } };
 $('copyAll').onclick = () => copy(users.map(msgFor).join('\n\n'));
 try { const k = sessionStorage.getItem('k'); if (k) { $('key').value = k; $('load').click(); } } catch { }

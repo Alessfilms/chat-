@@ -6,15 +6,40 @@ Só entra quem você liberar, ou seja, quem comentou no post.
 
 ## Como funciona o acesso
 
-1. Você abre `seu-site/admin` e entra com a sua chave de admin.
-2. Cola a lista de @ de quem comentou e clica em **Liberar acesso**.
-3. O painel mostra um código de 6 letras para cada @ e um botão **Copiar mensagem**, com o texto pronto para mandar por DM.
-4. O seguidor abre o site, digita o @ dele e o código, escolhe as cores do personagem e entra.
+### Jeito principal: o seguidor prova que é ele comentando (automático)
 
-Os códigos são calculados a partir do @ e de um segredo do servidor (`CODE_SECRET`).
-Por isso continuam valendo mesmo se o servidor reiniciar e apagar os arquivos.
-Para cortar o acesso de alguém, clique em **Remover** no painel.
-Para trocar o código de alguém, clique em **Novo código**.
+1. O seguidor abre o site e digita só o @ dele.
+2. O site mostra uma palavra única para ele, por exemplo **ERYON 7KQ2**, com um botão para abrir o post.
+3. Ele comenta essa palavra no post. Pode ser junto com outro texto, e maiúsculas ou espaços não importam.
+4. Em até ~20 segundos o site encontra o comentário feito **pelo próprio @** e libera a entrada.
+
+Ninguém consegue entrar no lugar de outra pessoa, porque só o dono da conta comenta com ela.
+O site lê os comentários dos **3 posts mais recentes** da sua conta, ou só dos posts que você indicar.
+
+#### Configurar (uma vez)
+
+A sua conta do Instagram precisa ser **Profissional** (Criador ou Empresa): Instagram > Configurações > Tipo de conta.
+
+1. Entre em https://developers.facebook.com, clique em **Meus apps** > **Criar app**.
+2. Escolha o caso de uso **"Gerenciar mensagens e conteúdo no Instagram"** (API do Instagram com login do Instagram).
+3. No painel do app: **Instagram** > **Configuração da API com login do Instagram** > **Gerar tokens de acesso** > **Adicionar conta** e entre com a sua conta.
+4. Copie o token gerado. Ele precisa das permissões `instagram_business_basic` e `instagram_business_manage_comments`.
+5. No Render: seu serviço > **Environment** > adicione:
+   - `IG_ACCESS_TOKEN` = o token copiado
+   - `IG_POST_URL` = o link do post de Eryon, por exemplo `https://www.instagram.com/p/XXXX/`. É o botão "Abrir o post" na tela de entrada.
+   - (opcional) `IG_MEDIA_IDS` = IDs de posts específicos, separados por vírgula. Sem isso, o site usa os 3 posts mais recentes.
+6. Salve. O Render reinicia sozinho. No painel `/admin`, a linha "Verificação pelo Instagram" deve mostrar **Ligada**.
+
+O token vale 60 dias e o servidor renova sozinho uma vez por dia.
+Se o servidor ficar parado mais de 60 dias, gere outro e troque no Render.
+
+### Jeito reserva: código de acesso pelo painel
+
+Enquanto o Instagram não estiver configurado, ou para liberar alguém manualmente:
+abra `seu-site/admin`, cole os @ e mande o código de cada um por DM.
+Na tela de entrada, a pessoa clica em **"Tenho um código de acesso"**.
+
+**Remover** no painel bloqueia o @ nos dois jeitos.
 
 Os 10 moradores dos episódios entram com o visual e a profissão deles:
 @heitor_morrone, @lorhan_cristian, @maicon.sg2010, @pablopaesrocha, @_ray_hpl, @paocombiscoito, @altanat19, @eo_preto.031, @bio_leocordeiro e @kaguya.xs.
@@ -59,6 +84,9 @@ ADMIN_KEY=uma-senha-forte node server.js
 | `ADMIN_KEY` | Senha do painel `/admin`. Obrigatória. Sem ela o login fica desligado. |
 | `CODE_SECRET` | Segredo usado para gerar os códigos. Se não existir, usa a `ADMIN_KEY`. |
 | `PORT` | Porta do servidor (o Render define sozinho). |
+| `IG_ACCESS_TOKEN` | Token da API do Instagram (liga a verificação pelo comentário). |
+| `IG_POST_URL` | Link do post mostrado no botão "Abrir o post". |
+| `IG_MEDIA_IDS` | (Opcional) IDs dos posts a verificar. Padrão: os 3 mais recentes. |
 | `DATA_DIR` | Pasta onde fica o `db.json` (posições, cores, removidos). Padrão: `./data`. |
 
 ## Segurança

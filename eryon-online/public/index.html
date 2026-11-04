@@ -39,6 +39,11 @@ button.sec{background:#3c5d4a;color:var(--txt)}
 #chatbar input{flex:1;min-width:0;font-size:18px;padding:10px}
 #chatbar button{padding:10px 14px;font-size:18px}
 #help{font-size:14px;color:#c4ccd0}
+button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:16px;padding:4px;text-decoration:underline}
+.word{font:400 24px/1.3 P2P,monospace;color:var(--gold);text-align:center;background:#0c1410;border:3px dashed var(--edge);padding:16px 8px;-webkit-user-select:all;user-select:all;letter-spacing:2px}
+.row2{display:flex;gap:10px}.row2>*{flex:1;text-align:center}
+.btnlink{font:700 20px Pix,monospace;padding:12px 14px;background:var(--gold);color:var(--ink);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);text-decoration:none}
+@keyframes blink{50%{opacity:.4}} #vstatus.wait{animation:blink 1.4s steps(2) infinite}
 </style>
 </head>
 <body>
@@ -47,13 +52,24 @@ button.sec{background:#3c5d4a;color:var(--txt)}
 <div id="login">
   <div class="box" id="loginCard">
     <h1>ERYON</h1>
-    <p class="sub">A cidade dos seguidores.<br>Comentou no post? Entre com o seu @ e o código que você recebeu.</p>
+    <p class="sub" id="sub">A cidade dos seguidores.<br>Digite o seu @ do Instagram para entrar.</p>
     <label for="user">Seu @ do Instagram</label>
     <input id="user" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="@seu_usuario" maxlength="31">
-    <label for="code">Código de acesso</label>
-    <input id="code" autocapitalize="characters" spellcheck="false" placeholder="ABC123" maxlength="6">
-    <button id="enter" type="button">Entrar em Eryon</button>
+    <div id="codeRow" hidden style="display:flex;flex-direction:column;gap:10px">
+      <label for="code">Código de acesso</label>
+      <input id="code" autocapitalize="characters" spellcheck="false" placeholder="ABC123" maxlength="6">
+    </div>
+    <button id="enter" type="button">Continuar</button>
+    <button id="haveCode" type="button" class="link">Tenho um código de acesso</button>
     <p class="err" id="err"></p>
+  </div>
+  <div class="box" id="verifyCard" hidden>
+    <h1>É VOCÊ?</h1>
+    <p class="sub">Para provar que é você, comente no post de Eryon exatamente:</p>
+    <div class="word" id="word">ERYON ····</div>
+    <div class="row2"><button id="copyWord" type="button" class="sec">Copiar</button><a id="openPost" class="btnlink" target="_blank" rel="noopener">Abrir o post</a></div>
+    <p class="sub" id="vstatus">Esperando o seu comentário…</p>
+    <button id="back" type="button" class="link">Voltar</button>
   </div>
   <div class="box" id="lookCard" hidden>
     <h1>SEU MORADOR</h1>

@@ -99,21 +99,45 @@ const [light, lx] = canvas(view.width, view.height);
 
 // ---------------------------------------------------------------- login e aparência
 function showErr(m) { $('err').textContent = m || ''; }
+let verifyOn = false, postUrl = '', pollT = null;
+fetch('/api/config').then(r => r.json()).then(c => { verifyOn = !!c.verify; postUrl = c.postUrl || ''; if (!verifyOn) showCode(true); }).catch(() => showCode(true));
+function showCode(on) { $('codeRow').hidden = !on; $('haveCode').hidden = on || !verifyOn; $('enter').textContent = on ? 'Entrar em Eryon' : 'Continuar';
+  $('sub').innerHTML = on ? 'A cidade dos seguidores.<br>Entre com o seu @ e o código que você recebeu.' : 'A cidade dos seguidores.<br>Digite o seu @ do Instagram para entrar.'; }
+$('haveCode').onclick = () => showCode(true);
+const post = (p, b) => API(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
 $('enter').onclick = async () => {
-  const username = $('user').value, code = $('code').value;
-  if (!username || !code) return showErr('Preencha o @ e o código.');
-  $('enter').disabled = true; const r = await API('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, code }) }); $('enter').disabled = false;
-  if (!r.ok) return showErr(r.data.error || 'Não foi possível entrar.');
-  token = r.data.token; store.set('eryon_token', token); afterLogin(r.data);
+  const username = $('user').value.trim(); if (!username) return showErr('Digite o seu @.');
+  showErr(''); $('enter').disabled = true;
+  if (!$('codeRow').hidden) {                       // entrada com código (reserva)
+    const code = $('code').value; if (!code) { $('enter').disabled = false; return showErr('Digite o código.'); }
+    const r = await post('/api/login', { username, code }); $('enter').disabled = false;
+    if (!r.ok) return showErr(r.data.error || 'Não foi possível entrar.');
+    token = r.data.token; store.set('eryon_token', token); return afterLogin(r.data);
+  }
+  const r = await post('/api/start', { username }); $('enter').disabled = false;   // verificação pelo comentário
+  if (!r.ok) return showErr(r.data.error || 'Não foi possível começar.');
+  $('loginCard').hidden = true; $('verifyCard').hidden = false; $('word').textContent = r.data.word;
+  const link = r.data.postUrl || postUrl; $('openPost').hidden = !link; if (link) $('openPost').href = link;
+  $('vstatus').textContent = 'Esperando o seu comentário…'; $('vstatus').className = 'sub wait';
+  clearInterval(pollT);
+  pollT = setInterval(async () => {
+    const c = await post('/api/check', { id: r.data.id });
+    if (c.ok && c.data.token) { clearInterval(pollT); token = c.data.token; store.set('eryon_token', token); $('verifyCard').hidden = true; $('loginCard').hidden = false; return afterLogin(c.data); }
+    if (!c.ok) { clearInterval(pollT); $('vstatus').className = 'sub'; $('vstatus').textContent = c.data.error || 'Algo deu errado. Volte e tente de novo.'; return; }
+    if (c.data.problem) $('vstatus').textContent = 'Ainda procurando… (o Instagram pode levar até 1 minuto para mostrar o comentário)';
+  }, 5000);
 };
+$('copyWord').onclick = async () => { try { await navigator.clipboard.writeText($('word').textContent); $('copyWord').textContent = 'Copiado!'; } catch { } setTimeout(() => $('copyWord').textContent = 'Copiar', 1500); };
+$('back').onclick = () => { clearInterval(pollT); $('verifyCard').hidden = true; $('loginCard').hidden = false; };
 $('code').addEventListener('keydown', e => { if (e.key === 'Enter') $('enter').click(); });
+$('user').addEventListener('keydown', e => { if (e.key === 'Enter') $('enter').click(); });
 function afterLogin(d) {
   me = d.username; myLook = d.look;
   if (!myLook && !NAMED[me]) return pickLook();
   start();
 }
 function pickLook() {
-  $('loginCard').hidden = true; $('lookCard').hidden = false;
+  $('loginCard').hidden = true; $('verifyCard').hidden = true; $('lookCard').hidden = false;
   myLook = { hair: HAIRS[Math.floor(Math.random() * HAIRS.length)], shirt: SHIRTS[Math.floor(Math.random() * SHIRTS.length)], pants: PANTS[0] };
   const mk = (el, list, key) => { el.innerHTML = ''; list.forEach(c => { const b = document.createElement('div'); b.className = 'sw' + (myLook[key] === c ? ' on' : ''); b.style.background = c; b.onclick = () => { myLook[key] = c; mk(el, list, key); preview(); }; el.appendChild(b); }); };
   mk($('swHair'), HAIRS, 'hair'); mk($('swShirt'), SHIRTS, 'shirt'); mk($('swPants'), PANTS, 'pants'); preview();
