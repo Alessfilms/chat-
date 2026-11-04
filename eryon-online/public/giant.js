@@ -1,8 +1,8 @@
 // =====================================================================
 // EVENTO: O GIGANTE DE PEDRA — desenho, efeitos, contagem regressiva, ataques, catapultas e consertos
 // =====================================================================
-let GIANT = { at: 0, state: 'none', result: '', damaged: new Set(), live: null };
-const GFX = { shots: [], hits: [], smash: [], shakeUntil: 0, view: null, catFire: {} };
+let GIANT = { at: 0, state: 'none', result: '', damaged: new Set(), burned: new Set(), rebuild: {}, live: null };
+const GFX = { shots: [], hits: [], smash: [], shakeUntil: 0, view: null, catFire: {}, fresh: {}, breath: null };
 // ---------- sprite do gigante (pedra com musgo e olhos azuis, como a estátua)
 const GSPR = {};
 function giantSprite(f) {   // f: 0/1 andando, 2 braços erguidos, 3 pancada — corpo de rochas empilhadas, musgo, cipós e magia
@@ -61,7 +61,7 @@ function drawGiantAt(x, X, Y, f, face, t, flash) {
   for (const [ex, ey] of s.eyes) glow(x, ox + (flip ? s.W - ex : ex), oy + ey, 6, '#9ff3ff', .2 + .08 * Math.sin(t * 4));
   if (flash) { x.globalAlpha = .45; x.globalCompositeOperation = 'lighter'; x.drawImage(flip ? s.l : s.r, ox, oy); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; }
 }
-function drawGiant(x, t) { const L = GIANT.live; if (!L) return; (L.kind === 'fogo' ? drawFireAt : drawGiantAt)(x, Math.round(L.x), Math.round(L.y), giantFrame(t), L.face, t, performance.now() - (GFX.lastHitT || 0) < 160); }
+function drawGiant(x, t) { const L = GIANT.live; if (!L) return; { const gp = gPos(); (L.kind === 'fogo' ? drawFireAt : drawGiantAt)(x, Math.round(gp.x), Math.round(gp.y), giantFrame(t), L.face, t, performance.now() - (GFX.lastHitT || 0) < 160); } }
 // ---------- catapulta (objeto que todos podem criar): base fixa + braço que gira quando dispara
 let CAT_SPR = null;
 function catapultSprite() { if (CAT_SPR) return CAT_SPR; const [c, x] = canvas(36, 30), O = '#1a120c', WD = ['#4a2f22', '#6b4630', '#8b5e3c', '#b8814a'];
@@ -92,16 +92,17 @@ function drawCatapultArm(x, d, t) {
 }
 // ---------- mensagens do servidor
 function onGiantMsg(m) {
-  if (m.t === 'giant') { const was = GIANT.state; GIANT.at = m.at; GIANT.state = m.state; GIANT.result = m.result; GIANT.damaged = new Set(m.damaged || []); GIANT.live = m.live;
-    const fogo = (m.live && m.live.kind === 'fogo') || (m.end && GIANT.lastKind === 'fogo'); if (m.live) GIANT.lastKind = m.live.kind;
-    if (m.start) { giantHorn(); setTimeout(() => dragonRoar && SND.ctx && dragonRoar(.45), 900); fxToast(fogo ? 'A FERA DE FOGO APARECEU!' : 'O GIGANTE ACORDOU!', fogo ? 'Ela vem do leste queimando tudo. Defendam Eryon!' : 'Ele vem do leste. Defendam Eryon!', '#e04a3a', fogo ? '🔥' : '⚠'); }
-    if (m.end) { fxToast(m.end === 'won' ? 'VITÓRIA!' : 'A cidade foi danificada', m.end === 'won' ? (fogo ? 'Eryon venceu a Fera de Fogo!' : 'Eryon venceu o Gigante de Pedra!') : 'Consertem as casas com lenha', m.end === 'won' ? '#ffd84a' : '#e04a3a', m.end === 'won' ? '♛' : '⚠'); if (m.end === 'won') fanfare(true); }
+  if (m.t === 'giant') { const was = GIANT.state; GIANT.at = m.at; GIANT.state = m.state; GIANT.result = m.result; GIANT.damaged = new Set(m.damaged || []); { const nb = new Set(m.burned || []); for (const id of nb) if (!GIANT.burned.has(id) && m.live) GFX.fresh[id] = performance.now(); GIANT.burned = nb; } GIANT.rebuild = m.rebuild || {}; GIANT.live = m.live;
+    if (m.live) GIANT.lastKind = m.live.kind; const knd = GIANT.lastKind, fogo = knd === 'fogo', drg = knd === 'dragao';
+    if (m.start) { giantHorn(); setTimeout(() => dragonRoar && SND.ctx && dragonRoar(.45), 900); fxToast(drg ? 'O DRAGÃO NEGRO APARECEU!' : fogo ? 'A FERA DE FOGO APARECEU!' : 'O GIGANTE ACORDOU!', drg ? 'Ele cospe fogo nas casas! Arcos, raios e catapultas!' : fogo ? 'Ela vem do leste queimando tudo. Defendam Eryon!' : 'Ele vem do leste. Defendam Eryon!', '#e04a3a', drg || fogo ? '🔥' : '⚠'); }
+    if (m.end) { fxToast(m.end === 'won' ? 'VITÓRIA!' : 'A cidade foi danificada', m.end === 'won' ? (drg ? 'Eryon venceu o Dragão Negro!' : fogo ? 'Eryon venceu a Fera de Fogo!' : 'Eryon venceu o Gigante de Pedra!') : drg || fogo ? 'Reconstruam as casas queimadas!' : 'Consertem as casas com lenha', m.end === 'won' ? '#ffd84a' : '#e04a3a', m.end === 'won' ? '♛' : '⚠'); if (m.end === 'won') fanfare(true); }
     { const L2 = GIANT.live; setMusicMood(L2 ? (L2.phase === 'leave' ? 'tragico' : 'batalha') : m.end === 'lost' ? 'tragico' : musicMood === 'batalha' ? 'normal' : musicMood); }
     updGiantHud(); return true; }
   if (m.t === 'giantHit') { GFX.lastHitT = performance.now(); if (GIANT.live) GFX.hits.push({ x: GIANT.live.x + (Math.random() - .5) * 30, y: GIANT.live.y - 70 - Math.random() * 24, d: m.d, t0: performance.now(), big: m.d >= 20 }); if (m.kind === 'zap' && SND.ctx) thunder(); return true; }
   if (m.t === 'giantSmash') { GFX.lastSmashT = performance.now(); GFX.smash.push({ x: m.x, y: m.y, t0: performance.now() }); const p = players.get(myId);
     if (p && !p.room && Math.hypot(p.x - m.x, p.y - m.y) < 260) { stomp(); shake(); } return true; }
-  if (m.t === 'stunned') { GFX.stunUntil = performance.now() + (m.ms || 2000); shake(); stomp(.6); sys(GIANT.live && GIANT.live.kind === 'fogo' ? 'A fera te queimou! Você ficou tonto...' : 'O gigante te acertou! Você ficou tonto...'); return true; }
+  if (m.t === 'dragonFire') { GFX.breath = { ...m, t0: performance.now() }; for (let i = 0; i < 6; i++) GFX.trail.push({ x: m.tx + (Math.random() - .5) * 40, y: m.ty + (Math.random() - .5) * 16, t0: performance.now() + i * 300 }); const p = players.get(myId); if (SND.ctx && p && !p.room && Math.hypot(p.x - m.tx, p.y - m.ty) < 300) { dragonRoar(.5); play('fire', .7, .8); } return true; }
+  if (m.t === 'stunned') { GFX.stunUntil = performance.now() + (m.ms || 2000); shake(); stomp(.6); sys(GIANT.live && GIANT.live.kind !== 'pedra' ? 'O fogo te queimou! Você ficou tonto...' : 'O gigante te acertou! Você ficou tonto...'); return true; }
   if (m.t === 'catShot') { GFX.catFire[m.id] = performance.now(); GFX.shots.push({ ...m, t0: performance.now() + 200 }); const p = players.get(myId); if (p && !p.room && Math.hypot(p.x - m.x, p.y - m.y) < 220) play('wood_hit', .5, .7); return true; }
   return false;
 }
@@ -114,6 +115,7 @@ function drawGiantWorld(x, t, li, ti, cw, ch) {
     x.globalAlpha = .45; x.fillStyle = '#140e06'; x.beginPath(); x.ellipse(b.x, b.y - 10, 15, 10, 0, 0, 6.283); x.fill(); x.globalAlpha = 1;
     for (const [a, c2] of [[-8, -18], [3, -14], [9, -20]]) { px(x, '#140e06', b.x + a, b.y + c2, 1, 5); px(x, '#140e06', b.x + a + 1, b.y + c2 + 5, 1, 3); }
     smallFire(x, b.x - 5, b.y - 16, t + b.x); smallFire(x, b.x + 6, b.y - 12, t * 1.3 + b.y); if (GIANT.lastKind === 'fogo') { flame(x, b.x - 2, b.y - 20, 15, t, b.x); flame(x, b.x + 8, b.y - 17, 11, t, b.y); flame(x, b.x - 10, b.y - 12, 9, t, b.x + 5); glow(x, b.x, b.y - 18, 18, P.fire2, .16); } smoke(x, b.x, b.y - 24, t + b.x, 5, '#4a4a4a'); glow(x, b.x, b.y - 14, 10, P.fire2, .12); }
+  drawBurnedHouses(x, t, li, ti, cw, ch);
   // pancadas no chão
   for (let i = GFX.smash.length - 1; i >= 0; i--) { const s = GFX.smash[i], k = (performance.now() - s.t0) / 900; if (k > 1) { GFX.smash.splice(i, 1); continue; }
     x.globalAlpha = 1 - k; ring(x, s.x, s.y, 6 + k * 34, '#c9a46a'); ring(x, s.x, s.y, 3 + k * 22, '#e4d0a0'); x.globalAlpha = 1; burst(x, t, s.t0 / 1000, s.x, s.y - 4, 18, ['#8b5e3c', '#c9a46a', '#6e7789'], 28, .9, 30, 9); }
@@ -124,8 +126,8 @@ function drawGiantWorld(x, t, li, ti, cw, ch) {
 }
 // ---------- textos na tela: nome, vida e números de dano
 function giantLabels(ctx2, L, T, S, fs) {
-  const G2 = GIANT.live; if (!G2) return; const sx = Math.round((G2.x - L) * S), sy = Math.round((G2.y - (G2.kind === 'fogo' ? 96 : 118) - T) * S);
-  if (sx > -300 && sx < cv.width + 300 && sy > -100 && sy < cv.height + 200) { ctx2.textAlign = 'center'; ctx2.textBaseline = 'bottom'; ctx2.font = `700 ${Math.round(fs * 1.05)}px Pix, monospace`; ctx2.lineWidth = Math.max(3, fs / 4); ctx2.strokeStyle = '#140e06'; const NM = G2.kind === 'fogo' ? 'FERA DE FOGO' : 'GIGANTE DE PEDRA'; ctx2.strokeText(NM, sx, sy); ctx2.fillStyle = G2.kind === 'fogo' ? '#ffb04a' : '#ff9a8a'; ctx2.fillText(NM, sx, sy);
+  const G2 = GIANT.live; if (!G2) return; const gp = gPos(); const sx = Math.round((gp.x - L) * S), sy = Math.round((gp.y - (G2.kind === 'dragao' ? 70 + bossAlt() + 46 : G2.kind === 'fogo' ? 96 : 118) - T) * S);
+  if (sx > -300 && sx < cv.width + 300 && sy > -100 && sy < cv.height + 200) { ctx2.textAlign = 'center'; ctx2.textBaseline = 'bottom'; ctx2.font = `700 ${Math.round(fs * 1.05)}px Pix, monospace`; ctx2.lineWidth = Math.max(3, fs / 4); ctx2.strokeStyle = '#140e06'; const NM = G2.kind === 'dragao' ? 'DRAGÃO NEGRO' : G2.kind === 'fogo' ? 'FERA DE FOGO' : 'GIGANTE DE PEDRA'; ctx2.strokeText(NM, sx, sy); ctx2.fillStyle = G2.kind === 'pedra' ? '#ff9a8a' : '#ffb04a'; ctx2.fillText(NM, sx, sy);
     const w = fs * 7, h = Math.max(6, fs * .45); ctx2.fillStyle = '#140e06'; ctx2.fillRect(sx - w / 2 - 2, sy + 3, w + 4, h + 4); ctx2.fillStyle = '#3a1410'; ctx2.fillRect(sx - w / 2, sy + 5, w, h); ctx2.fillStyle = '#e04a3a'; ctx2.fillRect(sx - w / 2, sy + 5, w * Math.max(0, G2.hp) / G2.max, h); }
   for (let i = GFX.hits.length - 1; i >= 0; i--) { const hh = GFX.hits[i], k = (performance.now() - hh.t0) / 900; if (k > 1) { GFX.hits.splice(i, 1); continue; }
     const X = Math.round((hh.x - L) * S), Y = Math.round((hh.y - k * 18 - T) * S); ctx2.globalAlpha = 1 - k; ctx2.font = `700 ${Math.round(fs * (hh.big ? 1.4 : 1))}px Pix, monospace`; ctx2.strokeText('-' + hh.d, X, Y); ctx2.fillStyle = hh.big ? '#9ff3ff' : '#ffd84a'; ctx2.fillText('-' + hh.d, X, Y); ctx2.globalAlpha = 1; }
@@ -134,7 +136,7 @@ function giantLabels(ctx2, L, T, S, fs) {
 function fmtLeft(ms) { const m = Math.max(0, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h}h${String(m % 60).padStart(2, '0')}` : `${m} min`; }
 function updGiantHud() {
   const el = $('giantHud'); if (!el) return; const now = Date.now(), L = GIANT.live;
-  if (L) { el.hidden = false; el.className = 'gh battle'; el.innerHTML = (L.phase === 'leave' ? `<div class="gl">${L.kind === 'fogo' ? 'A FERA ESTÁ INDO EMBORA' : 'O GIGANTE ESTÁ INDO EMBORA'}</div>` : L.engaged ? `<div class="gl">⚔ LUTA ATÉ O FIM</div>` : `<div class="gl">${L.kind === 'fogo' ? 'Ataque a fera para enfrentá-la!' : 'Ataque o gigante para enfrentá-lo!'}</div>`) + `<div class="gl">${L.kind === 'fogo' ? 'FERA DE FOGO' : 'GIGANTE'} <b>${Math.max(0, L.hp)}</b></div><div class="gb"><i style="width:${Math.max(0, 100 * L.hp / L.max)}%"></i></div><div class="gl">CIDADE <b>${L.city}%</b></div><div class="gb city"><i style="width:${L.city}%"></i></div>`; return; }
+  if (L) { el.hidden = false; el.className = 'gh battle'; el.innerHTML = (L.phase === 'leave' ? `<div class="gl">${L.kind === 'dragao' ? 'O DRAGÃO ESTÁ INDO EMBORA' : L.kind === 'fogo' ? 'A FERA ESTÁ INDO EMBORA' : 'O GIGANTE ESTÁ INDO EMBORA'}</div>` : L.engaged ? `<div class="gl">⚔ LUTA ATÉ O FIM</div>` : `<div class="gl">${L.kind === 'dragao' ? (L.alt > .5 ? 'Voando alto: arco, raio ou catapulta!' : 'ELE DESCEU! Ataquem com tudo!') : L.kind === 'fogo' ? 'Ataque a fera para enfrentá-la!' : 'Ataque o gigante para enfrentá-lo!'}</div>`) + `<div class="gl">${L.kind === 'dragao' ? 'DRAGÃO' : L.kind === 'fogo' ? 'FERA DE FOGO' : 'GIGANTE'} <b>${Math.max(0, L.hp)}</b></div><div class="gb"><i style="width:${Math.max(0, 100 * L.hp / L.max)}%"></i></div><div class="gl">CIDADE <b>${L.city}%</b></div><div class="gb city"><i style="width:${L.city}%"></i></div>`; return; }
   if (GIANT.state === 'scheduled' && GIANT.at > now && GIANT.at - now < 36 * 3600e3) { const hh = new Date(GIANT.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); el.hidden = false; el.className = 'gh warn'; el.innerHTML = `⚠ O GIGANTE ATACA ÀS ${hh} · faltam <b>${fmtLeft(GIANT.at - now)}</b><small>Crie lanças e catapultas (botão Criar) e defenda Eryon!</small>`; return; }
   if (GIANT.damaged.size) { el.hidden = false; el.className = 'gh warn'; el.innerHTML = `A cidade foi danificada · ${GIANT.damaged.size} construções<small>Chegue perto de uma e toque em "Consertar" (2 lenhas)</small>`; return; }
   el.hidden = true;
@@ -147,8 +149,9 @@ function giantContext(p) {
   if (L && L.phase === 'leave') return null;
   if (L) { const eq = (p.look && p.look.equip) || '', ranged = eq === 'arco' || (classOf(p) || {}).id === 'arqueira', reach = ranged ? 150 : 62, d = Math.hypot(p.x - L.x, p.y - L.y);
     for (const dd of DECOR) if (dd.kind === 'catapulta' && Math.hypot(p.x - dd.x, p.y - dd.y) < 24) return { kind: 'econ', label: 'Disparar catapulta (1 pedra)', fn: () => { send({ t: 'fireCat', id: dd.id }); doAct('hammer'); } };
-    if (d < reach) return { kind: 'econ', label: L.kind === 'fogo' ? 'Atacar a fera!' : 'Atacar o gigante!', fn: () => { const now = performance.now(); if (now < gHitReady) return; gHitReady = now + 1400; p.face = L.x < p.x ? -1 : 1; doAct(ranged ? 'arrow' : eq === 'espada' || eq === 'lanca' || ['guarda', 'guerreiro'].includes((classOf(p) || {}).id) ? 'sword' : 'chop'); send({ t: 'hitGiant' }); } };
+    if (d < reach) return { kind: 'econ', label: L.kind === 'dragao' ? 'Atacar o Dragão!' : L.kind === 'fogo' ? 'Atacar a fera!' : 'Atacar o gigante!', fn: () => { const now = performance.now(); if (now < gHitReady) return; gHitReady = now + 1400; p.face = L.x < p.x ? -1 : 1; doAct(ranged ? 'arrow' : eq === 'espada' || eq === 'lanca' || ['guarda', 'guerreiro'].includes((classOf(p) || {}).id) ? 'sword' : 'chop'); send({ t: 'hitGiant' }); } };
     return null; }
+  for (const id of GIANT.burned) { const b = bldPos(id); if (b && Math.hypot(p.x - b.x, p.y - (b.y + 4)) < 28) return { kind: 'econ', label: `Reconstruir casa queimada (3 lenhas + 2 pedras) · ${GIANT.rebuild[id] || 0}/3`, fn: () => { send({ t: 'rebuild', id }); doAct('build'); } }; }
   for (const id of GIANT.damaged) { const b = bldPos(id); if (b && Math.hypot(p.x - b.x, p.y - (b.y + 4)) < 26) return { kind: 'econ', label: 'Consertar (2 lenhas)', fn: () => { send({ t: 'repair', id }); doAct('build'); } }; }
   return null;
 }
@@ -293,11 +296,11 @@ function fireSpot(x, X, Y, t, k, seed) {   // chão queimado + labaredas + fuma�
   if (k > .15) { flame(x, X - 3, Y, Math.round(6 + 6 * k), t, seed); flame(x, X + 3, Y + 1, Math.round(4 + 7 * k), t, seed + 9); if (k > .5) flame(x, X, Y - 1, Math.round(9 * k), t, seed + 4); glow(x, X, Y - 4, 10, P.fire2, .12 * k); smoke(x, X, Y - 12, t + seed, 4, '#3a3432'); }
 }
 function drawVillageFire(x, t, li, ti, cw, ch) {
-  const L = GIANT.live, fogo = L && L.kind === 'fogo', now = performance.now();
+  const L = GIANT.live, fogo = L && (L.kind === 'fogo' || L.kind === 'dragao'), now = performance.now();
   // intensidade: sobe durante o ataque da fera e apaga devagar depois
   const target = fogo ? Math.max(.15, (100 - L.city) / 100) : 0; GFX.burn += (target - GFX.burn) * .01; if (GFX.burn < .003 && !GFX.trail.length) return;
-  if (fogo && now - GFX.trailT > 350) { GFX.trailT = now; GFX.trail.push({ x: L.x + (Math.random() - .5) * 30, y: L.y + (Math.random() - .5) * 8, t0: now }); if (GFX.trail.length > 90) GFX.trail.shift(); }
-  for (let i = GFX.trail.length - 1; i >= 0; i--) { const f = GFX.trail[i], age = (now - f.t0) / 1000; if (age > 30) { GFX.trail.splice(i, 1); continue; } if (f.x < li - 20 || f.x > li + cw + 20 || f.y < ti - 20 || f.y > ti + ch + 30) continue; fireSpot(x, f.x, f.y, t, age < 1 ? age : Math.max(0, 1 - (age - 1) / 29), i * 7); }
+  if (fogo && L.kind === 'fogo' && now - GFX.trailT > 350) { GFX.trailT = now; GFX.trail.push({ x: L.x + (Math.random() - .5) * 30, y: L.y + (Math.random() - .5) * 8, t0: now }); if (GFX.trail.length > 90) GFX.trail.shift(); }
+  for (let i = GFX.trail.length - 1; i >= 0; i--) { const f = GFX.trail[i], age = (now - f.t0) / 1000; if (age < 0) continue; if (age > 30) { GFX.trail.splice(i, 1); continue; } if (f.x < li - 20 || f.x > li + cw + 20 || f.y < ti - 20 || f.y > ti + ch + 30) continue; fireSpot(x, f.x, f.y, t, age < 1 ? age : Math.max(0, 1 - (age - 1) / 29), i * 7); }
   const n = Math.round(FIRE_SPOTS.length * GFX.burn);
   for (let i = 0; i < n; i++) { const s = FIRE_SPOTS[i]; if (s.x < li - 20 || s.x > li + cw + 20 || s.y < ti - 20 || s.y > ti + ch + 30) continue; fireSpot(x, s.x, s.y, t, Math.min(1, GFX.burn * 1.6), i * 13); }
   // céu alaranjado e brasas voando quando a câmera está perto do vilarejo
@@ -310,8 +313,51 @@ function drawVillageFire(x, t, li, ti, cw, ch) {
 function fireLights(l, li, ti, cw, ch, t) {
   const inV = (X, Y) => X > li - 60 && X < li + cw + 60 && Y > ti - 60 && Y < ti + ch + 60, fl = 1 + Math.sin(t * 11) * .06, L = GIANT.live;
   if (L && L.kind === 'fogo' && inV(L.x, L.y)) lightHole(l, L.x, L.y - 30, Math.round(70 * fl));
-  if (GIANT.lastKind === 'fogo') for (const id of GIANT.damaged) { const b = bldPos(id); if (b && inV(b.x, b.y)) lightHole(l, b.x, b.y - 14, Math.round(34 * fl)); }
+  for (const id of GIANT.burned) { const b = bldPos(id); if (b && inV(b.x, b.y)) { const fr = Math.max(0, 1 - (now0() - (GFX.fresh[id] || 0)) / 90000); lightHole(l, b.x, b.y - 14, Math.round((10 + 28 * fr) * fl)); } }
+  { const bp = gPos(); if (L && L.kind === 'dragao' && GFX.breath && performance.now() - GFX.breath.t0 < 2800) lightHole(l, GFX.breath.tx, GFX.breath.ty - 6, Math.round(60 * fl)); }
   const n = Math.round(FIRE_SPOTS.length * GFX.burn), k = Math.min(1, GFX.burn * 1.6);
   for (let i = 0; i < n; i++) { const s = FIRE_SPOTS[i]; if (inV(s.x, s.y)) lightHole(l, s.x, s.y - 4, Math.round((14 + 12 * k) * fl)); }
   const now = performance.now(); for (const f of GFX.trail) { const age = (now - f.t0) / 1000; if (age < 24 && inV(f.x, f.y)) lightHole(l, f.x, f.y - 4, Math.round(18 * (1 - age / 24) * fl)); }
+}
+
+// ---------- posição suavizada (o servidor manda a cada 0,5 s)
+const now0 = () => performance.now();
+function gPos() { const L = GIANT.live; if (!L) return { x: 0, y: 0 }; const g = GFX.gp || (GFX.gp = { x: L.x, y: L.y, t: now0(), a: L.alt || 0 }), dt = Math.min(.1, (now0() - g.t) / 1000); g.t = now0();
+  if (Math.hypot(L.x - g.x, L.y - g.y) > 200) { g.x = L.x; g.y = L.y; } else { const k = 1 - Math.exp(-dt * 6); g.x += (L.x - g.x) * k; g.y += (L.y - g.y) * k; } g.a += ((L.alt || 0) - g.a) * (1 - Math.exp(-dt * 3)); return g; }
+const bossAlt = () => Math.round(18 + (GFX.gp ? GFX.gp.a : 1) * 70);
+// ---------- DRAGÃO NEGRO (chefe): o dragão visto de cima, bem grande, voando sobre a cidade
+const BOSS_K = 2.6;
+function bossDir() { const g = GFX.gp, L = GIANT.live; if (!g || !L) return 0; const dx = L.x - g.x, dy = L.y - g.y; if (Math.hypot(dx, dy) > 1.2) GFX.bang = Math.atan2(dx, -dy); else if (GFX.breath && now0() - GFX.breath.t0 < 2800) GFX.bang = Math.atan2(GFX.breath.tx - g.x, -(GFX.breath.ty - g.y)); return Math.round(((GFX.bang || -1.57) / 6.283) * DIRS + DIRS) % DIRS; }
+function bossFrame(t) { const g = GFX.gp; const slow = g && g.a < .5; return [0, 1, 2, 2, 1, 0][Math.floor(t * (slow ? 9 : 6)) % 6]; }
+function drawBossShadow(x, t) { const L = GIANT.live; if (!L || L.kind !== 'dragao') return; const g = gPos(), s = dragonTop(4, bossFrame(t), bossDir()), N = 80 * BOSS_K;
+  x.globalAlpha = .22 + (1 - g.a) * .18; x.drawImage(s.s, Math.round(g.x - N / 2 + 6), Math.round(g.y - N / 2 + 4), N, N); x.globalAlpha = 1; }
+function drawBossDragon(x, t) { const L = GIANT.live; if (!L || L.kind !== 'dragao') return; const g = gPos(), di = bossDir(), s = dragonTop(4, bossFrame(t), di), N = 80 * BOSS_K, X = g.x, Y = g.y - bossAlt();
+  x.drawImage(s.c, Math.round(X - N / 2), Math.round(Y - N / 2), N, N);
+  if (now0() - (GFX.lastHitT || 0) < 160) { x.globalAlpha = .45; x.globalCompositeOperation = 'lighter'; x.drawImage(s.c, Math.round(X - N / 2), Math.round(Y - N / 2), N, N); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; }
+  // brasa nas narinas
+  const a = di / DIRS * 6.283, hx = X + Math.sin(a) * 23 * BOSS_K, hy = Y - Math.cos(a) * 23 * BOSS_K; glow(x, hx, hy, 8, P.fire2, .22 + .1 * Math.sin(t * 8));
+  // baforada: rio de fogo da boca até o alvo no chão
+  const B2 = GFX.breath, k = B2 ? (now0() - B2.t0) / 1000 : 9;
+  if (k < 2.8) { const fade = k < .2 ? k / .2 : k > 2.4 ? (2.8 - k) / .4 : 1; x.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 70; i++) { const u = ((i / 70) + t * 1.6) % 1, wob = Math.sin(t * 17 + i) * (3 + u * 9), ex = hx + (B2.tx - hx) * u + wob, ey = hy + (B2.ty - 8 - hy) * u + Math.cos(t * 13 + i) * u * 6, r = 2 + u * 6;
+      x.globalAlpha = fade * (.85 - u * .35); disc(x, Math.round(ex), Math.round(ey), Math.round(r), u < .25 ? '#fff3b0' : u < .55 ? P.fire3 : u < .8 ? P.fire2 : P.fire1); }
+    x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; glow(x, B2.tx, B2.ty - 8, 26, P.fire2, .25 * fade); }
+}
+// ---------- casas queimadas: ficam pretas, com buracos no telhado e fumaça, até alguém reconstruir
+const BURNT = new WeakMap();
+function burntImg(img) { let c = BURNT.get(img); if (c) return c; const w = img.width, h = img.height, [cc, x] = canvas(w, h); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, w, h), D = d.data;
+  for (let Y = 0; Y < h; Y++) for (let X = 0; X < w; X++) { const i = (Y * w + X) * 4; if (!D[i + 3]) continue; const lum = (D[i] + D[i + 1] + D[i + 2]) / 3, hh = h2(X, Y), top = Y < h * .5;
+    if (top && hh > .7 && Y > 1 && X > 1 && X < w - 2) { D[i + 3] = 0; continue; }   // buracos no telhado
+    if (hh > .985) { D[i] = 230; D[i + 1] = 110; D[i + 2] = 40; continue; }           // brasa
+    D[i] = lum * .3 + 22; D[i + 1] = lum * .24 + 16; D[i + 2] = lum * .22 + 14; }
+  x.putImageData(d, 0, 0); BURNT.set(img, cc); return cc; }
+function isBurnt(o) { if (o.bid === undefined) { o.bid = ''; if (o.img) for (const id in B) { const b = B[id]; if (b && b.x === o.x && b.y === o.y) { o.bid = id; break; } } } return o.bid && GIANT.burned.has(o.bid); }
+function drawBurnedHouses(x, t, li, ti, cw, ch) {
+  for (const id of GIANT.burned) { const b = bldPos(id); if (!b || b.x < li - 40 || b.x > li + cw + 40 || b.y < ti - 40 || b.y > ti + ch + 50) continue;
+    const fr = Math.max(0, 1 - (now0() - (GFX.fresh[id] || 0)) / 90000);   // recém-queimada: labaredas grandes por ~1,5 min
+    if (fr > 0) { flame(x, b.x - 6, b.y - 14, Math.round(8 + 14 * fr), t, b.x); flame(x, b.x + 5, b.y - 20, Math.round(10 + 16 * fr), t, b.y); flame(x, b.x + 12, b.y - 10, Math.round(6 + 10 * fr), t, b.x + 3); glow(x, b.x, b.y - 18, 22, P.fire2, .2 * fr); }
+    else if (Math.sin(t * 2 + b.x) > .6) smallFire(x, b.x + (b.x % 9) - 4, b.y - 12, t + b.y);
+    smoke(x, b.x - 3, b.y - 26, t + b.x, 6, '#2e2a28'); smoke(x, b.x + 6, b.y - 22, t * 1.2 + b.y, 4, '#3e3836');
+    const rb = GIANT.rebuild[id]; if (rb) { for (let k = 0; k < rb; k++) { const X = b.x - 14 + k * 8; px(x, P.ink, X - 1, b.y + 2, 7, 4); px(x, P.wood, X, b.y + 3, 5, 2); } }
+  }
 }

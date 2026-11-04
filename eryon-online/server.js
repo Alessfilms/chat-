@@ -30,7 +30,7 @@ function initDb() {
   db.notice ||= { on: false, title: '', text: '', every: 10 };
   db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
   db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {}; db.animals ||= []; db.nextAnimal ||= 1;
-  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= [];
+  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; db.giant.burned ||= []; db.giant.rebuild ||= {};
   if (db.giant.state === 'battle') db.giant.state = 'scheduled', db.giant.at = Date.now() + 60000;   // reiniciou no meio da batalha: recomeça em 1 min
   for (const r of Object.values(db.users)) if (r && typeof r === 'object') { if (r.tot && typeof r.tot !== 'object') r.tot = {}; }
 }
@@ -287,9 +287,9 @@ const server = http.createServer(async (req, res) => {
         save(); all(castleState({ n: 1 })); return send(res, 200, { ok: true, giant: giantPub(), castle: { pedra: db.castle.pedra, lenha: db.castle.lenha, stage: stageIdx(), stages: STAGES.length } }); }
       if (p === '/api/admin/giant' && req.method === 'POST') { const b = await body(req);
         if (b.action === 'schedule') { const at = Number(b.at); if (!Number.isFinite(at) || at < Date.now() - 60000) return send(res, 400, { error: 'Escolha um horário no futuro.' }); if (G) return send(res, 400, { error: 'A batalha já está acontecendo.' }); db.giant.at = at; db.giant.state = 'scheduled'; }
-        else if (b.action === 'start') { if (!G) startGiant(b.kind === 'fogo' ? 'fogo' : 'pedra'); else return send(res, 400, { error: 'Já tem uma batalha acontecendo.' }); }
-        else if (b.action === 'cancel') { const resume = G && G.resume > Date.now() ? G.resume : 0, fogo = G && G.kind === 'fogo'; G = null; if (resume) { db.giant.state = 'scheduled'; db.giant.at = resume; } else db.giant.state = 'none'; all({ t: 'announce', from: 'ALERTA DE ERYON', text: fogo ? 'A Fera de Fogo voltou para o vulcão... por enquanto.' : 'O gigante voltou a dormir... por enquanto.' }); }
-        else if (b.action === 'repair') db.giant.damaged = [];
+        else if (b.action === 'start') { if (!G) startGiant(['fogo', 'dragao'].includes(b.kind) ? b.kind : 'pedra'); else return send(res, 400, { error: 'Já tem uma batalha acontecendo.' }); }
+        else if (b.action === 'cancel') { const resume = G && G.resume > Date.now() ? G.resume : 0, fogo = G && G.kind === 'fogo', drg = G && G.kind === 'dragao'; G = null; if (resume) { db.giant.state = 'scheduled'; db.giant.at = resume; } else db.giant.state = 'none'; all({ t: 'announce', from: 'ALERTA DE ERYON', text: drg ? 'O Dragão voou para longe... por enquanto.' : fogo ? 'A Fera de Fogo voltou para o vulcão... por enquanto.' : 'O gigante voltou a dormir... por enquanto.' }); }
+        else if (b.action === 'repair') { db.giant.damaged = []; if (b.all) { db.giant.burned = []; db.giant.rebuild = {}; } }
         save(); all({ t: 'giant', ...giantPub() }); return send(res, 200, { ok: true, giant: giantPub() }); }
       if (p === '/api/admin/notice' && req.method === 'POST') { const b = await body(req);   // aviso em popup que aparece de vez em quando
         db.notice = { on: !!b.on, title: String(b.title || '').trim().slice(0, 60), text: String(b.text || '').trim().slice(0, 400), every: Math.max(2, Math.min(120, Number(b.every) || 10)) };
@@ -497,22 +497,23 @@ function earn(u, n) { const r = db.users[u]; if (!r) return; const inv = invOf(r
 // a comunidade luta com armas, raios e catapultas.
 // =====================================================================
 const GIANT_PATH = [[1250, 392], [1150, 470], [1000, 540], [860, 580], [720, 606], [600, 628], [480, 640]];
-const GIANT_SPEED = Number(process.env.GIANT_SPEED) || 2.0, GIANT_CITY_R = 235, G_DAMAGE_TOTAL = 100;
+const GIANT_SPEED = Number(process.env.GIANT_SPEED) || 9, GIANT_CITY_R = 235, G_DAMAGE_TOTAL = 100;
 const BASE_BUILDINGS = ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9', 'taverna', 'forja', 'cozinha', 'enfermaria', 'armazem'];
 let G = null;
 function giantBuildings() { const L = BASE_BUILDINGS.filter(id => WB[id]).map(id => ({ id, x: WB[id].x, y: WB[id].y })); for (const h of db.houses) L.push({ id: 'h_' + h.id, x: h.x, y: h.y }); return L; }
-const giantPub = () => ({ at: db.giant.at, state: db.giant.state, result: db.giant.result || '', damaged: db.giant.damaged || [], live: G ? { kind: G.kind || 'pedra', x: Math.round(G.x), y: Math.round(G.y), hp: Math.ceil(G.hp), max: G.max, city: G.city, phase: G.phase, face: G.face, engaged: G.engaged } : null });
-const FERA_ONCE = 'fera-2026-11-04', FERA_UNTIL = Date.UTC(2026, 10, 5, 2, 59, 0), BOOT_T = Date.now();
-const GSPD = () => GIANT_SPEED * (G && G.kind === 'fogo' ? 1.35 : 1);
-const GNAME = k => k === 'fogo' ? 'a Fera de Fogo' : 'o gigante';
+const giantPub = () => ({ at: db.giant.at, state: db.giant.state, result: db.giant.result || '', damaged: db.giant.damaged || [], burned: db.giant.burned || [], rebuild: db.giant.rebuild || {}, live: G ? { kind: G.kind || 'pedra', alt: G.alt || 0, x: Math.round(G.x), y: Math.round(G.y), hp: Math.ceil(G.hp), max: G.max, city: G.city, phase: G.phase, face: G.face, engaged: G.engaged } : null });
+const DRAGAO_ONCE = 'dragao-2026-11-04', FERA_ONCE = 'fera-2026-11-04', FERA_UNTIL = Date.UTC(2026, 10, 5, 2, 59, 0), BOOT_T = Date.now();
+const GSPD = () => GIANT_SPEED * (G && G.kind === 'fogo' ? 1.4 : G && G.kind === 'dragao' ? 3 : 1);
+const REBUILD_NEED = 3;   // contribuições (3 lenhas + 2 pedras cada) para reconstruir uma casa queimada
+const GNAME = k => k === 'fogo' ? 'a Fera de Fogo' : k === 'dragao' ? 'o Dragão' : 'o gigante';
 function startGiant(kind = 'pedra') {
-  const online = clients.size, fogo = kind === 'fogo', max = Number(process.env.GIANT_HP) || (fogo ? 1000 + 320 * Math.max(1, online) : 1500 + 450 * Math.max(1, online));
+  const online = clients.size, fogo = kind === 'fogo', n1 = Math.max(1, online), max = Number(process.env.GIANT_HP) || Math.min(60000, kind === 'dragao' ? 8000 + 1800 * n1 : fogo ? 4000 + 1100 * n1 : 4500 + 1200 * n1);
   // se já havia um ataque do gigante agendado, guarda o horário para voltar depois desta batalha
   const resume = db.giant.state === 'scheduled' && db.giant.at > Date.now() ? db.giant.at : 0;
-  G = { kind, resume, t0: Date.now(), x: GIANT_PATH[0][0], y: GIANT_PATH[0][1], seg: 0, hp: max, max, city: G_DAMAGE_TOTAL, phase: 'walk', face: -1, dmg: {}, lastStomp: 0, target: null, catCd: {}, engaged: false, lastGuard: 0 };
+  G = { kind, alt: kind === 'dragao' ? 1 : 0, resume, t0: Date.now(), x: GIANT_PATH[0][0], y: GIANT_PATH[0][1], seg: 0, hp: max, max, city: G_DAMAGE_TOTAL, phase: 'walk', face: -1, dmg: {}, lastStomp: 0, target: null, catCd: {}, engaged: false, lastGuard: 0 };
   db.giant.state = 'battle'; db.giant.damaged = []; save();
-  all({ t: 'announce', from: 'ALERTA DE ERYON', text: fogo ? 'UMA FERA DE FOGO APARECEU! Ela vem do leste queimando tudo. Defendam Eryon!' : 'O GIGANTE DE PEDRA ACORDOU! Ele está vindo do leste. Defendam Eryon!' });
-  const msg = { t: 'chat', id: 0, username: 'Eryon', text: fogo ? 'A Fera de Fogo saiu do vulcão e corre para a vila! Peguem armas, usem as catapultas!' : 'O Gigante de Pedra acordou e marcha para a vila! Peguem armas, usem as catapultas!', ts: Date.now(), badge: 'criador' }; chatLog.push(msg); all(msg);
+  all({ t: 'announce', from: 'ALERTA DE ERYON', text: kind === 'dragao' ? 'O DRAGÃO NEGRO APARECEU NO CÉU! Ele cospe fogo e queima as casas. Defendam Eryon!' : fogo ? 'UMA FERA DE FOGO APARECEU! Ela vem do leste queimando tudo. Defendam Eryon!' : 'O GIGANTE DE PEDRA ACORDOU! Ele está vindo do leste. Defendam Eryon!' });
+  const msg = { t: 'chat', id: 0, username: 'Eryon', text: kind === 'dragao' ? 'O Dragão Negro voa para a vila! Arcos, raios e catapultas acertam ele no ar; espadas só quando ele descer para cuspir fogo!' : fogo ? 'A Fera de Fogo saiu do vulcão e corre para a vila! Peguem armas, usem as catapultas!' : 'O Gigante de Pedra acordou e marcha para a vila! Peguem armas, usem as catapultas!', ts: Date.now(), badge: 'criador' }; chatLog.push(msg); all(msg);
   all({ t: 'giant', ...giantPub(), start: true });
 }
 function endGiant(won) {
@@ -522,9 +523,23 @@ function endGiant(won) {
   db.giant.state = 'done'; db.giant.result = won ? 'won' : 'lost'; db.giant.endedAt = Date.now(); if (won) db.giant.damaged = [];
   if (G.resume && G.resume > Date.now()) { db.giant.state = 'scheduled'; db.giant.at = G.resume; } save();
   const best = top.slice(0, 3).map(([u, d], i) => `${i + 1}º @${u} (${Math.round(d)})`).join(', ');
-  const fogo = G.kind === 'fogo', txt = won ? `ERYON VENCEU ${fogo ? 'A FERA DE FOGO' : 'O GIGANTE'}! A cidade foi salva!${best ? ' Heróis: ' + best : ''}` : fogo ? 'A Fera de Fogo queimou a cidade e voltou para o vulcão... Vamos reconstruir juntos!' : 'O gigante danificou a cidade e voltou para as montanhas... Vamos reconstruir juntos!';
+  const fogo = G.kind === 'fogo', drg = G.kind === 'dragao', txt = won ? `ERYON VENCEU ${drg ? 'O DRAGÃO NEGRO' : fogo ? 'A FERA DE FOGO' : 'O GIGANTE'}! A cidade foi salva!${best ? ' Heróis: ' + best : ''}` : drg ? 'O Dragão queimou a cidade e voou para longe... As casas queimadas precisam ser reconstruídas!' : fogo ? 'A Fera de Fogo queimou a cidade e voltou para o vulcão... As casas queimadas precisam ser reconstruídas!' : 'O gigante danificou a cidade e voltou para as montanhas... Vamos reconstruir juntos!';
   all({ t: 'announce', from: 'ALERTA DE ERYON', text: txt }); const msg = { t: 'chat', id: 0, username: 'Eryon', text: txt, ts: Date.now(), badge: 'criador' }; chatLog.push(msg); all(msg);
   G = null; all({ t: 'giant', ...giantPub(), end: won ? 'won' : 'lost' });
+}
+// DRAGÃO NEGRO: voa direto (passa por cima de tudo), mergulha em cada casa, cospe fogo e ela fica queimada até reconstruírem
+function dragonTick(now) {
+  const sp = GSPD() * .5, fly = (tx, ty, k = 1) => { const dx = tx - G.x, dy = ty - G.y, d = Math.hypot(dx, dy); if (d > 2) { const st = Math.min(d, sp * k); G.x += dx / d * st; G.y += dy / d * st; if (Math.abs(dx) > 1) G.face = dx < 0 ? -1 : 1; } return d; };
+  if (G.phase === 'walk') { G.alt = 1; if (fly(360, 640) < GIANT_CITY_R) G.phase = 'stomp'; return; }
+  const gone = new Set([...db.giant.damaged, ...db.giant.burned]), B2 = giantBuildings().filter(b => !gone.has(b.id));
+  if (!G.target || gone.has(G.target.id)) { G.target = B2.sort((a, b) => Math.hypot(a.x - G.x, a.y - G.y) - Math.hypot(b.x - G.x, b.y - G.y))[0] || null; G.breathAt = 0; if (G.target) G.side = G.x >= G.target.x ? 1 : -1; }
+  if (!G.target) { G.alt = 1; G.city = Math.max(0, G.city - 4); fly(360 + Math.cos(now / 4000) * 120, 640 + Math.sin(now / 4000) * 90); return; }
+  // chega por cima, desce, cospe fogo por ~2,5 s e a casa queima
+  const d = fly(G.target.x + (G.side || 1) * 34, G.target.y + 6, .9); if (d < 10) G.face = G.side > 0 ? -1 : 1;
+  if (d < 10) { G.alt = Math.max(.25, G.alt - .3); if (!G.breathAt) { G.breathAt = now; all({ t: 'dragonFire', x: Math.round(G.x), y: Math.round(G.y), tx: G.target.x, ty: G.target.y, face: G.face }); }
+    for (const c of clients) if (!c.room && !c.fly && Math.hypot(c.x - G.target.x, c.y - G.target.y) < 46 && now - (c.lastBurn || 0) > 2500) { c.lastBurn = now; out(c.ws, { t: 'stunned', ms: 1600 }); }
+    if (now - G.breathAt > 2600) { db.giant.burned.push(G.target.id); G.city = Math.max(0, G.city - 8); save(); all({ t: 'giantSmash', id: G.target.id, x: G.target.x, y: G.target.y, fire: 1 }); G.target = null; G.alt = .6; } }
+  else G.alt = Math.min(1, G.alt + .15);
 }
 function catAuto(now) { if (!G || G.phase === 'leave') return; for (const d of db.decor) if (d.kind === 'catapulta' && Math.hypot(d.x - G.x, d.y - G.y) < 280 && now - (G.catCd[d.id] || 0) > 7000) { G.catCd[d.id] = now; all({ t: 'catShot', id: d.id, x: d.x, y: d.y, tx: Math.round(G.x), ty: Math.round(G.y) }); setTimeout(() => hurtGiant(null, 18, 'cat'), 800); } }
 function guardsHit(now) { if (!G || G.phase === 'leave' || now - G.lastGuard < 2000) return; const nearVila = Math.hypot(G.x - 360, G.y - 640) < 330, nearCastelo = Math.hypot(G.x - 540, G.y - 1420) < 260; if (!nearVila && !nearCastelo) return; G.lastGuard = now; hurtGiant(null, 3, 'guard'); }
@@ -535,28 +550,29 @@ setInterval(() => {
   const now = Date.now();
   if (db.giant && db.giant.state === 'scheduled' && db.giant.at && now >= db.giant.at) startGiant();
   // lançamento único da Fera de Fogo pedido para hoje: entra 90 s depois do servidor ligar (só uma vez, até 23:59 de Brasília)
-  if (!G && db.fireOnce !== FERA_ONCE && now < FERA_UNTIL && now - BOOT_T > (Number(process.env.FERA_DELAY) || 90000) && db.giant.state !== 'battle') { db.fireOnce = FERA_ONCE; save(); startGiant('fogo'); }
+  if (!G && db.fireOnce !== DRAGAO_ONCE && now < FERA_UNTIL && now - BOOT_T > (Number(process.env.FERA_DELAY) || 90000) && db.giant.state !== 'battle') { db.fireOnce = DRAGAO_ONCE; save(); startGiant('dragao'); }
   if (db.giant && db.giant.state === 'done' && db.giant.result === 'lost' && db.giant.damaged.length && now - (db.giant.endedAt || 0) > 12 * 3600e3) { db.giant.damaged = []; save(); all({ t: 'giant', ...giantPub() }); }
   if (!G) return;
   // ninguém lutou: depois de destruir, ele vai embora andando para o leste
-  if (G.phase === 'leave') { const dx = 1400 - G.x, dy = 300 - G.y, d = Math.hypot(dx, dy); G.x += dx / d * GSPD() * 1.2; G.y += dy / d * GSPD() * 1.2; G.face = 1; if (G.x > 980 || now - G.leaveT > 40000) return endGiant(false); all({ t: 'giant', ...giantPub() }); return; }
+  if (G.phase === 'leave') { G.alt = 1; const dx = 1400 - G.x, dy = 300 - G.y, d = Math.hypot(dx, dy); G.x += dx / d * GSPD() * 1.2; G.y += dy / d * GSPD() * 1.2; G.face = 1; if (G.x > 980 || now - G.leaveT > 40000) return endGiant(false); all({ t: 'giant', ...giantPub() }); return; }
   // cidade destruída: se houve batalha ele parte para cima dos jogadores (luta até morrer); senão vai embora
-  if (G.city <= 0 && G.phase !== 'fight') { if (G.engaged) { G.phase = 'fight'; all({ t: 'announce', from: 'ALERTA DE ERYON', text: G.kind === 'fogo' ? 'A Fera de Fogo está furiosa e vai lutar até o fim! Não desistam!' : 'O gigante está furioso e vai lutar até o fim! Não desistam!' }); } else { G.phase = 'leave'; G.leaveT = now; all({ t: 'announce', from: 'ALERTA DE ERYON', text: G.kind === 'fogo' ? 'Ninguém enfrentou a Fera de Fogo... ela queimou a cidade e está indo embora.' : 'Ninguém enfrentou o gigante... ele destruiu a cidade e está indo embora.' }); return; } }
+  if (G.city <= 0 && G.phase !== 'fight') { if (G.engaged) { G.phase = 'fight'; all({ t: 'announce', from: 'ALERTA DE ERYON', text: G.kind === 'dragao' ? 'O Dragão está furioso e vai lutar até o fim! Não desistam!' : G.kind === 'fogo' ? 'A Fera de Fogo está furiosa e vai lutar até o fim! Não desistam!' : 'O gigante está furioso e vai lutar até o fim! Não desistam!' }); } else { G.phase = 'leave'; G.leaveT = now; all({ t: 'announce', from: 'ALERTA DE ERYON', text: G.kind === 'dragao' ? 'Ninguém enfrentou o Dragão... ele queimou a cidade e está voando para longe.' : G.kind === 'fogo' ? 'Ninguém enfrentou a Fera de Fogo... ela queimou a cidade e está indo embora.' : 'Ninguém enfrentou o gigante... ele destruiu a cidade e está indo embora.' }); return; } }
   if (G.phase === 'fight') { let best = null, bd = 420; for (const c of clients) { if (c.room || c.fly) continue; const d = Math.hypot(c.x - G.x, c.y - G.y); if (d < bd) { bd = d; best = c; } }
     if (best) { const dx = best.x - G.x, dy = best.y - G.y; if (bd > 30) { G.x += dx / bd * GSPD() * .7; G.y += dy / bd * GSPD() * .7; G.face = dx < 0 ? -1 : 1; }
-      if (now - G.lastStomp > 3200) { G.lastStomp = now; all({ t: 'giantSmash', id: '', x: Math.round(G.x), y: Math.round(G.y) }); for (const c of clients) if (!c.room && !c.fly && Math.hypot(c.x - G.x, c.y - G.y) < 48) out(c.ws, { t: 'stunned', ms: 2200 }); } }
+      if (G.kind === 'dragao') G.alt = bd < 60 ? .3 : .8; if (now - G.lastStomp > 2600) { G.lastStomp = now; if (G.kind === 'dragao') all({ t: 'dragonFire', x: Math.round(G.x), y: Math.round(G.y), tx: Math.round(best.x), ty: Math.round(best.y), face: G.face }); all({ t: 'giantSmash', id: '', x: Math.round(G.x), y: Math.round(G.y), fire: G.kind !== 'pedra' ? 1 : 0 }); for (const c of clients) if (!c.room && !c.fly && Math.hypot(c.x - G.x, c.y - G.y) < 48) out(c.ws, { t: 'stunned', ms: 2200 }); } }
     guardsHit(now); catAuto(now); if (G) all({ t: 'giant', ...giantPub() }); return; }
+  if (G.kind === 'dragao') { dragonTick(now); guardsHit(now); catAuto(now); if (G && !G.engaged && now - G.t0 > 25 * 60000) { G.phase = 'leave'; G.leaveT = now; } if (G) all({ t: 'giant', ...giantPub() }); return; }
   // anda pelo caminho até a cidade; lá dentro, pisa nas construções
   const dc = Math.hypot(G.x - 360, (G.y - 640) / .95);
   if (G.phase === 'walk') { const tgt = GIANT_PATH[Math.min(G.seg + 1, GIANT_PATH.length - 1)], dx = tgt[0] - G.x, dy = tgt[1] - G.y, d = Math.hypot(dx, dy);
     if (d < 3) { if (G.seg < GIANT_PATH.length - 2) G.seg++; } else { const st = Math.min(d, GSPD() * .5); G.x += dx / d * st; G.y += dy / d * st; G.face = dx < 0 ? -1 : 1; }
     if (dc < GIANT_CITY_R) G.phase = 'stomp'; }
-  else { const dmg = new Set(db.giant.damaged), B2 = giantBuildings().filter(b => !dmg.has(b.id));
+  else { const dmg = new Set([...db.giant.damaged, ...db.giant.burned]), B2 = giantBuildings().filter(b => !dmg.has(b.id));
     if (!G.target || dmg.has(G.target.id)) G.target = B2.sort((a, b) => Math.hypot(a.x - G.x, a.y - G.y) - Math.hypot(b.x - G.x, b.y - G.y))[0] || null;
     if (G.target) { const dx = G.target.x - G.x, dy = G.target.y + 4 - G.y, d = Math.hypot(dx, dy);
       if (d > 22) { const st = Math.min(d - 20, GSPD() * .5); G.x += dx / d * st; G.y += dy / d * st; G.face = dx < 0 ? -1 : 1; }
-      else if (now - G.lastStomp > 3000) { G.lastStomp = now; db.giant.damaged.push(G.target.id); G.city = Math.max(0, G.city - 6); save(); all({ t: 'giantSmash', id: G.target.id, x: G.target.x, y: G.target.y }); for (const c of clients) if (!c.room && !c.fly && Math.hypot(c.x - G.x, c.y - G.y) < 40) out(c.ws, { t: 'stunned', ms: 1800 }); G.target = null; } }
-    else if (now - G.lastStomp > 3000) { G.lastStomp = now; G.city = Math.max(0, G.city - 6); all({ t: 'giantSmash', id: '', x: Math.round(G.x), y: Math.round(G.y) }); } }
+      else if (now - G.lastStomp > 2400) { G.lastStomp = now; (G.kind === 'fogo' ? db.giant.burned : db.giant.damaged).push(G.target.id); G.city = Math.max(0, G.city - 6); save(); all({ t: 'giantSmash', id: G.target.id, x: G.target.x, y: G.target.y }); for (const c of clients) if (!c.room && !c.fly && Math.hypot(c.x - G.x, c.y - G.y) < 40) out(c.ws, { t: 'stunned', ms: 1800 }); G.target = null; } }
+    else if (now - G.lastStomp > 2400) { G.lastStomp = now; G.city = Math.max(0, G.city - 8); all({ t: 'giantSmash', id: '', x: Math.round(G.x), y: Math.round(G.y) }); } }
   guardsHit(now);
   // catapultas atiram sozinhas quando o gigante está no alcance
   catAuto(now);
@@ -778,10 +794,12 @@ wss.on('connection', (ws, req) => {
       const X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!Number.isFinite(X) || !Number.isFinite(Y) || Math.hypot(X - c.x, Y - c.y) > (G && Math.hypot(X - G.x, Y - G.y) < 20 ? 125 : 70)) return;
       for (const i of list) cutTrees.set(i, now + 5 * 60000); all({ t: 'zap', id: c.id, x: X, y: Y, pts: (Array.isArray(m.pts) ? m.pts : []).slice(0, 8).map(q => [Math.round(Number(q[0]) || X), Math.round(Number(q[1]) || Y)]) }, c);
       if (list.length) { all({ t: 'trees', cut: cutList() }); addRes(c, 'lenha', list.length * 2); track(c, 'cut', list.length); }
+      if (G && Math.hypot(X - G.x, Y - G.y) < 40) hurtGiant(c, 25, 'zap');
     } else if (m.t === 'hitGiant') {      // atacar o gigante com a arma na mão
       const now = Date.now(), r = db.users[c.user]; if (!G || !r || c.room || now - (c.lastHitG || 0) < 1400) return; c.lastHitG = now;
       const eq = (r.look && r.look.equip) || '', cls = r.look && r.look.cls, ranged = eq === 'arco' || cls === 'arqueira', reach = ranged ? 150 : 62;
-      if (Math.hypot(c.x - G.x, c.y - G.y) > reach) return note(c, G.kind === 'fogo' ? 'Chegue mais perto da fera!' : 'Chegue mais perto do gigante!');
+      if (G.kind === 'dragao' && G.alt > .5 && !ranged) return note(c, 'O Dragão está voando alto! Use arco, catapulta ou o raio do Mago — ou espere ele descer para cuspir fogo.');
+      if (Math.hypot(c.x - G.x, c.y - G.y) > reach) return note(c, G.kind === 'fogo' ? 'Chegue mais perto da fera!' : G.kind === 'dragao' ? 'Chegue mais perto do Dragão!' : 'Chegue mais perto do gigante!');
       const d = cls === 'guarda' ? 5 : eq === 'espada' || eq === 'lanca' ? 4 : ranged ? 3 : invOf(r).machado || cls === 'lenhador' || cls === 'guerreiro' ? 3 : 1;
       hurtGiant(c, d, ranged ? 'arrow' : 'melee');
     } else if (m.t === 'fireCat') {       // disparar uma catapulta (1 pedra)
@@ -789,6 +807,14 @@ wss.on('connection', (ws, req) => {
       if (now - (G.catCd[d.id] || 0) < 4000) return note(c, 'A catapulta está recarregando...'); if (Math.hypot(d.x - G.x, d.y - G.y) > 300) return note(c, 'O gigante está longe demais para esta catapulta.');
       const inv = invOf(r); if (!(inv.pedra > 0)) return note(c, 'Precisa de 1 pedra para disparar.'); inv.pedra--; sendInv(c); G.catCd[d.id] = now;
       all({ t: 'catShot', id: d.id, x: d.x, y: d.y, tx: Math.round(G.x), ty: Math.round(G.y), by: c.id }); setTimeout(() => hurtGiant(c, 45, 'cat'), 800);
+    } else if (m.t === 'rebuild') {       // reconstruir casa queimada: várias pessoas ajudam (3 lenhas + 2 pedras cada vez)
+      const r = db.users[c.user], id = String(m.id || ''); if (!r || G || !db.giant.burned.includes(id)) return; const b = giantBuildings().find(q => q.id === id); if (!b || c.room || Math.hypot(c.x - b.x, c.y - b.y) > 50) return;
+      const now = Date.now(); if (now - (c.lastRebuild || 0) < 1500) return; c.lastRebuild = now;
+      const inv = invOf(r); if ((inv.lenha || 0) < 3 || (inv.pedra || 0) < 2) return note(c, 'Para reconstruir precisa de 3 lenhas e 2 pedras.'); inv.lenha -= 3; inv.pedra -= 2; sendInv(c); track(c, 'place'); addXp(c, 15);
+      const n = (db.giant.rebuild[id] || 0) + 1;
+      if (n >= REBUILD_NEED) { delete db.giant.rebuild[id]; db.giant.burned = db.giant.burned.filter(q => q !== id); all({ t: 'announce', from: 'ERYON', text: `@${c.user} terminou de reconstruir uma casa queimada! Faltam ${db.giant.burned.length}.` }); }
+      else { db.giant.rebuild[id] = n; note(c, `Reconstrução: ${n}/${REBUILD_NEED}. Mais ${REBUILD_NEED - n} ajuda(s) para terminar.`); }
+      save(); all({ t: 'giant', ...giantPub() }); all({ t: 'act', id: c.id, kind: 'build' }, c);
     } else if (m.t === 'repair') {        // consertar construção danificada (2 lenhas)
       const r = db.users[c.user], id = String(m.id || ''); if (!r || G || !db.giant.damaged.includes(id)) return; const b = giantBuildings().find(q => q.id === id); if (!b || c.room || Math.hypot(c.x - b.x, c.y - b.y) > 50) return;
       const inv = invOf(r); if ((inv.lenha || 0) < 2) return note(c, 'Precisa de 2 lenhas para consertar.'); inv.lenha -= 2; sendInv(c); db.giant.damaged = db.giant.damaged.filter(q => q !== id); save(); track(c, 'place');

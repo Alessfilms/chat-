@@ -7,6 +7,7 @@ const DRAGON_PALS = [
   { body: ['#103a34', '#1d5a4a', '#2f8a6a', '#5ac08e'], memb: ['#0c2a26', '#164a3e', '#227060', '#3a9a7a'], horn: '#efe2bf', eye: '#ff7a3a' },   // esmeralda
   { body: ['#2a1640', '#46286a', '#6e4a9a', '#9a7ad0'], memb: ['#1e0f30', '#33205a', '#4e3480', '#7058a8'], horn: '#e8e0ff', eye: '#9ff3ff' },   // roxo
   { body: ['#2a2e36', '#454b58', '#6a7282', '#9aa2b2'], memb: ['#1c1f26', '#30343e', '#4a505e', '#646c7c'], horn: '#fff3d6', eye: '#ffd84a' },   // cinza
+  { body: ['#0e0c10', '#1e1a22', '#34303c', '#524c5c'], memb: ['#3a0a08', '#6a1410', '#a8261a', '#d8442a'], horn: '#e8d8b0', eye: '#ff6a1a' },   // NEGRO (chefe)
 ];
 const DSPR = {}, DIRS = 16;
 // desenha o dragão (cabeça para cima no desenho) girado no ângulo da direção, ponto a ponto: fica nítido em qualquer direção
@@ -43,9 +44,9 @@ const FLIGHTS = []; let nextFlight = performance.now() + 9000 + Math.random() * 
 function spawnFlight(li, ti, cw, ch) {
   const di = Math.floor(Math.random() * DIRS), a = di / DIRS * 6.283, dx = Math.sin(a), dy = -Math.cos(a);      // direção do voo
   const cx = li + cw / 2 + (Math.random() - .5) * cw * .5, cy = ti + ch / 2 + (Math.random() - .5) * ch * .4, back = Math.hypot(cw, ch) / 2 + 160;
-  const n = Math.random() < .25 ? 3 : Math.random() < .3 ? 2 : 1, pal = Math.floor(Math.random() * DRAGON_PALS.length), speed = 75 + Math.random() * 35, alt = 80 + Math.random() * 60;
+  const n = Math.random() < .25 ? 3 : Math.random() < .3 ? 2 : 1, pal = Math.floor(Math.random() * 4), speed = 75 + Math.random() * 35, alt = 80 + Math.random() * 60;
   for (let i = 0; i < n; i++) { const side = i === 0 ? 0 : (i % 2 ? -1 : 1), off = i === 0 ? 0 : 34;
-    FLIGHTS.push({ x: cx - dx * (back + off) - dy * side * 30, y: cy - dy * (back + off) + dx * side * 30, dx, dy, di, speed, alt: alt + i * 8, pal: n > 1 && i ? (pal + i) % DRAGON_PALS.length : pal, ph: Math.random() * 4, born: performance.now(), life: (back * 2 + 200) / speed * 1000 }); }
+    FLIGHTS.push({ x: cx - dx * (back + off) - dy * side * 30, y: cy - dy * (back + off) + dx * side * 30, dx, dy, di, speed, alt: alt + i * 8, pal: n > 1 && i ? (pal + i) % 4 : pal, ph: Math.random() * 4, born: performance.now(), life: (back * 2 + 200) / speed * 1000 }); }
   if (SND.ctx && performance.now() - dragonSnd > 25000) { dragonSnd = performance.now(); setTimeout(() => dragonRoar(.28), 900); }
 }
 function updFlights(li, ti, cw, ch) {
