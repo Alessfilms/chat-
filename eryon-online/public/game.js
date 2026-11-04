@@ -41,6 +41,7 @@ function charFor(username, look) {
 // ---------------------------------------------------------------- vila (estado do fim do Ep. 2)
 let B = {}, villageLayer = null, OBJ = [], blockers = [];
 const TREE_POS = [], CUT = new Set();
+let BUILT = [], BRIDGES = [], lunch = null;
 let DOORS = [], wood = 0;
 const VR = 214, PAL_R = 212, GATE = { x: 482, y: 475 };
 const GATE_A = Math.atan2((GATE.y - C.y) / .95, GATE.x - C.x), SOUTH_A = Math.PI / 2;
@@ -57,6 +58,7 @@ function buildWorld(world) {
   for (const [X, Y] of pts) px(x, P.dirt2, Math.round(X) - 3, Math.round(Y) - 2, 7, 5);
   for (const [X, Y] of pts) if (h2(Math.round(X), Math.round(Y)) > .8) px(x, P.sand, Math.round(X) - 1, Math.round(Y), 2, 1);
   disc(x, C.x, C.y, 24, P.dirt2); disc(x, C.x, C.y, 18, P.dirt1);
+  drawBridgeOn(x, BRIDGE.x);
   for (const f of [B.plantacao_1, B.plantacao_2]) { px(x, P.dirt1, f.x - f.w / 2, f.y - f.h / 2, f.w, f.h);
     for (let r = 0; r < Math.floor(f.h / 4); r++) for (let c = 0; c < f.w - 2; c += 3) px(x, (r + c) % 7 === 0 ? P.fire3 : P.f8, f.x - f.w / 2 + 1 + c, f.y - f.h / 2 + r * 4, 1, 3);
     for (let c = 0; c <= f.w; c += 4) px(x, P.woodL, f.x - f.w / 2 + c, f.y - f.h / 2 - 2, 1, 3); }
@@ -83,15 +85,18 @@ function buildWorld(world) {
     const X = Math.round(C.x + Math.cos(a) * PAL_R), Y = Math.round(C.y + Math.sin(a) * PAL_R * .95); OBJ.push({ y: Y, x: X, img: pc, dx: X - 1, dy: Y - 8 }); }
   OBJ.sort((a, b) => a.y - b.y);
 }
+function drawBridgeOn(x, X) { X = Math.round(X); const Y = Math.round(riverY(X)); px(x, P.ink, X - 8, Y - 17, 17, 34); for (let i = 0; i < 16; i++) px(x, i % 2 ? P.dirt3 : P.wood, X - 7, Y - 16 + i * 2, 15, 2); px(x, P.woodD, X - 8, Y - 17, 2, 34); px(x, P.woodD, X + 7, Y - 17, 2, 34); }
+function addBridges(list) { for (const b of list) if (!BRIDGES.some(o => o.id === b.id)) { BRIDGES.push(b); drawBridgeOn(villageLayer.getContext('2d'), b.x); } }
 // colisão
 const treeGrid = new Map();
 function indexBlockers() { for (const b of blockers) { const key = b.k === 'c' ? Math.floor(b.x / 32) + ',' + Math.floor(b.y / 32) : 'r'; if (!treeGrid.has(key)) treeGrid.set(key, []); treeGrid.get(key).push(b); } }
 function blocked(x, y) {
   if (x < 4 || y < 10 || x > WW - 4 || y > WH - 4) return true;
-  if (Math.abs(y - riverY(x)) < 9 && Math.abs(x - BRIDGE.x) > 6) return true;
+  if (Math.abs(y - riverY(x)) < 10 && Math.abs(x - BRIDGE.x) > 7 && !BRIDGES.some(b => Math.abs(x - b.x) <= 7)) return true;
   const dx = x - C.x, dy = (y - C.y) / .95, r = Math.hypot(dx, dy);
   if (r > PAL_R - 3 && r < PAL_R + 3) { const a = Math.atan2(dy, dx); if (Math.abs(Math.atan2(Math.sin(a - GATE_A), Math.cos(a - GATE_A))) > .07 && Math.abs(Math.atan2(Math.sin(a - SOUTH_A), Math.cos(a - SOUTH_A))) > .05) return true; }
   for (const b of treeGrid.get('r') || []) if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return true;
+  for (const h of BUILT) if (x > h.x - 13 && x < h.x + 13 && y > h.y - 10 && y < h.y) return true;
   const gx0 = Math.floor(x / 32), gy0 = Math.floor(y / 32);
   for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const b of treeGrid.get((gx0 + a) + ',' + (gy0 + c)) || []) if (!(b.tree !== undefined && CUT.has(b.tree)) && Math.hypot(x - b.x, (y - b.y) * 1.4) < b.r) return true;
   return false;
@@ -193,12 +198,16 @@ function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
-    if (m.t === 'welcome') { myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); wood = m.wood || 0; showWood(); addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); wood = m.wood || 0; showWood(); setBuilt(m.houses || []); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
-    else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; } } }
+    else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; } } }
     else if (m.t === 'act') { const p = players.get(m.id); if (p && !p.mine) { const t0 = performance.now() / 1000; p.act = { kind: m.kind, t0, end: t0 + (ACT_DUR[m.kind] || 1.5) }; const me2 = players.get(myId); if (me2 && (me2.room || '') === (p.room || '') && Math.hypot(me2.x - p.x, me2.y - p.y) < 120) actSound(m.kind); } }
-    else if (m.t === 'trees') { const had = CUT.size; CUT.clear(); m.cut.forEach(i => CUT.add(i)); }
+    else if (m.t === 'trees') { CUT.clear(); m.cut.forEach(i => CUT.add(i)); }
+    else if (m.t === 'houses') setBuilt(m.list);
+    else if (m.t === 'bridges') addBridges(m.list);
+    else if (m.t === 'lunch') onLunch(m);
+    else if (m.t === 'note') sys(m.text);
     else if (m.t === 'wood') { wood = m.n; showWood(); }
     else if (m.t === 'look') { const p = players.get(m.id); if (p) { p.look = m.look; p.ch = charFor(p.username, m.look); if (p.mine) myLook = m.look; } }
     else if (m.t === 'chat') { const p = players.get(m.id); if (p) { p.say = m.text; p.sayT = performance.now(); } logChat(m); } };
@@ -213,7 +222,7 @@ $('sendBtn').onclick = sendChat; $('msg').addEventListener('keydown', e => { if 
 
 // ---------------------------------------------------------------- controles
 addEventListener('keydown', e => { sndStart(); if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; if (e.key === 'Enter') { $('msg').focus(); e.preventDefault(); return; }
-  const k = e.key.toLowerCase(); if (k === 'e' || k === ' ') { e.preventDefault(); doContext(); return; } if (k === 'q') { doAct('magic'); return; }
+  const k = e.key.toLowerCase(); if (k === 'e' || k === ' ') { e.preventDefault(); doContext(); return; } if (k === 'q') { doSkill(); return; }
   keys.add(k); target = null; if (cam.mode !== 'follow') follow(); });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 const cam = { L: 0, T: 0, mode: 'follow', x: C.x, y: C.y, watch: null };
@@ -243,7 +252,7 @@ let last = performance.now(), sendT = 0, lastSent = '', stepT = 0;
 function start() {
   if (me && !/^visitante\d+$/.test(me)) $('nameBtn').textContent = '@' + me;
   $('login').style.display = 'none'; $('hud').style.display = 'flex'; $('camctl').style.display = 'flex'; $('chatlog').style.display = 'flex'; $('chatbar').style.display = 'flex';
-  DOORS = doorsOutside(); $('actbar').style.display = 'flex'; connect(); requestAnimationFrame(loop);
+  DOORS = doorsOutside(); $('actbar').style.display = 'flex'; skillLabel(); connect(); requestAnimationFrame(loop);
 }
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
@@ -254,18 +263,20 @@ function loop(now) {
     if (keys.has('arrowup') || keys.has('w')) iy--; if (keys.has('arrowdown') || keys.has('s')) iy++;
     if (!ix && !iy && target) { const dx = target.x - p.x, dy = target.y - p.y, d = Math.hypot(dx, dy); if (d < 2) target = null; else { ix = dx / d; iy = dy / d; } }
     if (p.act && t < p.act.end) { ix = 0; iy = 0; target = null; }
-    const blk = (x2, y2) => p.room ? roomBlocked(p.room, x2, y2) : blocked(x2, y2);
+    const blk0 = (x2, y2) => p.room ? roomBlocked(p.room, x2, y2) : blocked(x2, y2);
+    const stuck = blk0(p.x, p.y), blk = (x2, y2) => !stuck && blk0(x2, y2);
     const len = Math.hypot(ix, iy) || 1, sp = 44 * dt, mx = ix / len * sp, my = iy / len * sp;
     let moved = false;
     if (mx && !blk(p.x + mx, p.y)) { p.x += mx; moved = true; }
     if (my && !blk(p.x, p.y + my)) { p.y += my; moved = true; }
+    if (p.room && moved && iy > 0) { const r = roomOf(p.room); if (p.y > r.door.y + 1 && Math.abs(p.x - r.door.x) < 10) exitRoom(p); }
     if (moved) { stepT += dt; if (stepT > .34) { stepT = 0; sfx.step(!!p.room); } } else stepT = .3;
     updateContext(p, t);
     setFireLevel(p.room ? (p.room === 'taverna' ? .7 : 0) : 1 - Math.hypot(p.x - C.x, p.y - C.y) / 110);
     if ((ix || iy) && !moved) target = null;
     p.moving = moved; if (ix) p.face = ix < 0 ? -1 : 1;
-    sendT += dt; const sig = `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.face},${p.moving},${p.room}`;
-    if (sendT > .1 && sig !== lastSent && ws && ws.readyState === 1) { ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: p.moving, room: p.room || '' })); lastSent = sig; sendT = 0; }
+    sendT += dt; const sig = `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.face},${p.moving},${p.room},${p.carry}`;
+    if (sendT > .1 && sig !== lastSent && ws && ws.readyState === 1) { ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: p.moving, room: p.room || '', carry: !!p.carry })); lastSent = sig; sendT = 0; }
   }
   for (const q of players.values()) if (!q.mine) { q.x += (q.tx - q.x) * Math.min(1, dt * 12); q.y += (q.ty - q.y) * Math.min(1, dt * 12); }
   draw(t, p);
@@ -291,10 +302,16 @@ function draw(t, p) {
     list.push({ y: C.y + 1, fire: true });
   }
   for (const q of players.values()) if ((q.room || '') === myRoom) list.push({ y: q.y, pl: q });
+  if (!room) for (const h of BUILT) if (h.x > li - 40 && h.x < li + cw + 40 && h.y > ti - 10 && h.y < ti + ch + 40) list.push({ y: h.y, built: h });
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
     if (o.fire) { drawFire(x, C.x, C.y + 1, t); continue; }
     if (o.pl) { const q = o.pl; drawCharAt(x, q.ch, q.x, q.y, poseFor(q, t), q.face || 1); continue; }
+    if (o.built) { const h = o.built, spr = HOUSE_SPR[h.roof || 0], k = clamp((Date.now() - h.t) / 3000), X = h.x - 15, Y = h.y - 26;
+      if (k < .35) { const hh = Math.max(1, Math.round(FRAME_SPR.height * k / .35)); x.drawImage(FRAME_SPR, 0, FRAME_SPR.height - hh, FRAME_SPR.width, hh, X, Y + FRAME_SPR.height - hh, FRAME_SPR.width, hh); }
+      else { if (k < 1) x.drawImage(FRAME_SPR, X, Y); const hh = Math.max(1, Math.round(spr.height * Math.min(1, (k - .35) / .65))); x.drawImage(spr, 0, spr.height - hh, spr.width, hh, X, Y + spr.height - hh, spr.width, hh); }
+      if (k < 1) burst(x, t, t - (Date.now() - h.t) / 1000 + 2.9, h.x, h.y - 2, 24, [P.st3, P.st4, P.wallD], 22, .9, 10, h.id * 7);
+      continue; }
     if (o.tree !== undefined && CUT.has(o.tree)) { px(x, P.ink, o.x - 3, o.y - 4, 7, 5); px(x, P.wood, o.x - 2, o.y - 3, 5, 3); px(x, P.woodL, o.x - 2, o.y - 3, 5, 1); continue; }
     x.drawImage(o.img, o.dx, o.dy);
   }
@@ -308,6 +325,7 @@ function draw(t, p) {
   if (room) { if (room.fire) lightHole(l, room.fire.x, room.fire.y, 60); lightHole(l, room.w / 2, room.h / 2, Math.max(room.w, room.h) * .45); }
   else { lightHole(l, C.x, C.y, 46 + Math.round(Math.sin(t * 9))); if (B.forja) lightHole(l, B.forja.x, B.forja.y - 8, 24); if (B.taverna) lightHole(l, B.taverna.x, B.taverna.y - 10, 28);
     for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) lightHole(l, B[id].x, B[id].y - 8, 14); }
+  if (!room) for (const h of BUILT) lightHole(l, h.x, h.y - 8, 14);
   if (p) lightHole(l, p.x, p.y - 6, 22);
   l.globalCompositeOperation = 'source-over';
   x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(light, 0, 0, cw, ch, 0, 0, cw, ch);
@@ -324,7 +342,7 @@ function draw(t, p) {
     if (sx < -200 || sx > cv.width + 200 || sy < -100 || sy > cv.height + 100) continue;
     ctx.font = `700 ${fs}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06';
     const nm = '@' + q.username; ctx.strokeText(nm, sx, sy); ctx.fillStyle = q.mine ? '#ffd84a' : '#ffffff'; ctx.fillText(nm, sx, sy);
-    const role = NAMED[q.username]?.role; if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
+    const role = NAMED[q.username]?.role || classOf(q)?.name; if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
     if (q.say && now - q.sayT < 6000) bubble(q.say, sx, sy - fs * 1.2, fs);
   }
 }
@@ -334,19 +352,28 @@ function updateContext(p, t) {
   let c = null;
   if (p.room) {
     const r = roomOf(p.room);
-    if (Math.hypot(p.x - r.door.x, p.y - r.door.y) < 12) c = { kind: 'exit', label: 'Sair' };
-    else for (const s of r.spots) if (Math.abs(p.x - s.x) < s.rx && Math.abs(p.y - s.y) < s.ry) c = { kind: s.kind, label: s.label };
+    for (const s of r.spots) if (Math.abs(p.x - s.x) < s.rx && Math.abs(p.y - s.y) < s.ry) c = { kind: s.kind, label: s.label };
+    if (!c) c = { kind: 'exit', label: 'Sair' };
   } else {
     for (const d of DOORS) if (Math.hypot(p.x - d.x, p.y - d.y) < 10) c = { kind: 'enter', label: d.label, room: d.room };
     if (!c && B.serraria && Math.hypot(p.x - (B.serraria.x + 18), p.y - (B.serraria.y + 8)) < 18) c = { kind: 'split', label: 'Rachar lenha' };
+    const kit = B.cozinha, nearKit = kit && Math.hypot(p.x - kit.x, p.y - (kit.y + 8)) < 24, lunchOn = lunch && Date.now() < lunch.until;
+    if (!c && nearKit) c = lunchOn ? { kind: 'eat', label: 'Comer o almoço' } : { kind: 'lunch', label: 'Cozinhar e chamar para o almoço' };
+    if (!c) { const dr = Math.abs(p.y - riverY(p.x)); if (dr > 9 && dr < 20 && Math.abs(p.x - BRIDGE.x) > 30 && !BRIDGES.some(b => Math.abs(p.x - b.x) < 30)) c = wood >= 15 ? { kind: 'bridge', label: 'Construir ponte (15 lenha)' } : { kind: 'none', label: 'Ponte: junte 15 lenhas' }; }
+    if (!c && wood >= 10 && canBuildAt(p)) c = { kind: 'house', label: 'Construir casa (10 lenha)' };
     if (!c) { let best = 13, bt = null; for (const tr of TREE_POS) { if (CUT.has(tr.i)) continue; const d = Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2); if (d < best) { best = d; bt = tr; } } if (bt) c = { kind: 'chop', label: 'Derrubar árvore', tree: bt.i, tx: bt.x }; }
   }
   const key = c ? c.kind + c.label + (c.tree ?? '') : '';
   if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + '  [E]'; }
 }
 function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; const c = ctxAct;
-  if (c.kind === 'enter') { sfx.door(); const r = roomOf(c.room); p.room = c.room; p.x = r.spawn.x; p.y = r.spawn.y; target = null; follow(); sendNow(p); return; }
-  if (c.kind === 'exit') { sfx.door(); const r = roomOf(p.room); p.room = ''; p.x = r.outside.x; p.y = r.outside.y; target = null; follow(); sendNow(p); return; }
+  if (c.kind === 'enter') { sfx.door(true); const r = roomOf(c.room); p.room = c.room; p.x = r.spawn.x; p.y = r.spawn.y; target = null; follow(); sendNow(p); return; }
+  if (c.kind === 'exit') return exitRoom(p);
+  if (c.kind === 'none') return;
+  if (c.kind === 'bridge') { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'bridge', x: Math.round(p.x) })); doAct('build'); return; }
+  if (c.kind === 'lunch') { doAct('cook'); if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'lunch' })); return; }
+  if (c.kind === 'eat') { doAct('drink'); return; }
+  if (c.kind === 'house') { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'build', x: Math.round(p.x) + 1, y: Math.round(p.y) - 6 })); doAct('build'); return; }
   if (c.kind === 'chop' && c.tx !== undefined) p.face = c.tx < p.x ? -1 : 1;
   doAct(c.kind, c.tree);
 }
@@ -354,13 +381,31 @@ function doAct(kind, tree) {
   const p = players.get(myId); if (!p) return; const t = performance.now() / 1000; if (p.act && t < p.act.end) return;
   p.act = { kind, t0: t, end: t + ACT_DUR[kind] }; actSound(kind);
   if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'act', kind }));
-  if (kind === 'chop') setTimeout(() => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'cut', tree })); sfx.fall(); }, ACT_DUR.chop * 1000);
+  if (kind === 'chop' && tree !== undefined) setTimeout(() => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'cut', tree })); sfx.fall(); }, ACT_DUR.chop * 1000);
 }
-function actSound(kind) { if (kind === 'chop' || kind === 'split') { for (let k = 0; k < 4; k++) setTimeout(sfx.chop, 320 + k * 560); } else if (kind === 'drink') sfx.drink(); else if (kind === 'magic') sfx.magic(); }
+function actSound(kind) {
+  const rep = (fn, n, first, gap) => { for (let k = 0; k < n; k++) setTimeout(fn, first + k * gap); };
+  if (kind === 'chop') rep(sfx.chop, 4, 320, 560); else if (kind === 'split') rep(sfx.split, 3, 320, 560); else if (kind === 'drink') sfx.drink(); else if (kind === 'magic') sfx.magic();
+  else if (kind === 'sword') sfx.sword(); else if (kind === 'arrow') sfx.arrow(); else if (kind === 'hammer') rep(sfx.anvil, 4, 300, 500); else if (kind === 'build') rep(sfx.build, 5, 220, 400);
+  else if (kind === 'cook') sfx.pot(); else if (kind === 'heal') sfx.heal(); else if (kind === 'lute') sfx.lute(); else if (kind === 'serve') sfx.coins();
+}
+function exitRoom(p) { sfx.door(false); const r = roomOf(p.room); p.room = ''; p.x = r.outside.x; p.y = r.outside.y; target = null; follow(); sendNow(p); }
+function doSkill() { const p = players.get(myId); const c = classOf(p); doAct(c ? c.skill : 'magic'); }
+function skillLabel() { const p = players.get(myId), c = classOf(p); $('magicBtn').textContent = (c ? c.skillName : 'Magia') + '  [Q]'; }
+// casas construídas pelos jogadores
+function setBuilt(list) { BUILT = Array.isArray(list) ? list : []; DOORS = doorsOutside().concat(BUILT.map(h => ({ room: 'h_' + h.id, x: h.x - 1, y: h.y + 3, label: 'Entrar na casa de @' + h.owner }))); }
+function canBuildAt(p) {
+  const X = p.x + 1, Y = p.y - 6; if (Math.hypot(X - C.x, Y - C.y) < 40) return false;
+  for (let dx = -14; dx <= 14; dx += 7) for (let dy = -12; dy <= 0; dy += 6) if (blocked(X + dx, Y + dy)) return false;
+  for (const d of DOORS) if (Math.abs(d.x - X) < 30 && Math.abs(d.y - Y) < 30) return false;
+  for (const b of Object.values(B)) if (b && b.x !== undefined && Math.abs(b.x - X) < (b.w ? b.w / 2 + 16 : 32) && Math.abs(b.y - Y) < (b.h ? b.h / 2 + 16 : 28)) return false;
+  if (Math.abs(Y - riverY(X)) < 24) return false;
+  return true;
+}
 function sendNow(p) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: false, room: p.room || '' })); }
 function showWood() { $('wood').textContent = wood; }
 $('actBtn').onclick = () => { sndStart(); doContext(); };
-$('magicBtn').onclick = () => { sndStart(); doAct('magic'); };
+$('magicBtn').onclick = () => { sndStart(); doSkill(); };
 $('muteBtn').onclick = () => { sndStart(); const m = toggleMute(); $('muteBtn').innerHTML = m ? MUTE_OFF : MUTE_ON; $('muteBtn').title = m ? 'Ligar som' : 'Desligar som'; };
 const MUTE_ON = '<svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 4h2v3H1zM3 3h1v5H3zM4 2h1v7H4zM5 1h1v9H5zM7 4h1v3H7zM8 3h1v1H8zM8 7h1v1H8zM9 2h1v1H9zM9 8h1v1H9zM10 3h1v5h-1z"/></svg>';
 const MUTE_OFF = '<svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 4h2v3H1zM3 3h1v5H3zM4 2h1v7H4zM5 1h1v9H5z"/><path fill="#ff8a70" d="M7 3h1v1H7zM8 4h1v1H8zM9 5h1v1H9zM10 6h1v1h-1zM10 3h1v1h-1zM9 4h1v1H9zM8 6h1v1H8zM7 7h1v1H7z"/></svg>';
@@ -388,7 +433,7 @@ fetch('world.json').then(r => r.json()).then(async w => {
 // ---------------------------------------------------------------- editor de avatar
 let draft = null, avT = 0;
 function openAvatar(first) {
-  draft = { hair: HAIRS[0], shirt: SHIRTS[1], pants: PANTS[0], skin: SKINS[0], longHair: false, beard: false, elfEars: false, hat: '', cape: '', ...(myLook || {}) };
+  draft = { hair: HAIRS[0], shirt: SHIRTS[1], pants: PANTS[0], skin: SKINS[0], longHair: false, beard: false, elfEars: false, hat: '', cape: '', cls: '', ...(myLook || {}) };
   $('avSkip').textContent = first ? 'Pular' : 'Cancelar'; $('avatar').hidden = false; buildAvatarUI(); avLoop();
 }
 function choice(id, opts, key) {
@@ -397,16 +442,36 @@ function choice(id, opts, key) {
     if (label === null) { b.className += ' sw'; b.style.background = v || 'transparent'; if (!v) b.textContent = '×'; b.setAttribute('aria-label', v || 'nenhum'); } else b.textContent = label;
     b.onclick = () => { draft[key] = v; choice(id, opts, key); }; el.appendChild(b); }
 }
+function classUI() {
+  const el = $('avClass'); el.innerHTML = '';
+  for (const c of CLASSES) { const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (draft.cls === c.id ? ' on' : '');
+    const cv2 = document.createElement('canvas'); cv2.width = 16; cv2.height = 18; cv2.className = 'clsimg'; const q2 = cv2.getContext('2d'); q2.imageSmoothingEnabled = false;
+    q2.drawImage(charFor('_cls_' + c.id, { ...c.look, cls: c.id }).frame({ legs: 'stand', arm: 'down', tool: c.tool, eyes: 0, br: 0 }).c, -7, -14);
+    const n = document.createElement('b'); n.textContent = c.name; const d = document.createElement('span'); d.textContent = c.desc; b.append(cv2, n, d);
+    b.onclick = () => { draft = { ...draft, ...c.look, cls: c.id }; buildAvatarUI(); }; el.appendChild(b); }
+}
 function buildAvatarUI() {
+  classUI();
   const sw = list => list.map(c => [c, null]);
   choice('avSkin', sw(SKINS), 'skin'); choice('avHair', sw(HAIRS), 'hair'); choice('avHairLen', [[false, 'Curto'], [true, 'Longo']], 'longHair');
   choice('avBeard', [[false, 'Sem barba'], [true, 'Com barba']], 'beard'); choice('avHat', HATS, 'hat'); choice('avEars', [[false, 'Humanas'], [true, 'Élficas']], 'elfEars');
   choice('avShirt', sw(SHIRTS), 'shirt'); choice('avPants', sw(PANTS), 'pants'); choice('avCape', sw(CAPES), 'cape');
 }
 function avLoop() { if ($('avatar').hidden) return; const c = $('avPrev'), x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.clearRect(0, 0, c.width, c.height);
-  const ch = charFor('_avatar', draft), t = performance.now() / 1000, walk = Math.floor(t / 2) % 2, f = Math.floor(t * 6) % 2;
-  const fr = ch.frame(walk ? { legs: f ? 'w1' : 'w2', arm: 'down', eyes: 0, br: 0 } : { legs: 'stand', arm: 'down', eyes: Math.floor(t) % 3 - 1, br: Math.floor(t * 1.3) % 2 });
+  const ch = charFor('_avatar', draft), t = performance.now() / 1000, ph = Math.floor(t / 2) % 3, f = Math.floor(t * 6) % 2, cl = CLASS_BY[draft.cls];
+  const fr = ph === 1 ? ch.frame({ legs: f ? 'w1' : 'w2', arm: 'down', tool: cl ? cl.tool : null, eyes: 0, br: 0 }) : ph === 2 && cl ? ch.frame(poseFor({ act: { kind: cl.skill, t0: Math.floor(t / 2) * 2, end: Math.floor(t / 2) * 2 + 2 } }, t)) : ch.frame({ legs: 'stand', arm: 'down', tool: cl ? cl.tool : null, eyes: Math.floor(t) % 3 - 1, br: Math.floor(t * 1.3) % 2 });
   x.drawImage(fr.c, -7, -14); requestAnimationFrame(avLoop); }
 $('avatarBtn').onclick = () => openAvatar(false);
 $('avSkip').onclick = () => { $('avatar').hidden = true; };
-$('avSave').onclick = async () => { myLook = { ...draft }; $('avatar').hidden = true; const r = await post('/api/look', { token, look: myLook }); if (r.ok) { myLook = r.data.look; const p = players.get(myId); if (p) { p.look = myLook; p.ch = charFor(p.username, myLook); } } };
+$('avSave').onclick = async () => { myLook = { ...draft }; $('avatar').hidden = true; const r = await post('/api/look', { token, look: myLook }); if (r.ok) { myLook = r.data.look; const p = players.get(myId); if (p) { p.look = myLook; p.ch = charFor(p.username, myLook); } skillLabel(); } };
+
+// ---------------------------------------------------------------- carregar lenha e almoço
+$('woodBox').onclick = () => { const p = players.get(myId); if (!p) return; if (!p.carry && wood < 1) return sys('Você ainda não tem lenha. Rache lenha ou derrube uma árvore.'); p.carry = !p.carry; $('woodBox').classList.toggle('on', p.carry); };
+function onLunch(m) {
+  lunch = { username: m.username, until: Date.now() + (m.left || 120000) };
+  sfx.bell(); sys(`🔔 @${m.username} chamou todo mundo para o almoço na cozinha!`);
+  const p = players.get(myId); if (!p || m.username === me) return;
+  $('toastText').textContent = `@${m.username} chamou para o almoço!`; $('toast').hidden = false; clearTimeout(onLunch.tm); onLunch.tm = setTimeout(() => $('toast').hidden = true, 15000);
+}
+$('toastGo').onclick = () => { $('toast').hidden = true; const p = players.get(myId); if (!p || !B.cozinha) return; if (p.room) exitRoom(p); target = { x: B.cozinha.x - 6, y: B.cozinha.y + 14 }; follow(); };
+$('toastNo').onclick = () => { $('toast').hidden = true; };

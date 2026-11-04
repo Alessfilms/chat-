@@ -1,0 +1,7 @@
+Sons usados no Eryon Online (todos livres para uso, inclusive comercial):
+
+- fire.mp3 — "Fireplace" por ezwa (soundbible.com), domínio público.
+  Obtido via github.com/OBJLAKO/omarchy-lofi-focus (assets/fireplace.ogg). Ajustado para tocar em loop.
+- chop, door_open, door_close, sword_draw, slash, pot, coins, whoosh, creak — "RPG Audio" por Kenney (kenney.nl), CC0 1.0.
+- wood_hit, plank, anvil_0, anvil_1, step_grass_*, step_wood_* — "Impact Sounds" por Kenney (kenney.nl), CC0 1.0.
+  https://creativecommons.org/publicdomain/zero/1.0/

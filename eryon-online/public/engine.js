@@ -212,6 +212,7 @@ function charBuilder(sp) {
       if (T === 'bow') { arm([[a + 2, b - 4, P.woodL], [a + 3, b - 3, P.woodL], [a + 3, b - 2, P.fire3], [a + 3, b - 1, P.woodL], [a + 3, b, P.woodL], [a + 3, b + 1, P.fire3], [a + 3, b + 2, P.woodL], [a + 2, b + 3, P.woodL]]);
         for (let i = -3; i <= 2; i++) px(x, 'rgba(255,255,255,.7)', a + 1, b + i); }
       if (T === 'torch') { arm([[a + 1, b, wd], [a + 1, b - 1, wd], [a + 1, b - 2, po.br ? P.fire3 : P.fire2], [a + 1, b - 3, P.fire4], [a, b - 2, P.fire1], [a + 2, b - 3, po.br ? P.fire1 : P.fire3]]); }
+      if (T === 'lute') arm([[a + 1, b - 1, P.woodL], [a + 2, b - 1, P.woodL], [a + 3, b - 2, P.woodL], [a + 4, b - 3, P.woodL], [a + 5, b - 4, P.wood], [a, b, '#8b5e3c'], [a + 1, b, '#a3794b'], [a, b + 1, '#8b5e3c'], [a + 1, b + 1, '#6b4630'], [a - 1, b, '#6b4630'], [a, b + 2, '#6b4630'], [a + 1, b - 2, '#fff3b0']]);
       if (T === 'hoe') arm([[a + 1, b + 1, wd], [a + 2, b + 2, wd], [a + 3, b + 3, Wd], [a + 4, b + 3, Wd]]);
     }
     if (A === 'carry' && T) {

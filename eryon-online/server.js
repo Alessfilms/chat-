@@ -40,10 +40,11 @@ const PANTS = ['#3c5f9a', '#4a2f22', '#2b3138', '#3c5d4a', '#6b4630', '#1d3550']
 const SKINS = ['#e8b48c', '#f2c9a4', '#c08060', '#8b5e3c', '#5a3a26'];
 const HATS = ['', 'palha', 'bone', 'chef'];
 const CAPES = ['', '#4e6c4a', '#1d3550', '#a83a32', '#6e4a8a'];
+const CLS = ['', 'lenhador', 'guerreiro', 'maga', 'arqueira', 'ferreiro', 'construtor', 'cozinheiro', 'curandeira', 'bardo', 'taverneiro'];
 function cleanLook(l) {
   if (!l || typeof l !== 'object') return null;
   const pick = (v, list) => list.includes(v) ? v : list[0];
-  return { hair: pick(l.hair, HAIRS), shirt: pick(l.shirt, SHIRTS), pants: pick(l.pants, PANTS), skin: pick(l.skin, SKINS), longHair: !!l.longHair, beard: !!l.beard, elfEars: !!l.elfEars, hat: pick(l.hat || '', HATS), cape: pick(l.cape || '', CAPES) };
+  return { hair: pick(l.hair, HAIRS), shirt: pick(l.shirt, SHIRTS), pants: pick(l.pants, PANTS), skin: pick(l.skin, SKINS), longHair: !!l.longHair, beard: !!l.beard, elfEars: !!l.elfEars, hat: pick(l.hat || '', HATS), cape: pick(l.cape || '', CAPES), cls: pick(l.cls || '', CLS) };
 }
 
 // ---------------------------------------------------------------- verificação pelo comentário no Instagram
@@ -185,7 +186,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (p === '/api/admin/remove' && req.method === 'POST') {
         const b = await body(req), u = norm(b.username);
-        db.users[u] = { removed: true, v: ((db.users[u] && db.users[u].v) || 0) + 1 }; for (const t in db.sessions) if (db.sessions[t] === u) delete db.sessions[t];
+        db.users[u] = { removed: true, v: ((db.users[u] && db.users[u].v) || 0) + 1 }; db.houses = (db.houses || []).filter(h => h.owner !== u); all({ t: 'houses', list: db.houses }); for (const t in db.sessions) if (db.sessions[t] === u) delete db.sessions[t];
         for (const c of clients) if (c.user === u) c.ws.close(4001, 'removido'); save(); return send(res, 200, { users: listUsers() });
       }
       if (p === '/api/admin/newcode' && req.method === 'POST') {
@@ -215,14 +216,18 @@ let nextId = 1;
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 const out = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
 const all = (m, except) => { const s = JSON.stringify(m); for (const c of clients) if (c !== except && c.ws.readyState === 1) c.ws.send(s); };
-const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '' });
-const ROOM_OK = /^(|taverna|casa_[1-9])$/;
-const ACTS = new Set(['chop', 'split', 'drink', 'magic']);
+const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry });
+const ROOM_OK = /^(|taverna|casa_[1-9]|h_[0-9]{1,6})$/;
+const ACTS = new Set(['eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
+db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
+let lunchState = null;
+const riverY = x => 212 + 16 * Math.sin(x * .021) + 7 * Math.sin(x * .057 + 1);
+const note = (c, text) => out(c.ws, { t: 'note', text });
 // árvores derrubadas: id -> hora em que voltam a crescer (5 min)
 const cutTrees = new Map();
 const cutList = () => [...cutTrees.keys()];
 setInterval(() => { const n = Date.now(); let ch = false; for (const [i, t] of cutTrees) if (t < n) { cutTrees.delete(i); ch = true; } if (ch) all({ t: 'trees', cut: cutList() }); }, 5000).unref();
-function addWood(c, n) { const r = db.users[c.user]; if (!r) return; r.wood = Math.min(99999, (r.wood || 0) + n); save(); out(c.ws, { t: 'wood', n: r.wood }); }
+function addWood(c, n) { const r = db.users[c.user]; if (!r) return; if (n > 0 && r.look && r.look.cls === 'lenhador') n *= 2; r.wood = Math.min(99999, (r.wood || 0) + n); save(); out(c.ws, { t: 'wood', n: r.wood }); }
 
 wss.on('connection', (ws, req) => {
   if (limited('ws:' + ipOf(req), 30, 60000)) return ws.close(4029, 'muitas conexões');
@@ -238,7 +243,7 @@ wss.on('connection', (ws, req) => {
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c);
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), wood: rec.wood || 0 });
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), wood: rec.wood || 0, houses: db.houses, bridges: db.bridges, lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
       all({ t: 'join', p: pub(c) }, c);
       return;
     }
@@ -251,7 +256,7 @@ wss.on('connection', (ws, req) => {
       const max = 70 * dt + 6, dx = nx - c.x, dy = ny - c.y, d = Math.hypot(dx, dy);
       if (!changed && d > max) { nx = c.x + dx / d * max; ny = c.y + dy / d * max; }
       c.x = Math.max(4, Math.min(WORLD.w - 4, nx)); c.y = Math.max(8, Math.min(WORLD.h - 4, ny));
-      c.face = m.face < 0 ? -1 : 1; c.moving = !!m.moving; c.dirty = true;
+      c.face = m.face < 0 ? -1 : 1; c.moving = !!m.moving; c.carry = !!m.carry; c.dirty = true;
     } else if (m.t === 'act') {
       const now = Date.now(); if (!ACTS.has(m.kind) || now - (c.lastAct || 0) < 1500) return; c.lastAct = now;
       all({ t: 'act', id: c.id, kind: m.kind }, c);
@@ -260,6 +265,29 @@ wss.on('connection', (ws, req) => {
       const i = Number(m.tree), now = Date.now();
       if (!Number.isInteger(i) || i < 0 || i > 5000 || cutTrees.has(i) || now - (c.lastCut || 0) < 2000) return; c.lastCut = now;
       cutTrees.set(i, now + 5 * 60000); all({ t: 'trees', cut: cutList() }); addWood(c, 3);
+    } else if (m.t === 'bridge') {
+      const now = Date.now(), r = db.users[c.user], X = Math.round(Number(m.x));
+      if (!r || now - (c.lastBuild || 0) < 3000 || !Number.isFinite(X) || c.room) return; c.lastBuild = now;
+      if ((r.wood || 0) < 15) return note(c, 'Você precisa de 15 lenhas para construir uma ponte.');
+      if (X < 12 || X > WORLD.w - 12 || Math.abs(X - 430) < 30 || db.bridges.some(b => Math.abs(b.x - X) < 30)) return note(c, 'Já existe uma ponte perto daqui.');
+      if (Math.abs(c.y - riverY(X)) > 45 || Math.abs(c.x - X) > 45) return note(c, 'Chegue mais perto do rio.');
+      r.wood -= 15; out(c.ws, { t: 'wood', n: r.wood });
+      db.bridges.push({ id: db.nextBridge++, x: X, owner: c.user, t: now }); save();
+      all({ t: 'bridges', list: db.bridges }); all({ t: 'chat', id: c.id, username: c.user, text: 'construiu uma ponte sobre o rio!', ts: now });
+    } else if (m.t === 'lunch') {
+      const now = Date.now(); if (now - (c.lastLunch || 0) < 60000 || c.room) return; c.lastLunch = now;
+      lunchState = { username: c.user, until: now + 120000 };
+      all({ t: 'lunch', username: c.user, left: 120000 });
+    } else if (m.t === 'build') {
+      const now = Date.now(), r = db.users[c.user], X = Math.round(Number(m.x)), Y = Math.round(Number(m.y));
+      if (!r || now - (c.lastBuild || 0) < 3000 || !Number.isFinite(X) || !Number.isFinite(Y) || c.room) return; c.lastBuild = now;
+      if ((r.wood || 0) < 10) return note(c, 'Você precisa de 10 lenhas para construir uma casa.');
+      if (db.houses.filter(h => h.owner === c.user).length >= 3) return note(c, 'Cada morador pode ter até 3 casas.');
+      if (X < 20 || X > WORLD.w - 20 || Y < 30 || Y > WORLD.h - 10 || Math.hypot(X - 360, Y - 640) < 40) return note(c, 'Não dá para construir aqui.');
+      if (db.houses.some(h => Math.abs(h.x - X) < 30 && Math.abs(h.y - Y) < 30)) return note(c, 'Muito perto de outra casa.');
+      r.wood -= 10; out(c.ws, { t: 'wood', n: r.wood });
+      db.houses.push({ id: db.nextHouse++, x: X, y: Y, owner: c.user, roof: crypto.randomInt(6), t: now }); save();
+      all({ t: 'houses', list: db.houses }); all({ t: 'chat', id: c.id, username: c.user, text: 'construiu uma casa nova em Eryon!', ts: now });
     } else if (m.t === 'chat') {
       const now = Date.now(); if (now - c.lastChat < 1200) return; c.lastChat = now;
       const text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
@@ -274,7 +302,7 @@ wss.on('connection', (ws, req) => {
 });
 // estado 10x por segundo (só quem mudou)
 setInterval(() => {
-  const ch = []; for (const c of clients) if (c.dirty) { ch.push({ id: c.id, x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, face: c.face, moving: c.moving, room: c.room || '' }); c.dirty = false; }
+  const ch = []; for (const c of clients) if (c.dirty) { ch.push({ id: c.id, x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry }); c.dirty = false; }
   if (ch.length) all({ t: 'state', p: ch, online: clients.size });
 }, 100);
 // mantém conexões vivas e salva posições

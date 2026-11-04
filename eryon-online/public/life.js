@@ -38,8 +38,8 @@ function tavernRoom() {
   return { id: 'taverna', name: 'Taverna do Valis', w, h, img: c, spawn: { x: 100, y: 124 }, door: { x: 100, y: 133 }, fire: { x: 183, y: 56 }, block,
     spots: [{ x: 60, y: 50, rx: 52, ry: 9, kind: 'drink', label: 'Beber vinho' }], outside: B.taverna ? { x: B.taverna.x, y: B.taverna.y + 6 } : { x: 362, y: 584 } };
 }
-function houseRoom(id) {
-  const b = B[id] || { x: 360, y: 640, telhado: 0 }, roof = ROOFS[b.telhado || 0];
+function houseRoom(id, bb) {
+  const b = bb || B[id] || { x: 360, y: 640, telhado: 0 }, roof = ROOFS[b.telhado || 0];
   const w = 130, h = 100, [c, x] = canvas(w, h);
   planks(x, w, h, 22, '#8b5e3c', '#7a4f2e');
   px(x, '#e4d0a0', 0, 0, w, 22); px(x, '#c9a46a', 0, 18, w, 4); px(x, P.ink, 0, 21, w, 2); for (let k = 0; k < w; k += 32) px(x, '#7a4f2e', k, 0, 3, 22);
@@ -58,7 +58,7 @@ function houseRoom(id) {
   const block = [[0, 0, w, 26], [3, 22, 35, 56], [52, 52, 77, 70], [96, 22, 124, 40], [109, 72, 123, 86], [0, 0, 3, h], [127, 0, w, h]];
   return { id, name: 'Casa', w, h, img: c, spawn: { x: 65, y: 86 }, door: { x: 65, y: 93 }, fire: null, block, spots: [], outside: { x: b.x - 1, y: b.y + 6 } };
 }
-function roomOf(id) { if (!ROOM_CACHE[id]) ROOM_CACHE[id] = id === 'taverna' ? tavernRoom() : houseRoom(id); return ROOM_CACHE[id]; }
+function roomOf(id) { if (!ROOM_CACHE[id]) { if (id === 'taverna') ROOM_CACHE[id] = tavernRoom(); else if (id.startsWith('h_')) { const h = BUILT.find(q => 'h_' + q.id === id) || { x: 360, y: 700, roof: 0 }; const r = houseRoom(id, { x: h.x, y: h.y, telhado: h.roof }); r.name = 'Casa de @' + (h.owner || 'alguém'); ROOM_CACHE[id] = r; } else ROOM_CACHE[id] = houseRoom(id); } return ROOM_CACHE[id]; }
 function roomBlocked(id, x, y) { const r = roomOf(id); if (x < 4 || x > r.w - 4 || y < 10 || y > r.h - 3) return true; return rectsBlock(r.block, x, y); }
 // portas no mapa de fora
 function doorsOutside() {
@@ -68,8 +68,24 @@ function doorsOutside() {
   return d;
 }
 
+// ---------------------------------------------------------------- classes
+const CLASSES = [
+  { id: 'lenhador', name: 'Lenhador', desc: 'Derruba árvores e racha lenha rendendo o dobro.', skill: 'chop', skillName: 'Machadada', tool: 'axe', look: { hair: '#5a3a26', skin: '#e8b48c', shirt: '#a83a32', pants: '#3c5f9a', beard: true, longHair: false, elfEars: false, hat: '', cape: '' } },
+  { id: 'guerreiro', name: 'Guerreiro', desc: 'Protege a vila. Golpe de espada.', skill: 'sword', skillName: 'Golpe de espada', tool: 'sword', look: { hair: '#1a1208', skin: '#c08060', shirt: '#4a535c', pants: '#2b3138', cape: '#a83a32', beard: false, longHair: false, elfEars: false, hat: '' } },
+  { id: 'maga', name: 'Feiticeira', desc: 'Lança feitiços de estrelas.', skill: 'magic', skillName: 'Feitiço', tool: null, look: { hair: '#e6efa0', skin: '#f2c9a4', shirt: '#6e4a8a', pants: '#1d3550', cape: '#1d3550', longHair: true, beard: false, elfEars: true, hat: '' } },
+  { id: 'arqueira', name: 'Arqueira', desc: 'Atira flechas longe.', skill: 'arrow', skillName: 'Atirar flecha', tool: 'bow', look: { hair: '#d0622a', skin: '#e8b48c', shirt: '#3c5d4a', pants: '#4a2f22', cape: '#4e6c4a', elfEars: true, longHair: true, beard: false, hat: '' } },
+  { id: 'ferreiro', name: 'Ferreiro', desc: 'Martela na bigorna e faz faíscas.', skill: 'hammer', skillName: 'Martelar', tool: 'bighammer', look: { hair: '#1a1208', skin: '#8b5e3c', shirt: '#4a535c', pants: '#2b3138', beard: true, longHair: false, elfEars: false, hat: '', cape: '' } },
+  { id: 'construtor', name: 'Construtor', desc: 'Ergue a vila com martelo e tábuas.', skill: 'build', skillName: 'Construir', tool: 'hammer', look: { hair: '#8b5e3c', skin: '#f2c9a4', shirt: '#3f7ab0', pants: '#4a2f22', hat: 'bone', beard: false, longHair: false, elfEars: false, cape: '' } },
+  { id: 'cozinheiro', name: 'Cozinheiro', desc: 'Cozinha para todos.', skill: 'cook', skillName: 'Cozinhar', tool: 'ladle', look: { hair: '#5a3a26', skin: '#c08060', shirt: '#e4d0a0', pants: '#3c5f9a', hat: 'chef', beard: false, longHair: false, elfEars: false, cape: '' } },
+  { id: 'curandeira', name: 'Curandeira', desc: 'Cura quem está por perto.', skill: 'heal', skillName: 'Curar', tool: 'flask', look: { hair: '#c4ccd0', skin: '#e8b48c', shirt: '#b06a9a', pants: '#3c5d4a', longHair: true, beard: false, elfEars: false, hat: '', cape: '' } },
+  { id: 'bardo', name: 'Bardo', desc: 'Toca alaúde para a vila ouvir.', skill: 'lute', skillName: 'Tocar alaúde', tool: 'lute', look: { hair: '#ffd84a', skin: '#f2c9a4', shirt: '#d0622a', pants: '#1d3550', hat: 'palha', beard: false, longHair: false, elfEars: false, cape: '#6e4a8a' } },
+  { id: 'taverneiro', name: 'Taverneiro', desc: 'Serve bebida na taverna.', skill: 'serve', skillName: 'Servir bebida', tool: 'mug', look: { hair: '#a83a32', skin: '#e8b48c', shirt: '#e4d0a0', pants: '#4a2f22', beard: true, longHair: false, elfEars: false, hat: '', cape: '' } },
+];
+const CLASS_BY = Object.fromEntries(CLASSES.map(c => [c.id, c]));
+const classOf = q => CLASS_BY[q && q.look && q.look.cls] || null;
+
 // ---------------------------------------------------------------- ações
-const ACT_DUR = { chop: 2.4, split: 1.8, drink: 2.2, magic: 1.6 };
+const ACT_DUR = { eat: 2.2, bridge: 2.4,  chop: 2.4, split: 1.8, drink: 2.2, magic: 1.6, sword: 1.2, arrow: 1.2, hammer: 2.0, build: 2.0, cook: 2.4, heal: 2.0, lute: 2.8, serve: 2.0 };
 function poseFor(q, t) {
   const a = q.act;
   if (a && t < a.end) {
@@ -77,9 +93,19 @@ function poseFor(q, t) {
     if (a.kind === 'chop' || a.kind === 'split') return { legs: 'stand', arm: (u % .56) < .32 ? 'up' : 'low', tool: 'axe', eyes: 0, br: 0 };
     if (a.kind === 'drink') return { legs: 'stand', arm: (u % 1.1) < .55 ? 'up' : 'fwd', tool: 'mug', eyes: 0, br: 0 };
     if (a.kind === 'magic') return { legs: 'stand', arm: 'up', tool: null, eyes: 0, br: Math.floor(u * 8) % 2 };
+    if (a.kind === 'sword') return { legs: 'stand', arm: (u % .4) < .2 ? 'up' : 'low', tool: 'sword', eyes: 0, br: 0 };
+    if (a.kind === 'arrow') return { legs: 'stand', arm: 'bow', tool: 'bow', eyes: 1, br: 0 };
+    if (a.kind === 'hammer') return { legs: 'stand', arm: (u % .5) < .3 ? 'up' : 'low', tool: 'bighammer', eyes: 0, br: 0 };
+    if (a.kind === 'build') return { legs: 'stand', arm: (u % .4) < .22 ? 'up' : 'fwd', tool: 'hammer', eyes: 0, br: 0 };
+    if (a.kind === 'cook') return { legs: 'stand', arm: (u % .7) < .35 ? 'fwd' : 'low', tool: 'ladle', eyes: 0, br: 0 };
+    if (a.kind === 'heal') return { legs: 'stand', arm: 'fwd', tool: 'flask', eyes: 0, br: Math.floor(u * 4) % 2 };
+    if (a.kind === 'lute') return { legs: 'stand', arm: 'fwd', tool: 'lute', eyes: 0, br: Math.floor(u * 3.3) % 2 };
+    if (a.kind === 'serve') return { legs: 'stand', arm: (u % 1) < .5 ? 'up' : 'fwd', tool: 'mug', eyes: 0, br: 0 };
   }
+  const tool = (classOf(q) || {}).tool || null;
+  if (q.carry) { const f2 = Math.floor(t * 6 + (q.ph || 0)) % 2; return { legs: q.moving ? (f2 ? 'w1' : 'w2') : 'stand', arm: 'carry', tool: 'log', eyes: 0, br: 0 }; }
   const f = Math.floor(t * 6 + (q.ph || 0)) % 2;
-  return q.moving ? { legs: f ? 'w1' : 'w2', arm: 'down', eyes: 0, br: 0 } : { legs: 'stand', arm: 'down', eyes: 0, br: Math.floor(t * 1.3 + (q.ph || 0)) % 2 };
+  return q.moving ? { legs: f ? 'w1' : 'w2', arm: 'down', tool, eyes: 0, br: 0 } : { legs: 'stand', arm: 'down', tool, eyes: 0, br: Math.floor(t * 1.3 + (q.ph || 0)) % 2 };
 }
 const MAGIC_COLS = [[P.cy2, '#ffffff', P.cy], ['#f6b6d8', '#ffffff', '#b06a9a'], [P.fire3, P.fire4, P.fire2], ['#9cbf62', '#e6efa0', '#ffffff']];
 function drawActFx(x, q, t) {
@@ -89,6 +115,15 @@ function drawActFx(x, q, t) {
   if (a.kind === 'magic') { const cols = MAGIC_COLS[(q.ph || 0) % MAGIC_COLS.length]; const k = clamp(u / 1.2);
     if (u < 1.6) { x.globalAlpha = 1 - k; ring(x, q.x, q.y - 3, 4 + k * 22, cols[0]); ring(x, q.x, q.y - 3, 3 + k * 16, cols[2]); x.globalAlpha = 1; }
     burst(x, t, a.t0 + .1, q.x, q.y - 16, 40, cols, 24, 1.4, -6, q.ph * 7 + Math.floor(a.t0)); glow(x, q.x, q.y - 14, 10, cols[0], .18 * (1 - k)); }
+  const F = q.face || 1;
+  if (a.kind === 'sword' && u < 1.3) { const k = (u % .4) / .4; x.globalAlpha = 1 - k; for (let i = 0; i < 9; i++) { const ang = -1.2 + i * .3 + k * .6; px(x, i % 2 ? '#ffffff' : P.st4, Math.round(q.x + F * (6 + Math.cos(ang) * 9)), Math.round(q.y - 8 + Math.sin(ang) * 8), 2, 1); } x.globalAlpha = 1; }
+  if (a.kind === 'arrow' && u > .45 && u < 1.6) { const k = clamp((u - .45) / .7), ax = Math.round(q.x + F * (8 + k * 80)), ay = Math.round(q.y - 9 + k * k * 4); px(x, P.wood, ax - F * 5, ay, 6, 1); px(x, P.st4, ax + (F > 0 ? 1 : -2), ay - 1, 2, 3); px(x, '#eef0ea', ax - F * 6, ay - 1, 2, 3); if (k >= 1) burst(x, t, a.t0 + 1.15, ax, ay, 8, [P.woodL, P.sand], 6, .4, 10, q.ph + 3); }
+  if (a.kind === 'hammer' || a.kind === 'build') { const per = a.kind === 'hammer' ? .5 : .4; const hit = Math.floor(u / per); for (let k = 0; k <= hit && k < 6; k++) burst(x, t, a.t0 + k * per + per * .6, fx, fy + 2, a.kind === 'hammer' ? 12 : 6, a.kind === 'hammer' ? [P.fire3, P.fire4, P.fire2] : [P.woodL, P.sand], 10, .4, 14, q.ph * 13 + k); }
+  if (a.kind === 'cook') { for (let i = 0; i < 6; i++) { const ph = (u * .8 + i / 6) % 1; x.globalAlpha = .7 * (1 - ph) * clamp(a.end - t + 1); px(x, '#eef0ea', Math.round(fx + Math.sin(ph * 6 + i) * 3), Math.round(fy - 4 - ph * 16), 2, 2); } x.globalAlpha = 1; }
+  if (a.kind === 'heal') { const k = clamp(u / 2); x.globalAlpha = 1 - k; ring(x, q.x, q.y - 3, 6 + k * 26, '#9cbf62'); x.globalAlpha = 1;
+    for (let i = 0; i < 8; i++) { const ph = (u * .7 + i / 8) % 1, X = Math.round(q.x + Math.cos(i * 2.4) * (8 + i * 2)), Y = Math.round(q.y - 6 - ph * 20); x.globalAlpha = (1 - ph) * clamp(a.end - t + .5); px(x, '#9cbf62', X - 1, Y, 3, 1); px(x, '#9cbf62', X, Y - 1, 1, 3); } x.globalAlpha = 1; }
+  if (a.kind === 'lute') { for (let i = 0; i < 5; i++) { const ph = (u * .6 + i / 5) % 1, X = Math.round(q.x + F * 4 + Math.sin(ph * 5 + i) * 6), Y = Math.round(q.y - 16 - ph * 18); x.globalAlpha = (1 - ph) * clamp(a.end - t + .5); px(x, P.fire3, X, Y, 2, 2); px(x, P.fire3, X + 1, Y - 4, 1, 4); px(x, P.fire3, X + 2, Y - 4, 1, 1); } x.globalAlpha = 1; }
+  if (a.kind === 'serve' && u > .9 && u < 2.2) { x.globalAlpha = clamp(2.2 - u); px(x, P.ink, q.x + F * 8 - 3, q.y - 22, 7, 7); px(x, '#c9a46a', q.x + F * 8 - 2, q.y - 21, 5, 5); px(x, '#fff3b0', q.x + F * 8 - 2, q.y - 21, 5, 2); x.globalAlpha = 1; }
   if (a.kind === 'drink' && u > 1.2 && u < 2.6) { const y = Math.round(q.y - 24 - (u - 1.2) * 6); x.globalAlpha = clamp(2.6 - u); px(x, P.ink, q.x + 3, y - 1, 13, 7); px(x, '#fff3b0', q.x + 4, y, 11, 5); px(x, '#a83a32', q.x + 6, y + 1, 2, 3); px(x, '#a83a32', q.x + 9, y + 1, 1, 3); px(x, '#a83a32', q.x + 11, y + 1, 2, 3); x.globalAlpha = 1; }
 }
 
@@ -131,16 +166,33 @@ function musicTick() {
 }
 function noiseHit(when, dur, freq, gain, type = 'bandpass', bus = SND.sfx) { const c = SND.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = SND.noise; s.playbackRate.value = .8 + Math.random() * .4;
   f.type = type; f.frequency.value = freq; f.Q.value = 1.2; g.gain.setValueAtTime(gain, when); g.gain.exponentialRampToValueAtTime(.001, when + dur); s.connect(f); f.connect(g); g.connect(bus); s.start(when, Math.random() * .5); s.stop(when + dur + .02); }
-function crackleLoop() { if (SND.ctx && SND.fire.gain.value > .01) { const w = SND.ctx.currentTime; noiseHit(w, .015 + Math.random() * .03, 1800 + Math.random() * 2500, .5 + Math.random() * .5, 'highpass', SND.fire); if (Math.random() < .25) noiseHit(w, .2, 300, .25, 'lowpass', SND.fire); }
-  setTimeout(crackleLoop, 40 + Math.random() * 220); }
+// amostras reais (CC0 / domínio público — ver sfx/CREDITOS.txt)
+const SAMPLES = {}, SAMPLE_NAMES = ['fire', 'chop', 'wood_hit', 'plank', 'creak', 'door_open', 'door_close', 'sword_draw', 'slash', 'anvil_0', 'anvil_1', 'pot', 'coins', 'whoosh',
+  'step_grass_0', 'step_grass_1', 'step_grass_2', 'step_grass_3', 'step_wood_0', 'step_wood_1', 'step_wood_2'];
+function loadSamples() { for (const n of SAMPLE_NAMES) fetch('sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => SND.ctx.decodeAudioData(b)).then(buf => { SAMPLES[n] = buf; if (n === 'fire') startFireLoop(); }).catch(() => {}); }
+function play(n, gain = 1, rate = 1, when = 0) { if (!SND.ctx || !SAMPLES[n]) return; const s = SND.ctx.createBufferSource(), g = SND.ctx.createGain(); s.buffer = SAMPLES[n]; s.playbackRate.value = rate * (.94 + Math.random() * .12); g.gain.value = gain; s.connect(g); g.connect(SND.sfx); s.start(SND.ctx.currentTime + when); }
+function startFireLoop() { const s = SND.ctx.createBufferSource(); s.buffer = SAMPLES.fire; s.loop = true; s.connect(SND.fire); s.start(); }
+function crackleLoop() { loadSamples(); }
+const pick = (base, n) => base + Math.floor(Math.random() * n);
 const sfx = {
-  step(indoor) { if (!SND.ctx) return; noiseHit(SND.ctx.currentTime, .07, indoor ? 1100 : 420, indoor ? .35 : .45, indoor ? 'bandpass' : 'lowpass'); },
-  chop() { if (!SND.ctx) return; const w = SND.ctx.currentTime, o = SND.ctx.createOscillator(), g = SND.ctx.createGain(); o.frequency.setValueAtTime(180, w); o.frequency.exponentialRampToValueAtTime(70, w + .12);
-    g.gain.setValueAtTime(.7, w); g.gain.exponentialRampToValueAtTime(.001, w + .18); o.connect(g); g.connect(SND.sfx); o.start(w); o.stop(w + .2); noiseHit(w, .06, 2200, .5); },
-  fall() { if (!SND.ctx) return; const w = SND.ctx.currentTime; noiseHit(w, .9, 160, .9, 'lowpass'); const o = SND.ctx.createOscillator(), g = SND.ctx.createGain(); o.frequency.setValueAtTime(70, w + .5); o.frequency.exponentialRampToValueAtTime(35, w + 1.1); g.gain.setValueAtTime(.001, w); g.gain.linearRampToValueAtTime(.8, w + .55); g.gain.exponentialRampToValueAtTime(.001, w + 1.3); o.connect(g); g.connect(SND.sfx); o.start(w); o.stop(w + 1.4); },
-  magic() { if (!SND.ctx) return; const w = SND.ctx.currentTime; [587.33, 739.99, 880, 1174.66, 1479.98].forEach((f, i) => { const o = SND.ctx.createOscillator(), g = SND.ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, w + i * .07); g.gain.linearRampToValueAtTime(.18, w + i * .07 + .01); g.gain.exponentialRampToValueAtTime(.001, w + i * .07 + .9); o.connect(g); g.connect(SND.sfx); g.connect(SND.echo); o.start(w + i * .07); o.stop(w + i * .07 + 1); }); },
-  drink() { if (!SND.ctx) return; const w = SND.ctx.currentTime; for (const k of [0, .55, 1.1]) { const o = SND.ctx.createOscillator(), g = SND.ctx.createGain(); o.frequency.setValueAtTime(320, w + k); o.frequency.exponentialRampToValueAtTime(140, w + k + .14); g.gain.setValueAtTime(.3, w + k); g.gain.exponentialRampToValueAtTime(.001, w + k + .16); o.connect(g); g.connect(SND.sfx); o.start(w + k); o.stop(w + k + .18); } },
-  door() { if (!SND.ctx) return; const w = SND.ctx.currentTime, o = SND.ctx.createOscillator(), g = SND.ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(160, w); o.frequency.linearRampToValueAtTime(260, w + .4); g.gain.setValueAtTime(.12, w); g.gain.exponentialRampToValueAtTime(.001, w + .5); o.connect(g); g.connect(SND.sfx); o.start(w); o.stop(w + .55); noiseHit(w + .45, .12, 200, .5, 'lowpass'); },
+  step(indoor) { indoor ? play(pick('step_wood_', 3), .5) : play(pick('step_grass_', 4), .55); },
+  chop() { play('chop', .9); play('wood_hit', .35, 1.2); },
+  split() { play('chop', .8, 1.1); play('plank', .5); },
+  fall() { play('creak', .7, .8); play('wood_hit', 1, .55, .55); play('plank', .8, .7, .7); },
+  magic() { synthMagic(); },
+  drink() { synthDrink(); },
+  door(open = true) { play(open ? 'door_open' : 'door_close', .8); },
+  sword() { play('sword_draw', .7); play('slash', .8, 1, .35); },
+  arrow() { play('whoosh', .9, 1.6, .45); },
+  anvil() { play(pick('anvil_', 2), .6); },
+  pot() { play('pot', .6); },
+  coins() { play('coins', .6); },
+  build() { play('wood_hit', .7, 1.3); },
+  bell() { if (!SND.ctx) return; const w = SND.ctx.currentTime; for (const k of [0, .45, .9]) for (const [f, gn] of [[880, .2], [2210, .07], [3520, .04]]) { const o = SND.ctx.createOscillator(), g = SND.ctx.createGain(); o.frequency.value = f; g.gain.setValueAtTime(gn, w + k); g.gain.exponentialRampToValueAtTime(.001, w + k + 1.4); o.connect(g); g.connect(SND.sfx); o.start(w + k); o.stop(w + k + 1.5); } },
+  lute() { if (!SND.ctx) return; const w = SND.ctx.currentTime; [0, 3, 5, 7, 5, 3, 0, -2].forEach((st, i) => pluck(SCALE[clamp(SND.note + st, 0, SCALE.length - 1)], w + i * .3, .4, 1.4)); },
+  heal() { if (!SND.ctx) return; const w = SND.ctx.currentTime; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { const o = SND.ctx.createOscillator(), g = SND.ctx.createGain(); o.frequency.value = f; g.gain.setValueAtTime(0, w + i * .12); g.gain.linearRampToValueAtTime(.14, w + i * .12 + .02); g.gain.exponentialRampToValueAtTime(.001, w + i * .12 + 1.2); o.connect(g); g.connect(SND.sfx); g.connect(SND.echo); o.start(w + i * .12); o.stop(w + i * .12 + 1.3); }); },
 };
-function setFireLevel(v) { if (SND.ctx) SND.fire.gain.setTargetAtTime(clamp(v) * .35, SND.ctx.currentTime, .3); }
+function synthMagic() { if (!SND.ctx) return; const w = SND.ctx.currentTime; [587.33, 739.99, 880, 1174.66, 1479.98].forEach((f, i) => { const o = SND.ctx.createOscillator(), g = SND.ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, w + i * .07); g.gain.linearRampToValueAtTime(.18, w + i * .07 + .01); g.gain.exponentialRampToValueAtTime(.001, w + i * .07 + .9); o.connect(g); g.connect(SND.sfx); g.connect(SND.echo); o.start(w + i * .07); o.stop(w + i * .07 + 1); }); }
+function synthDrink() { if (!SND.ctx) return; const w = SND.ctx.currentTime; for (const k of [0, .55, 1.1]) { const o = SND.ctx.createOscillator(), g = SND.ctx.createGain(); o.frequency.setValueAtTime(320, w + k); o.frequency.exponentialRampToValueAtTime(140, w + k + .14); g.gain.setValueAtTime(.3, w + k); g.gain.exponentialRampToValueAtTime(.001, w + k + .16); o.connect(g); g.connect(SND.sfx); o.start(w + k); o.stop(w + k + .18); } }
+function setFireLevel(v) { if (SND.ctx) SND.fire.gain.setTargetAtTime(clamp(v) * .55, SND.ctx.currentTime, .3); }
 function toggleMute() { SND.muted = !SND.muted; try { localStorage.setItem('eryon_mute', SND.muted ? '1' : '0'); } catch { } if (SND.master) SND.master.gain.setTargetAtTime(SND.muted ? 0 : 1, SND.ctx.currentTime, .05); return SND.muted; }
