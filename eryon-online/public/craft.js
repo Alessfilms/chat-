@@ -52,6 +52,7 @@ function rockSprite(k) {   // pedra mineável: blocos facetados com contorno, ra
   return ROCK_SPR[k] = c;
 }
 function drawNode(x, n) {
+  if (n.kind === 'fruit') return drawFruitBush(x, n);
   const gone = DEPL.has(n.id), X = n.x, Y = n.y;
   if (n.kind === 'rock') {
     if (gone) { px(x, P.ink, X - 5, Y - 3, 11, 4); px(x, P.st1, X - 4, Y - 2, 4, 2); px(x, P.st2, X + 1, Y - 2, 3, 1); px(x, P.st1, X + 2, Y - 1, 2, 1); return; }
@@ -68,6 +69,7 @@ let DECOR = [];
 const DECOR_SPR = {};
 function decorSprite(k) {
   if (DECOR_SPR[k]) return DECOR_SPR[k];
+  { const ex = typeof econDecor === 'function' && econDecor(k); if (ex) return DECOR_SPR[k] = ex; }
   const S2 = { cerca: [16, 11], cerca_v: [6, 21], banco: [16, 9], lanterna: [8, 18], fogueira: [14, 8], tabuas: [16, 10], canteiro: [16, 10], cristal: [10, 14], runa: [10, 14], alvo: [12, 14], estandarte: [9, 18], boneco: [11, 16], palco: [24, 12], barril: [10, 11] }[k] || [8, 8];
   const [c, x] = canvas(S2[0], S2[1]), W = S2[0], H = S2[1];
   const box = (X, Y, w, h, col) => { px(x, P.ink, X - 1, Y - 1, w + 2, h + 2); px(x, col, X, Y, w, h); };
@@ -93,12 +95,13 @@ function decorSprite(k) {
   if (k === 'barril') { box(1, 1, 8, 9, P.wood); px(x, '#2b3138', 1, 3, 8, 1); px(x, '#2b3138', 1, 7, 8, 1); px(x, P.woodL, 2, 1, 2, 9); }
   return DECOR_SPR[k] = { c, ax: Math.floor(W / 2), ay: H - 1 };
 }
-const DECOR_BLOCK = { banco: 7, barril: 4, boneco: 3, alvo: 3, runa: 4, cristal: 3, palco: 11, tabuas: 7, cerca: 7, fogueira: 6, lanterna: 2, estandarte: 1, canteiro: 7 };
-function decorBlocked(x, y) { for (const d of DECOR) { if (d.kind === 'cerca' && d.rot) { if (x > d.x - 3 && x < d.x + 3 && y > d.y - 15 && y < d.y + 1) return true; continue; }
+const DECOR_BLOCK = { muro: 8, barraca: 13, pomar: 3, portao: 0, banco: 7, barril: 4, boneco: 3, alvo: 3, runa: 4, cristal: 3, palco: 11, tabuas: 7, cerca: 7, fogueira: 6, lanterna: 2, estandarte: 1, canteiro: 7 };
+function decorBlocked(x, y) { for (const d of DECOR) { if (d.kind === 'portao') continue; if (ROT_KINDS.has(d.kind) && d.rot) { if (x > d.x - 3 && x < d.x + 3 && y > d.y - 15 && y < d.y + 1) return true; continue; }
   const w = DECOR_BLOCK[d.kind] || 3; if (x > d.x - w && x < d.x + w && y > d.y - 4 && y < d.y + 1) return true; } return false; }
-const sprKey = d => d.kind === 'cerca' && d.rot ? 'cerca_v' : d.kind;
+const sprKey = d => ROT_KINDS.has(d.kind) && d.rot ? d.kind + '_v' : d.kind;
 function drawDecor(x, d, t) {
   const s = decorSprite(sprKey(d)); x.drawImage(s.c, d.x - s.ax, d.y - s.ay);
+  drawEconDecor(x, d, t);
   if (d.kind === 'fogueira') drawFire(x, d.x, d.y - 1, t, .7);
   if (d.kind === 'cristal') glow(x, d.x, d.y - 8, 8, P.cy, .12 + .06 * Math.sin(t * 3 + d.id));
   if (d.kind === 'lanterna') glow(x, d.x, d.y - 15, 7, P.fire3, .14);
@@ -113,9 +116,11 @@ function hasCost(c) { return Object.entries(c).every(([k, v]) => (INV[k] || 0) >
 function nearestPlayer(p, r = 32) { let best = r, who = null; for (const q of players.values()) { if (q.mine || (q.room || '') !== (p.room || '')) continue; const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < best) { best = d; who = q; } } return who; }
 function renderBag() {
   const p = players.get(myId); if (!p) return;
-  $('bagRes').innerHTML = RES.map(([k, n]) => `<div class="res"><b>${INV[k] || 0}</b><span>${n}</span></div>`).join('');
+  $('bagRes').innerHTML = RES.concat([['moedas', 'Moedas'], ['frutas', 'Frutas'], ['leite', 'Leite'], ['ovos', 'Ovos'], ['trufas', 'Trufas']].filter(([k]) => k === 'moedas' || INV[k] > 0)).map(([k, n]) => `<div class="res${k === 'moedas' ? ' coin' : ''}"><b>${INV[k] || 0}</b><span>${n}</span></div>`).join('');
   const list = $('bagItems'); list.innerHTML = '';
   const items = Object.entries(INV).filter(([k, v]) => RBY[k] && v > 0);
+  for (const k of Object.keys(ANIM)) if (INV[k] > 0) { const row = document.createElement('div'); row.className = 'item'; const t = document.createElement('div'); t.innerHTML = '<b></b><span></span>'; t.querySelector('b').textContent = `${ANIM[k].name} × ${INV[k]}`; t.querySelector('span').textContent = 'Solte onde quiser criar. Só você recolhe o que ele produz.';
+    const acts = document.createElement('div'); acts.className = 'row2'; const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Soltar'; b.disabled = !!p.room; b.onclick = () => { closePanels(); startPlacing({ kind: k, animal: true }); }; acts.appendChild(b); row.append(t, acts); list.appendChild(row); }
   if (!items.length) { list.innerHTML = '<p class="hint">Sua mochila está vazia. Junte lenha, pedra e ervas e crie itens no botão "Criar".</p>'; }
   const mate = nearestPlayer(p), eq = p.look && p.look.equip;
   for (const [k, v] of items) {
@@ -135,21 +140,21 @@ function renderBag() {
 function renderCraft() {
   const p = players.get(myId); if (!p) return; const c = classOf(p), list = $('craftList'); list.innerHTML = '';
   $('craftTitle').textContent = c ? `Criar · ${c.name}` : 'Criar';
-  if (!c) { list.innerHTML = '<p class="hint">Escolha um personagem em "Meu avatar" para criar coisas. Cada personagem cria itens diferentes.</p>'; return; }
-  for (const rc of RECIPES.filter(r => r.cls === c.id)) {
+  if (!c) list.innerHTML = '<p class="hint">Escolha um personagem em "Meu avatar" para criar os itens especiais da sua classe. Abaixo, o que todo mundo pode criar:</p>';
+  for (const rc of RECIPES.filter(r => (c && r.cls === c.id) || r.cls === 'todos')) {
     const row = document.createElement('div'); row.className = 'item'; const t = document.createElement('div'); t.innerHTML = '<b></b><span></span><em></em>';
     t.querySelector('b').textContent = rc.name + (rc.make ? ` (×${rc.make})` : ''); t.querySelector('span').textContent = rc.desc || '';
     const okW = wherOk(rc, p), okC = hasCost(rc.cost);
     t.querySelector('em').textContent = 'Custa: ' + costText(rc.cost) + (rc.where ? ` · só ${rc.where === 'forja' ? 'perto da forja' : 'na cozinha'}` : '');
     const b = document.createElement('button'); b.type = 'button'; b.textContent = !okC ? 'Falta recurso' : !okW ? (rc.where === 'forja' ? 'Vá até a forja' : 'Vá até a cozinha') : 'Criar';
-    b.disabled = !(okW && okC); b.onclick = () => { send({ t: 'craft', id: rc.id }); doAct(c.skill === 'chop' ? 'split' : c.skill === 'magic' ? 'magic' : c.skill); closePanels(); };
+    b.disabled = !(okW && okC); b.onclick = () => { send({ t: 'craft', id: rc.id }); doAct(!c ? 'build' : c.skill === 'chop' ? 'split' : c.skill === 'magic' ? 'magic' : c.skill); closePanels(); };
     row.append(t, b); list.appendChild(row);
   }
 }
 function openPanel(id) { const was = !$(id).hidden; closePanels(); if (was) return; $(id).hidden = false; if (id === 'bag') renderBag(); else renderCraft(); }
-function closePanels() { if ($('menu')) $('menu').hidden = true; $('bag').hidden = true; $('craft').hidden = true; if ($('buildPanel')) $('buildPanel').hidden = true; if ($('mapPanel')) $('mapPanel').hidden = true; for (const id of ['questPanel', 'supPanel', 'repPanel']) if ($(id)) $(id).hidden = true; }
+function closePanels() { if ($('menu')) $('menu').hidden = true; $('bag').hidden = true; $('craft').hidden = true; if ($('buildPanel')) $('buildPanel').hidden = true; if ($('mapPanel')) $('mapPanel').hidden = true; for (const id of ['questPanel', 'supPanel', 'repPanel', 'econPanel']) if ($(id)) $(id).hidden = true; }
 function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
-function setInv(inv) { INV = { lenha: 0, pedra: 0, ervas: 0, ...inv }; wood = INV.lenha || 0; showWood(); if (!$('bag').hidden) renderBag(); if (!$('craft').hidden) renderCraft(); }
+function setInv(inv) { INV = { lenha: 0, pedra: 0, ervas: 0, ...inv }; wood = INV.lenha || 0; showWood(); if (!$('bag').hidden) renderBag(); if (!$('craft').hidden) renderCraft(); if (typeof renderEcon === 'function') renderEcon(); }
 
 // ---------------------------------------------------------------- tipos de construção da cidade
 const BTYPES = {
@@ -159,12 +164,18 @@ const BTYPES = {
   hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 }, w: 36, walls: '#eef0ea', wallsD: '#c4ccd0', roof: ['#3c5d4a', '#1c3831'], sign: 'leaf', desc: 'Cuida dos moradores.' },
   escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 }, w: 34, walls: '#e4d0a0', wallsD: '#c9a46a', roof: ['#3c5f9a', '#1d3550'], sign: 'book', desc: 'Para aprender os segredos de Eryon.' },
   banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 }, w: 34, walls: '#c4ccd0', wallsD: '#98a4ac', roof: ['#4a535c', '#2b3138'], sign: 'coin', columns: true, desc: 'Guarda as riquezas da cidade.' },
+  cabana: { name: 'Cabana', cost: { lenha: 8 }, w: 24, desc: 'Casinha de madeira, simples e aconchegante.' },
+  casarao: { name: 'Casarão', cost: { lenha: 18, pedra: 8 }, w: 44, desc: 'Casa grande de dois andares.' },
+  celeiro: { name: 'Celeiro', cost: { lenha: 14, pedra: 2 }, w: 34, desc: 'Para a sua fazenda e os seus animais.' },
+  torre_vigia: { name: 'Torre de vigia', cost: { lenha: 6, pedra: 14 }, w: 18, desc: 'Para vigiar a cidade lá de cima.' },
+  moinho: { name: 'Moinho', cost: { lenha: 12, pedra: 10 }, w: 26, desc: 'Moinho de vento com pás girando.' },
   prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, w: 46, walls: '#c4ccd0', wallsD: '#98a4ac', roof: ['#6e4a8a', '#3a2650'], sign: 'flag', columns: true, tower: true, limit: 1, desc: 'Só existe uma. O coração da cidade.' },
 };
 const B_SPR = {};
 function buildingSprite(type, roofIdx) {
   if (type === 'casa' || !BTYPES[type]) return HOUSE_SPR[roofIdx || 0];
   if (B_SPR[type]) return B_SPR[type];
+  { const eb = typeof econBuilding === 'function' && econBuilding(type); if (eb) return B_SPR[type] = eb; }
   const T = BTYPES[type], w = T.w, wallH = 16, roofH = 13, top = T.tower ? 14 : 0, H = top + roofH + wallH + 3, [c, x] = canvas(w + 4, H);
   const y0 = top + roofH - 2;
   fancyBuilding(x, { w, wallTop: y0, wallH: wallH + 1, roofTop: top, roof: T.roof[0], roofD: T.roof[1], wall: T.walls, wallD: T.wallsD, stripes: T.stripes, columns: T.columns, stone: !!T.columns, timber: !T.columns && type !== 'hospital', door: type === 'bar' || type === 'mercado' ? 'open' : 'wood', doorW: w > 40 ? 8 : 6, windows: w > 40 ? [5, 15, w - 20, w - 10] : [4, w - 10], chim: type === 'bar' || type === 'escola' });
@@ -193,26 +204,30 @@ function renderBuild() {
 
 // ---------------------------------------------------------------- modo de colocar/mover objetos (com prévia e encaixe das cercas)
 let placing = null;
-function startPlacing(o) { placing = { kind: o.kind, id: o.id || null, rot: o.rot ? 1 : 0 }; $('placeBar').hidden = false; $('placeRot').hidden = placing.kind !== 'cerca'; $('placeOk').textContent = (placing.id ? 'Soltar ' : 'Colocar ') + ((RBY[placing.kind] || {}).name || 'objeto').toLowerCase(); document.body.classList.add('placing'); }
+function startPlacing(o) { placing = { kind: o.kind, id: o.id || null, rot: o.rot ? 1 : 0, animal: !!o.animal }; $('placeBar').hidden = false; $('placeRot').hidden = !ROT_KINDS.has(placing.kind); $('placeOk').textContent = (placing.id ? 'Soltar ' : placing.animal ? 'Soltar ' : 'Colocar ') + (placing.animal ? ANIM[placing.kind].name : (RBY[placing.kind] || {}).name || 'objeto').toLowerCase(); document.body.classList.add('placing'); }
 function stopPlacing() { placing = null; $('placeBar').hidden = true; document.body.classList.remove('placing'); }
 function placeSpot(p) {
   let X = p.x + (p.face || 1) * 12, Y = p.y + 3;
-  if (placing.kind === 'cerca') { if (placing.rot) { X = Math.round(X / 6) * 6; Y = Math.round(Y / 15) * 15; } else { X = Math.round(X / 14) * 14; Y = Math.round(Y / 6) * 6; } }
+  if (ROT_KINDS.has(placing.kind)) { if (placing.rot) { X = Math.round(X / 6) * 6; Y = Math.round(Y / 15) * 15; } else { X = Math.round(X / 14) * 14; Y = Math.round(Y / 6) * 6; } }
   X = Math.round(X); Y = Math.round(Y);
   const ok = !p.room && Math.abs(Y - riverY(X)) > 12 && !blocked(X, Y - 1) && Math.hypot(X - p.x, Y - p.y) < 38 && !DECOR.some(d => d.id !== placing.id && Math.abs(d.x - X) < 3 && Math.abs(d.y - Y) < 3);
   return { X, Y, ok };
 }
 function drawPlacing(x, p, t) {
-  if (!placing || !p || p.room) return; const { X, Y, ok } = placeSpot(p), s = decorSprite(placing.kind === 'cerca' && placing.rot ? 'cerca_v' : placing.kind);
-  x.globalAlpha = .55 + .2 * Math.sin(t * 6); x.drawImage(s.c, X - s.ax, Y - s.ay); x.globalAlpha = 1;
+  if (!placing || !p || p.room) return; const { X, Y, ok } = placeSpot(p);
+  x.globalAlpha = .55 + .2 * Math.sin(t * 6);
+  if (placing.animal) { const a = animalSprite(placing.kind, 0).r; x.drawImage(a, X - Math.floor(a.width / 2), Y - a.height + 1); }
+  else { const s = decorSprite(ROT_KINDS.has(placing.kind) && placing.rot ? placing.kind + '_v' : placing.kind); x.drawImage(s.c, X - s.ax, Y - s.ay); }
+  x.globalAlpha = 1;
   x.globalAlpha = .8; ring(x, X, Y, 3, ok ? '#84c65a' : '#e04a3a'); x.globalAlpha = 1;
 }
 function confirmPlacing() {
   const p = players.get(myId); if (!placing || !p) return; const { X, Y, ok } = placeSpot(p);
   if (!ok) return sys('Não dá para colocar aí. Ande um pouco e tente de novo.');
-  if (placing.id) send({ t: 'move', id: placing.id, x: X, y: Y, rot: placing.rot }); else send({ t: 'place', id: placing.kind, x: X, y: Y, rot: placing.rot });
+  if (placing.animal) send(placing.id ? { t: 'moveAnimal', id: placing.id, x: X, y: Y } : { t: 'placeAnimal', kind: placing.kind, x: X, y: Y });
+  else if (placing.id) send({ t: 'move', id: placing.id, x: X, y: Y, rot: placing.rot }); else send({ t: 'place', id: placing.kind, x: X, y: Y, rot: placing.rot });
   play('plank', .6);
   // cercas: continua no modo para emendar a próxima (se ainda tiver na mochila)
-  if (!placing.id && placing.kind === 'cerca' && (INV.cerca || 0) > 1) { INV.cerca--; return; }
+  if (!placing.id && ROT_KINDS.has(placing.kind) && (INV[placing.kind] || 0) > 1) { INV[placing.kind]--; return; }
   stopPlacing();
 }

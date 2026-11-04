@@ -28,7 +28,7 @@ function initDb() {
   db.users ||= {}; db.sessions ||= {}; db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
   db.decor ||= []; db.nextDecor ||= 1; db.firsts ||= {};
   db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
-  db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {};
+  db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {}; db.animals ||= []; db.nextAnimal ||= 1;
   for (const r of Object.values(db.users)) if (r && typeof r === 'object') { if (r.tot && typeof r.tot !== 'object') r.tot = {}; }
 }
 initDb();
@@ -244,7 +244,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (p === '/api/admin/give' && req.method === 'POST') {
         const b = await body(req), u = norm(b.username), r = db.users[u]; if (!r || r.removed) return send(res, 404, { error: 'Esse @ ainda não entrou em Eryon.' });
-        const inv = invOf(r); for (const k of ['lenha', 'pedra', 'ervas']) { const n = Math.max(0, Math.min(999, Math.floor(Number(b[k]) || 0))); inv[k] = (inv[k] || 0) + n; } save();
+        const inv = invOf(r); for (const k of ['lenha', 'pedra', 'ervas', 'moedas', 'frutas']) { const n = Math.max(0, Math.min(999, Math.floor(Number(b[k]) || 0))); inv[k] = (inv[k] || 0) + n; } save();
         for (const c of clients) if (c.user === u) { sendInv(c); note(c, 'Você recebeu recursos do criador de Eryon!'); }
         return send(res, 200, { ok: true, inv });
       }
@@ -321,7 +321,8 @@ const out = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
 const all = (m, except) => { const s = JSON.stringify(m); for (const c of clients) if (c !== except && c.ws.readyState === 1) c.ws.send(s); };
 const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, lv: levelOf(db.users[c.user]?.xp || 0), badge: badgeOf(c.user) });
 const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', cost: { lenha: 14, pedra: 4 } }, mercado: { name: 'Mercado', cost: { lenha: 12, pedra: 4, ervas: 2 } }, hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 } },
-  escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 } };
+  escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 },
+  cabana: { name: 'Cabana', cost: { lenha: 8 } }, casarao: { name: 'Casarão', cost: { lenha: 18, pedra: 8 } }, celeiro: { name: 'Celeiro', cost: { lenha: 14, pedra: 2 } }, torre_vigia: { name: 'Torre de vigia', cost: { lenha: 6, pedra: 14 } }, moinho: { name: 'Moinho', cost: { lenha: 12, pedra: 10 } } };
 const ROOM_OK = /^(|taverna|gruta|abismo|castelo|casa_[1-9]|h_[0-9]{1,6})$/;
 const LANDMARK_NAMES = { costela: 'a Costela de Dragão', ruinas: 'as Ruínas da Inscrição', torre: 'a Torre Antiga', caverna: 'a Caverna Escondida', buraco: 'o Buraco Misterioso', circulo: 'o Círculo de Pedras', arvore: 'a Árvore Ancestral', poco: 'o Poço da Lua', lago: 'o Lago Espelhado', gigante: 'a Estátua do Gigante', acampamento: 'o Acampamento Abandonado', cristais: 'o Jardim de Cristais', cemiterio: 'o Cemitério Antigo', portal: 'o Portal Esquecido', ninho: 'o Ninho do Dragão' };
 const ACTS = new Set(['mine', 'gather', 'eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
@@ -383,6 +384,9 @@ const MISSIONS = [
   { id: 'visit', text: 'Visite 2 lugares do mapa', n: 2, xp: 45, rew: { lenha: 3, pedra: 3 } },
   { id: 'eat', text: 'Coma ou beba algo', n: 1, xp: 20, rew: { ervas: 2 } },
   { id: 'castle', text: 'Leve 10 pedras para o castelo', n: 10, xp: 50, rew: { lenha: 5 } },
+  { id: 'fruit', text: 'Colha frutas 4 vezes', n: 4, xp: 30, rew: { moedas: 5 } },
+  { id: 'sell', text: 'Venda 5 coisas (mercador ou barraca)', n: 5, xp: 45, rew: { moedas: 8 } },
+  { id: 'farm', text: 'Recolha 2 produtos dos seus animais', n: 2, xp: 45, rew: { moedas: 6 } },
 ];
 const ACH = {
   primeira_arvore: { name: 'Primeiro tronco', desc: 'Derrube sua primeira árvore', test: r => (r.tot.cut || 0) >= 1 },
@@ -397,6 +401,9 @@ const ACH = {
   generoso: { name: 'Coração de ouro', desc: 'Dê 10 itens', test: r => (r.tot.give || 0) >= 10 },
   pedreiro: { name: 'Pedreiro do Rei', desc: 'Leve 100 blocos para o castelo', test: r => (r.tot.castle || 0) >= 100 },
   mestre_obras: { name: 'Mestre de Obras', desc: 'Leve 500 blocos para o castelo', test: r => (r.tot.castle || 0) >= 500 },
+  fazendeiro: { name: 'Fazendeiro', desc: 'Recolha 30 produtos dos animais', test: r => (r.tot.farm || 0) >= 30 },
+  comerciante: { name: 'Comerciante', desc: 'Ganhe 200 moedas vendendo', test: r => (r.tot.earn || 0) >= 200 },
+  feirante: { name: 'Feirante', desc: 'Venda 20 coisas na sua barraca', test: r => (r.tot.stall || 0) >= 20 },
   dedicado: { name: 'Dedicado', desc: 'Complete 10 missões', test: r => (r.tot.missions || 0) >= 10 },
   nivel5: { name: 'Veterano', desc: 'Chegue ao nível 5', test: r => levelOf(r.xp || 0) >= 5 },
   nivel10: { name: 'Lenda de Eryon', desc: 'Chegue ao nível 10', test: r => levelOf(r.xp || 0) >= 10 },
@@ -413,7 +420,7 @@ function addXp(c, n) { const r = db.users[c.user]; if (!r) return; const before 
 function track(c, kind, n = 1) {
   const r = db.users[c.user]; if (!r) return; r.tot ||= {}; r.tot[kind] = (r.tot[kind] || 0) + n;
   const dl = dailyOf(r, c.user); dl.c[kind] = (dl.c[kind] || 0) + n;
-  const xpBase = { cut: 3, mine: 3, herb: 2, craft: 6, build: 25, place: 4, split: 1, give: 5, chat: 0, visit: 5, eat: 1, castle: 1 }[kind] || 0; if (xpBase) addXp(c, xpBase * n);
+  const xpBase = { cut: 3, mine: 3, herb: 2, craft: 6, build: 25, place: 4, split: 1, give: 5, chat: 0, visit: 5, eat: 1, castle: 1, fruit: 2, sell: 2, farm: 4 }[kind] || 0; if (xpBase) addXp(c, xpBase * n);
   for (const m of missionsFor(c.user, dl.d)) if (m.id === kind && !dl.done.includes(m.id) && dl.c[kind] >= m.n) {
     dl.done.push(m.id); r.tot.missions = (r.tot.missions || 0) + 1; const inv = invOf(r); for (const [k, v] of Object.entries(m.rew)) inv[k] = (inv[k] || 0) + v; addXp(c, m.xp);
     out(c.ws, { t: 'mission', text: m.text, xp: m.xp, rew: m.rew }); sendInv(c);
@@ -444,6 +451,19 @@ setInterval(() => { const now = Date.now(), online = new Set([...clients].map(c 
 const castleState = (extra = {}) => ({ t: 'castle', pedra: db.castle.pedra, lenha: db.castle.lenha, stages: STAGES, top: Object.entries(db.castle.by).sort((a, b) => b[1] - a[1]).slice(0, 5), ...extra });
 
 // =====================================================================
+// ECONOMIA: moedas, Mercador da Praça da Feira, barracas dos jogadores e animais com dono
+// =====================================================================
+const GOODS = { frutas: { name: 'Frutas', buy: 1 }, leite: { name: 'Leite', buy: 3 }, ovos: { name: 'Ovos', buy: 2 }, trufas: { name: 'Trufas', buy: 6 }, lenha: { name: 'Lenha' }, pedra: { name: 'Pedra' }, ervas: { name: 'Ervas' } };
+const ANIMALS = { vaca: { name: 'Vaca', price: 30, prod: 'leite', n: 2, every: 5 * 60000 }, porco: { name: 'Porco', price: 18, prod: 'trufas', n: 1, every: 6 * 60000 }, galinha: { name: 'Galinha', price: 8, prod: 'ovos', n: 2, every: 4 * 60000 } };
+const MERCHANT = [640, 650];
+const nearPt = (c, X, Y, d) => !c.room && Math.hypot(c.x - X, c.y - Y) <= d;
+const sellable = k => !!(GOODS[k] || ANIMALS[k] || (RBY[k] && RBY[k].type !== 'tool'));
+const goodName = k => (GOODS[k] || ANIMALS[k] || RBY[k] || { name: k }).name;
+db.animals ||= []; db.nextAnimal ||= 1;
+const pubAnimals = () => db.animals.map(a => ({ id: a.id, kind: a.kind, x: a.x, y: a.y, owner: a.owner, ready: Date.now() - (a.lastProd || 0) >= ANIMALS[a.kind].every, left: Math.max(0, ANIMALS[a.kind].every - (Date.now() - (a.lastProd || 0))) }));
+function earn(u, n) { const r = db.users[u]; if (!r) return; const inv = invOf(r); inv.moedas = (inv.moedas || 0) + n; r.tot ||= {}; r.tot.earn = (r.tot.earn || 0) + n; for (const c of clients) if (c.user === u) { sendInv(c); } }
+
+// =====================================================================
 // APOIADORES, BICHINHOS, CRIADOR e PLACAS PATROCINADAS
 // =====================================================================
 const PETS = new Set(['gato', 'raposa', 'dragao', 'coruja']);
@@ -471,10 +491,11 @@ wss.on('connection', (ws, req) => {
       clearTimeout(timer);
       for (const o of clients) if (o.user === u) o.ws.close(4002, 'conectado em outro lugar');
       applyPerk(u, m.perk);
+      { const r0 = db.users[u]; if (r0 && !r0.coinStart) { r0.coinStart = 1; const i0 = invOf(r0); i0.moedas = (i0.moedas || 0) + 10; save(); } }
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c);
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
       all({ t: 'join', p: pub(c) }, c); sendProg(c); out(ws, { t: 'perk', perk: perkFor(u) });
       return;
     }
@@ -500,8 +521,9 @@ wss.on('connection', (ws, req) => {
       cutTrees.set(i, now + 5 * 60000); all({ t: 'trees', cut: cutList() }); addWood(c, 3); track(c, 'cut');
     } else if (m.t === 'gather') {
       const now = Date.now(), id = String(m.id || ''), r = db.users[c.user];
-      if (!r || !/^([rh][0-9]{1,3}|[gamn][0-9])$/.test(id) || depleted.has(id) || now - (c.lastGather || 0) < 1500) return; c.lastGather = now;
+      if (!r || !/^([rhf][0-9]{1,3}|[gamn][0-9])$/.test(id) || depleted.has(id) || now - (c.lastGather || 0) < 1500) return; c.lastGather = now;
       const stone = id[0] === 'r' || id[0] === 'g' || id[0] === 'a';
+      if (id[0] === 'f') { depleted.set(id, now + 4 * 60000); all({ t: 'nodes', dep: [...depleted.keys()] }); addRes(c, 'frutas', 2 + (Math.random() < .3 ? 1 : 0)); track(c, 'fruit'); return; }
       const quarry = /^r1(6\d|7[01])$/.test(id) && !c.room && c.x > 410 && c.x < 700 && c.y > 1470 && c.y < 1610;
       depleted.set(id, now + (stone ? (quarry ? 1 : 6) : 3) * 60000); all({ t: 'nodes', dep: [...depleted.keys()] });
       // pedreira do castelo: a pedra vira bloco direto na obra
@@ -521,7 +543,7 @@ wss.on('connection', (ws, req) => {
       addXp(c, 30); track(c, 'visit');
     } else if (m.t === 'craft') {
       const rc = RBY[m.id], r = db.users[c.user], now = Date.now(); if (!rc || !r || now - (c.lastCraft || 0) < 1200) return; c.lastCraft = now;
-      if (!r.look || r.look.cls !== rc.cls) return note(c, 'Só o ' + rc.cls + ' sabe criar isso.');
+      if (rc.cls !== 'todos' && (!r.look || r.look.cls !== rc.cls)) return note(c, 'Só o ' + rc.cls + ' sabe criar isso.');
       if (rc.where) { const b = WB[rc.where === 'forja' ? 'forja' : 'cozinha']; if (c.room || !b || Math.hypot(c.x - b.x, c.y - b.y) > (rc.where === 'forja' ? 55 : 46)) return note(c, rc.where === 'forja' ? 'Vá até a forja para forjar.' : 'Vá até a cozinha para cozinhar.'); }
       if (!pay(r, rc.cost)) { sendInv(c); return note(c, 'Faltam recursos.'); }
       const inv = invOf(r); inv[rc.id] = Math.min(999, (inv[rc.id] || 0) + (rc.make || 1)); save(); sendInv(c);
@@ -543,8 +565,8 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'place') {
       const rc = RBY[m.id], r = db.users[c.user], X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!rc || !r || rc.type !== 'decor' || c.room || !(invOf(r)[rc.id] > 0)) return;
       if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
-      if (db.decor.filter(d => d.owner === c.user).length >= 30) return note(c, 'Você já colocou 30 objetos. Recolha algum antes.');
-      track(c, 'place'); invOf(r)[rc.id]--; db.decor.push({ id: db.nextDecor++, kind: rc.id, x: X, y: Y, owner: c.user, ...(m.rot ? { rot: 1 } : {}) }); save(); sendInv(c); all({ t: 'decor', list: db.decor });
+      if (db.decor.filter(d => d.owner === c.user).length >= 60) return note(c, 'Você já colocou 60 objetos. Recolha algum antes.');
+      track(c, 'place'); invOf(r)[rc.id]--; db.decor.push({ id: db.nextDecor++, kind: rc.id, x: X, y: Y, owner: c.user, ...(m.rot ? { rot: 1 } : {}), ...(rc.id === 'pomar' ? { lastH: Date.now() } : {}) }); save(); sendInv(c); all({ t: 'decor', list: db.decor });
     } else if (m.t === 'move') {      // mudar um objeto seu de lugar (ex.: cercas)
       const d = db.decor.find(d => d.id === Number(m.id)), X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!d || d.owner !== c.user || c.room) return;
       if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
@@ -552,7 +574,7 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'pickup') {
       const i = db.decor.findIndex(d => d.id === Number(m.id)); if (i < 0) return; const d = db.decor[i], r = db.users[c.user];
       if (!r || d.owner !== c.user || Math.hypot(d.x - c.x, d.y - c.y) > 40) return;
-      db.decor.splice(i, 1); const inv = invOf(r); inv[d.kind] = (inv[d.kind] || 0) + 1; save(); sendInv(c); all({ t: 'decor', list: db.decor });
+      db.decor.splice(i, 1); const inv = invOf(r); inv[d.kind] = (inv[d.kind] || 0) + 1; for (const it of d.shop || []) inv[it.k] = (inv[it.k] || 0) + it.n; save(); sendInv(c); all({ t: 'decor', list: db.decor });
     } else if (m.t === 'bridge') {
       const now = Date.now(), r = db.users[c.user], X = Math.round(Number(m.x));
       if (!r || now - (c.lastBuild || 0) < 3000 || !Number.isFinite(X) || c.room) return; c.lastBuild = now;
@@ -610,6 +632,42 @@ wss.on('connection', (ws, req) => {
       const after = stageIdx(); all(castleState({ n: p + l, by: c.user }));
       if (p + l >= 10) all({ t: 'chat', id: c.id, username: c.user, text: `colocou ${p + l} blocos no castelo!`, ts: now });
       if (after > cur) { const txt = after >= STAGES.length ? 'O CASTELO DE ERYON ESTÁ PRONTO! Obrigado, comunidade!' : `O castelo ganhou: ${st.name}! Próxima etapa: ${STAGES[after].name}.`; all({ t: 'announce', text: txt }); const msg = { t: 'chat', id: 0, username: 'Castelo de Eryon', text: txt, ts: now, badge: 'criador' }; chatLog.push(msg); all(msg); }
+    } else if (m.t === 'harvest') {          // colher o pomar (só o dono)
+      const d = db.decor.find(q => q.id === Number(m.id)), r = db.users[c.user], now = Date.now(); if (!d || !r || d.kind !== 'pomar' || d.owner !== c.user || !nearPt(c, d.x, d.y, 30)) return;
+      if (now - (d.lastH || 0) < 4 * 60000) return note(c, 'As maçãs ainda estão crescendo.'); d.lastH = now; addRes(c, 'frutas', 3); track(c, 'fruit'); all({ t: 'decor', list: db.decor });
+    } else if (m.t === 'merchSell') {        // vender para o Mercador
+      const r = db.users[c.user], k = String(m.k || ''), inv = r && invOf(r); if (!r || !nearPt(c, MERCHANT[0], MERCHANT[1], 50)) return;
+      const n = Math.max(1, Math.min(99, Math.floor(Number(m.n) || 1), inv[k] || 0)), price = GOODS[k] && GOODS[k].buy ? GOODS[k].buy : ANIMALS[k] ? Math.floor(ANIMALS[k].price / 2) : 0; if (!price || !(inv[k] >= n)) return;
+      inv[k] -= n; earn(c.user, price * n); track(c, 'sell', n); note(c, `Você vendeu ${n} ${goodName(k).toLowerCase()} por ${price * n} moedas.`); sendInv(c);
+    } else if (m.t === 'merchBuy') {         // comprar animal do Mercador
+      const r = db.users[c.user], k = String(m.k || ''), A = ANIMALS[k], inv = r && invOf(r); if (!r || !A || !nearPt(c, MERCHANT[0], MERCHANT[1], 50)) return;
+      if ((inv.moedas || 0) < A.price) return note(c, `Faltam moedas: ${A.name} custa ${A.price}.`); inv.moedas -= A.price; inv[k] = (inv[k] || 0) + 1; save(); sendInv(c); note(c, `Você comprou: ${A.name}! Abra a Mochila e toque em "Soltar" onde quiser criar.`);
+    } else if (m.t === 'placeAnimal' || m.t === 'moveAnimal') {
+      const r = db.users[c.user], X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!r || c.room || !Number.isFinite(X) || !Number.isFinite(Y) || X < 10 || Y < 30 || X > WORLD.w - 10 || Y > WORLD.h - 10 || Math.hypot(X - c.x, Y - c.y) > 45) return;
+      if (m.t === 'placeAnimal') { const k = String(m.kind || ''); if (!ANIMALS[k] || !(invOf(r)[k] > 0)) return; if (db.animals.filter(a => a.owner === c.user).length >= 12) return note(c, 'Cada morador pode ter até 12 animais.');
+        invOf(r)[k]--; db.animals.push({ id: db.nextAnimal++, kind: k, x: X, y: Y, owner: c.user, lastProd: Date.now() }); sendInv(c); }
+      else { const a = db.animals.find(q => q.id === Number(m.id)); if (!a || a.owner !== c.user) return; a.x = X; a.y = Y; }
+      save(); all({ t: 'animals', list: pubAnimals() });
+    } else if (m.t === 'animalAct') {        // recolher produto / guardar o animal (só o dono)
+      const a = db.animals.find(q => q.id === Number(m.id)), r = db.users[c.user], now = Date.now(); if (!a || !r || a.owner !== c.user || !nearPt(c, a.x, a.y, 70)) return; const A = ANIMALS[a.kind];
+      if (m.what === 'collect') { if (now - (a.lastProd || 0) < A.every) return note(c, `Ainda não: volte em ${Math.ceil((A.every - (now - a.lastProd)) / 60000)} min.`); a.lastProd = now; addRes(c, A.prod, A.n); track(c, 'farm'); }
+      else if (m.what === 'pickup') { db.animals = db.animals.filter(q => q !== a); const inv = invOf(r); inv[a.kind] = (inv[a.kind] || 0) + 1; sendInv(c); }
+      save(); all({ t: 'animals', list: pubAnimals() });
+    } else if (m.t === 'shopPut') {          // dono coloca à venda na barraca
+      const d = db.decor.find(q => q.id === Number(m.id)), r = db.users[c.user], k = String(m.k || ''), inv = r && invOf(r); if (!d || !r || d.kind !== 'barraca' || d.owner !== c.user || !nearPt(c, d.x, d.y, 45) || !sellable(k)) return;
+      const n = Math.max(1, Math.min(999, Math.floor(Number(m.n) || 1))), price = Math.max(1, Math.min(999, Math.floor(Number(m.price) || 1))); if (!(inv[k] >= n)) return note(c, 'Você não tem tudo isso na mochila.');
+      d.shop ||= []; let it = d.shop.find(q => q.k === k); if (!it) { if (d.shop.length >= 6) return note(c, 'A barraca tem espaço para 6 tipos de coisa.'); it = { k, n: 0, price }; d.shop.push(it); }
+      inv[k] -= n; it.n += n; it.price = price; if (r.look && r.look.equip === k && !inv[k]) { delete r.look.equip; delete r.look.equipTool; all({ t: 'look', id: c.id, look: r.look }); } save(); sendInv(c); all({ t: 'decor', list: db.decor });
+    } else if (m.t === 'shopTake') {
+      const d = db.decor.find(q => q.id === Number(m.id)), r = db.users[c.user]; if (!d || !r || d.kind !== 'barraca' || d.owner !== c.user || !nearPt(c, d.x, d.y, 45)) return;
+      const i = (d.shop || []).findIndex(q => q.k === m.k); if (i < 0) return; const it = d.shop.splice(i, 1)[0], inv = invOf(r); inv[it.k] = (inv[it.k] || 0) + it.n; save(); sendInv(c); all({ t: 'decor', list: db.decor });
+    } else if (m.t === 'shopBuy') {          // outro jogador compra
+      const d = db.decor.find(q => q.id === Number(m.id)), r = db.users[c.user], now = Date.now(); if (!d || !r || d.kind !== 'barraca' || d.owner === c.user || !nearPt(c, d.x, d.y, 45) || now - (c.lastBuy || 0) < 500) return; c.lastBuy = now;
+      const it = (d.shop || []).find(q => q.k === m.k); if (!it) return; const n = Math.max(1, Math.min(it.n, Math.floor(Number(m.n) || 1))), cost = n * it.price, inv = invOf(r);
+      if ((inv.moedas || 0) < cost) return note(c, `Faltam moedas (custa ${cost}).`); inv.moedas -= cost; inv[it.k] = (inv[it.k] || 0) + n; it.n -= n; if (!it.n) d.shop = d.shop.filter(q => q !== it);
+      earn(d.owner, cost); const ro = db.users[d.owner]; if (ro) { ro.tot ||= {}; ro.tot.stall = (ro.tot.stall || 0) + n; } save(); sendInv(c); all({ t: 'decor', list: db.decor });
+      note(c, `Você comprou ${n} ${goodName(it.k).toLowerCase()} de @${d.owner} por ${cost} moedas.`); track(c, 'buy', n);
+      for (const o of clients) if (o.user === d.owner) { note(o, `@${c.user} comprou ${n} ${goodName(it.k).toLowerCase()} na sua barraca: +${cost} moedas!`); track(o, 'sell', n); }
     } else if (m.t === 'tp') {       // Portal Esquecido -> volta para a vila
       const pp = LM_POS.portal, now = Date.now(); if (c.room || Math.hypot(c.x - pp[0], c.y - pp[1]) > 40 || now - (c.lastTp || 0) < 3000) return; c.lastTp = now;
       c.x = SPAWN.x + (Math.random() * 30 - 15); c.y = SPAWN.y + Math.random() * 10; c.lastRoom = now; c.dirty = true; out(c.ws, { t: 'tp', x: c.x, y: c.y }); all({ t: 'act', id: c.id, kind: 'magic' }, c);

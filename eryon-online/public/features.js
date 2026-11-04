@@ -32,6 +32,7 @@ function onFeatureMsg(m) {
   if (m.t === 'rain') { startRain(m.gift || {}); return true; }
   if (m.t === 'signs') { SIGNS = m.list || []; return true; }
   if (m.t === 'castle') { onCastleMsg(m); return true; }
+  if (onEconMsg(m)) return true;
   if (m.t === 'builders') { const L = m.list.map(u => u === me ? 'você' : '@' + u), txt = L.length === 1 ? L[0] : L.slice(0, -1).join(', ') + ' e ' + L[L.length - 1];
     fxToast(`${txt}${m.more ? ' e mais ' + m.more : ''} ${L.length + m.more > 1 ? 'estão' : 'está'} construindo o castelo!`, 'Venha ajudar: pedreira ao sul da vila', '#ffd84a', '♜'); return true; }
   if (m.t === 'thanks') { showThanks(m.username, m.look); return true; }

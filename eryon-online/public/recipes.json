@@ -1,34 +1,301 @@
 [
-  { "id": "machado", "name": "Machado", "cls": "ferreiro", "where": "forja", "cost": { "lenha": 2, "pedra": 2 }, "type": "tool", "desc": "Quem tem ganha +2 lenha por árvore." },
-  { "id": "picareta", "name": "Picareta", "cls": "ferreiro", "where": "forja", "cost": { "lenha": 2, "pedra": 2 }, "type": "tool", "desc": "Quem tem ganha +1 pedra por rocha." },
-  { "id": "espada", "name": "Espada", "cls": "ferreiro", "where": "forja", "cost": { "lenha": 1, "pedra": 4 }, "type": "equip", "tool": "sword", "desc": "Equipe para andar com ela na mão." },
-  { "id": "martelo", "name": "Martelo", "cls": "ferreiro", "where": "forja", "cost": { "lenha": 1, "pedra": 2 }, "type": "equip", "tool": "hammer", "desc": "Equipe para andar com ele na mão." },
-
-  { "id": "cerca", "name": "Cerca", "cls": "construtor", "cost": { "lenha": 2 }, "type": "decor", "desc": "Coloque em volta da sua casa." },
-  { "id": "banco", "name": "Banco", "cls": "construtor", "cost": { "lenha": 3 }, "type": "decor", "desc": "Para sentar e conversar." },
-  { "id": "lanterna", "name": "Poste com lanterna", "cls": "construtor", "cost": { "lenha": 2, "pedra": 1 }, "type": "decor", "desc": "Ilumina o caminho." },
-
-  { "id": "fogueira", "name": "Fogueira", "cls": "lenhador", "cost": { "lenha": 4, "pedra": 2 }, "type": "decor", "desc": "Uma fogueira só sua." },
-  { "id": "tabuas", "name": "Pilha de tábuas", "cls": "lenhador", "cost": { "lenha": 3 }, "type": "decor", "desc": "Madeira cortada e empilhada." },
-
-  { "id": "sopa", "name": "Sopa de ervas", "cls": "cozinheiro", "where": "cozinha", "cost": { "ervas": 2, "lenha": 1 }, "type": "food", "make": 3, "desc": "Faz 3 tigelas para dividir com a galera." },
-  { "id": "pao", "name": "Pão", "cls": "cozinheiro", "where": "cozinha", "cost": { "ervas": 1, "lenha": 1 }, "type": "food", "make": 2, "desc": "Faz 2 pães." },
-
-  { "id": "pocao", "name": "Poção de cura", "cls": "curandeira", "cost": { "ervas": 3 }, "type": "food", "make": 2, "desc": "Faz 2 poções. Dê para quem precisa." },
-  { "id": "canteiro", "name": "Canteiro de ervas", "cls": "curandeira", "cost": { "ervas": 2, "lenha": 1 }, "type": "decor", "desc": "Um jardim de ervas." },
-
-  { "id": "cristal", "name": "Cristal mágico", "cls": "maga", "cost": { "pedra": 3, "ervas": 1 }, "type": "decor", "desc": "Brilha à noite." },
-  { "id": "runa", "name": "Pedra rúnica", "cls": "maga", "cost": { "pedra": 4 }, "type": "decor", "desc": "Uma pedra com runas antigas." },
-
-  { "id": "arco", "name": "Arco", "cls": "arqueira", "cost": { "lenha": 3 }, "type": "equip", "tool": "bow", "desc": "Equipe para andar com ele." },
-  { "id": "alvo", "name": "Alvo de treino", "cls": "arqueira", "cost": { "lenha": 3 }, "type": "decor", "desc": "Para treinar a pontaria." },
-
-  { "id": "estandarte", "name": "Estandarte de Eryon", "cls": "guerreiro", "cost": { "lenha": 2, "ervas": 1 }, "type": "decor", "desc": "A bandeira da vila." },
-  { "id": "boneco", "name": "Boneco de treino", "cls": "guerreiro", "cost": { "lenha": 3, "ervas": 1 }, "type": "decor", "desc": "Para treinar golpes." },
-
-  { "id": "alaude", "name": "Alaúde", "cls": "bardo", "cost": { "lenha": 3 }, "type": "equip", "tool": "lute", "desc": "Equipe para andar com ele." },
-  { "id": "palco", "name": "Palquinho", "cls": "bardo", "cost": { "lenha": 5 }, "type": "decor", "desc": "Um palco para tocar." },
-
-  { "id": "vinho", "name": "Vinho", "cls": "taverneiro", "cost": { "ervas": 2 }, "type": "food", "make": 3, "desc": "Faz 3 garrafas para servir." },
-  { "id": "barril", "name": "Barril", "cls": "taverneiro", "cost": { "lenha": 3 }, "type": "decor", "desc": "Um barril de carvalho." }
+ {
+  "id": "machado",
+  "name": "Machado",
+  "cls": "ferreiro",
+  "where": "forja",
+  "cost": {
+   "lenha": 2,
+   "pedra": 2
+  },
+  "type": "tool",
+  "desc": "Quem tem ganha +2 lenha por árvore."
+ },
+ {
+  "id": "picareta",
+  "name": "Picareta",
+  "cls": "ferreiro",
+  "where": "forja",
+  "cost": {
+   "lenha": 2,
+   "pedra": 2
+  },
+  "type": "tool",
+  "desc": "Quem tem ganha +1 pedra por rocha."
+ },
+ {
+  "id": "espada",
+  "name": "Espada",
+  "cls": "ferreiro",
+  "where": "forja",
+  "cost": {
+   "lenha": 1,
+   "pedra": 4
+  },
+  "type": "equip",
+  "tool": "sword",
+  "desc": "Equipe para andar com ela na mão."
+ },
+ {
+  "id": "martelo",
+  "name": "Martelo",
+  "cls": "ferreiro",
+  "where": "forja",
+  "cost": {
+   "lenha": 1,
+   "pedra": 2
+  },
+  "type": "equip",
+  "tool": "hammer",
+  "desc": "Equipe para andar com ele na mão."
+ },
+ {
+  "id": "cerca",
+  "name": "Cerca",
+  "cls": "construtor",
+  "cost": {
+   "lenha": 2
+  },
+  "type": "decor",
+  "desc": "Coloque em volta da sua casa."
+ },
+ {
+  "id": "banco",
+  "name": "Banco",
+  "cls": "construtor",
+  "cost": {
+   "lenha": 3
+  },
+  "type": "decor",
+  "desc": "Para sentar e conversar."
+ },
+ {
+  "id": "lanterna",
+  "name": "Poste com lanterna",
+  "cls": "construtor",
+  "cost": {
+   "lenha": 2,
+   "pedra": 1
+  },
+  "type": "decor",
+  "desc": "Ilumina o caminho."
+ },
+ {
+  "id": "fogueira",
+  "name": "Fogueira",
+  "cls": "lenhador",
+  "cost": {
+   "lenha": 4,
+   "pedra": 2
+  },
+  "type": "decor",
+  "desc": "Uma fogueira só sua."
+ },
+ {
+  "id": "tabuas",
+  "name": "Pilha de tábuas",
+  "cls": "lenhador",
+  "cost": {
+   "lenha": 3
+  },
+  "type": "decor",
+  "desc": "Madeira cortada e empilhada."
+ },
+ {
+  "id": "sopa",
+  "name": "Sopa de ervas",
+  "cls": "cozinheiro",
+  "where": "cozinha",
+  "cost": {
+   "ervas": 2,
+   "lenha": 1
+  },
+  "type": "food",
+  "make": 3,
+  "desc": "Faz 3 tigelas para dividir com a galera."
+ },
+ {
+  "id": "pao",
+  "name": "Pão",
+  "cls": "cozinheiro",
+  "where": "cozinha",
+  "cost": {
+   "ervas": 1,
+   "lenha": 1
+  },
+  "type": "food",
+  "make": 2,
+  "desc": "Faz 2 pães."
+ },
+ {
+  "id": "pocao",
+  "name": "Poção de cura",
+  "cls": "curandeira",
+  "cost": {
+   "ervas": 3
+  },
+  "type": "food",
+  "make": 2,
+  "desc": "Faz 2 poções. Dê para quem precisa."
+ },
+ {
+  "id": "canteiro",
+  "name": "Canteiro de ervas",
+  "cls": "curandeira",
+  "cost": {
+   "ervas": 2,
+   "lenha": 1
+  },
+  "type": "decor",
+  "desc": "Um jardim de ervas."
+ },
+ {
+  "id": "cristal",
+  "name": "Cristal mágico",
+  "cls": "maga",
+  "cost": {
+   "pedra": 3,
+   "ervas": 1
+  },
+  "type": "decor",
+  "desc": "Brilha à noite."
+ },
+ {
+  "id": "runa",
+  "name": "Pedra rúnica",
+  "cls": "maga",
+  "cost": {
+   "pedra": 4
+  },
+  "type": "decor",
+  "desc": "Uma pedra com runas antigas."
+ },
+ {
+  "id": "arco",
+  "name": "Arco",
+  "cls": "arqueira",
+  "cost": {
+   "lenha": 3
+  },
+  "type": "equip",
+  "tool": "bow",
+  "desc": "Equipe para andar com ele."
+ },
+ {
+  "id": "alvo",
+  "name": "Alvo de treino",
+  "cls": "arqueira",
+  "cost": {
+   "lenha": 3
+  },
+  "type": "decor",
+  "desc": "Para treinar a pontaria."
+ },
+ {
+  "id": "estandarte",
+  "name": "Estandarte de Eryon",
+  "cls": "guerreiro",
+  "cost": {
+   "lenha": 2,
+   "ervas": 1
+  },
+  "type": "decor",
+  "desc": "A bandeira da vila."
+ },
+ {
+  "id": "boneco",
+  "name": "Boneco de treino",
+  "cls": "guerreiro",
+  "cost": {
+   "lenha": 3,
+   "ervas": 1
+  },
+  "type": "decor",
+  "desc": "Para treinar golpes."
+ },
+ {
+  "id": "alaude",
+  "name": "Alaúde",
+  "cls": "bardo",
+  "cost": {
+   "lenha": 3
+  },
+  "type": "equip",
+  "tool": "lute",
+  "desc": "Equipe para andar com ele."
+ },
+ {
+  "id": "palco",
+  "name": "Palquinho",
+  "cls": "bardo",
+  "cost": {
+   "lenha": 5
+  },
+  "type": "decor",
+  "desc": "Um palco para tocar."
+ },
+ {
+  "id": "vinho",
+  "name": "Vinho",
+  "cls": "taverneiro",
+  "cost": {
+   "ervas": 2
+  },
+  "type": "food",
+  "make": 3,
+  "desc": "Faz 3 garrafas para servir."
+ },
+ {
+  "id": "barril",
+  "name": "Barril",
+  "cls": "taverneiro",
+  "cost": {
+   "lenha": 3
+  },
+  "type": "decor",
+  "desc": "Um barril de carvalho."
+ },
+ {
+  "id": "muro",
+  "name": "Muro de pedra",
+  "cls": "todos",
+  "cost": {
+   "pedra": 3
+  },
+  "type": "decor",
+  "desc": "Muro firme. Dá para girar e emendar."
+ },
+ {
+  "id": "portao",
+  "name": "Portão de madeira",
+  "cls": "todos",
+  "cost": {
+   "lenha": 4
+  },
+  "type": "decor",
+  "desc": "Um portão para o seu terreno."
+ },
+ {
+  "id": "barraca",
+  "name": "Barraca de feira",
+  "cls": "todos",
+  "cost": {
+   "lenha": 6,
+   "ervas": 1
+  },
+  "type": "decor",
+  "desc": "Monte sua barraca e venda coisas para a galera."
+ },
+ {
+  "id": "pomar",
+  "name": "Macieira (pomar)",
+  "cls": "todos",
+  "cost": {
+   "frutas": 2,
+   "ervas": 2,
+   "lenha": 1
+  },
+  "type": "decor",
+  "desc": "Dá 3 maçãs a cada 4 minutos (só para o dono)."
+ }
 ]

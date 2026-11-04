@@ -137,7 +137,7 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 #announce{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:8;width:min(440px,calc(100% - 24px));padding:14px 16px;text-align:center;background:rgba(12,20,16,.95);border:3px solid #060b0a;box-shadow:inset 0 0 0 3px #ff9a3a;display:flex;flex-direction:column;gap:6px;pointer-events:none}
 #announce[hidden]{display:none}#announce small{font:400 12px P2P,monospace;color:#ff9a3a;letter-spacing:2px}#announce span{font:700 20px Pix,monospace;color:#fff8e0}
 #announce.in{animation:aIn 9s steps(14) forwards}@keyframes aIn{0%{opacity:0;transform:translate(-50%,-30px) scale(.9)}6%{opacity:1;transform:translate(-50%,0) scale(1)}90%{opacity:1}100%{opacity:0}}
-#tut{position:fixed;left:50%;bottom:calc(130px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:7;width:min(400px,calc(100% - 24px));padding:14px;display:flex;flex-direction:column;gap:6px}
+#tut{position:fixed;left:50%;bottom:calc(130px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:4;width:min(400px,calc(100% - 24px));padding:14px;display:flex;flex-direction:column;gap:6px}
 #tut[hidden]{display:none}#tut small{color:#9ff3ff;font-size:13px}#tut b{color:var(--gold);font-size:19px}#tut p{margin:0;font-size:16px}#tut .row2{display:flex;gap:8px;justify-content:flex-end}
 #plist .plrow{display:flex;align-items:center}#plist .plrow .pl{flex:1}#plist .repb{font:700 13px Pix,monospace;background:none;border:0;color:#ff8a70;padding:6px 8px;cursor:pointer}
 
@@ -156,6 +156,12 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 #nudge{position:fixed;left:10px;bottom:calc(128px + env(safe-area-inset-bottom));z-index:4;max-width:min(300px,calc(100% - 20px));text-align:left;font:700 14px Pix,monospace;padding:9px 12px;background:#2a1410;color:#fff3b0;border:3px solid #0c1410;box-shadow:inset 0 0 0 2px #ffd84a,0 4px 0 rgba(0,0,0,.4)}
 #nudge[hidden]{display:none}#nudge.in{animation:nIn 8s forwards}@keyframes nIn{0%{opacity:0;transform:translateX(-30px)}6%{opacity:1;transform:none}90%{opacity:1}100%{opacity:0}}
 body.clean #nudge{display:none!important}
+.coins{font:700 16px Pix,monospace;color:#c3cad6}.coins b{color:var(--gold);font-size:20px}
+#econBody h3{margin:8px 0 2px;color:var(--gold);font-size:17px}
+.erow{flex-direction:row!important;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.erow>div:first-child{flex:1;min-width:140px}
+.sellform{display:flex;flex-direction:column;gap:8px;padding:10px;background:#0c1410;border:2px solid #2a4a3d}.sellform label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:#c4ccd0}
+.sellform select,.sellform input{font:700 17px Pix,monospace;padding:8px;background:#060b0a;color:var(--txt);border:2px solid #3c5d4a}
+.res.coin b{color:var(--gold)}
 </style>
 </head>
 <body>
@@ -214,6 +220,7 @@ body.clean #nudge{display:none!important}
   <span id="nameForm" hidden class="nform"><input id="newName" placeholder="@seu_usuario" maxlength="31" autocapitalize="none" spellcheck="false"><button id="nameOk" type="button">OK</button></span>
   <p class="hint keys">Teclado: setas/WASD andar · E ação · Q habilidade · C criar · I mochila · M mapa</p>
 </div></div>
+<div id="econPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2 id="econTitle">Feira</h2><button id="econClose" type="button" class="sec">Fechar</button></div><div id="econBody"></div></div></div>
 <div id="questPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Missões</h2><button id="questClose" type="button" class="sec">Fechar</button></div><div id="questBody"></div></div></div>
 <div id="supPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Apoiar Eryon ♥</h2><button id="supClose" type="button" class="sec">Fechar</button></div><div id="supBody"></div></div></div>
 <div id="repPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Denunciar</h2><button id="repClose" type="button" class="sec">Cancelar</button></div><p>O que <b id="repWho"></b> fez?</p>
@@ -261,13 +268,14 @@ body.clean #nudge{display:none!important}
 <div id="chatlog"></div>
 <div id="chatbar"><button id="chatToggle" type="button" class="sec" aria-pressed="false" aria-label="Tela cheia" title="Tela cheia: deixa só o campo de mensagem"></button><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
 
-<script src="engine.js?v=31"></script>
-<script src="life.js?v=31"></script>
-<script src="craft.js?v=31"></script>
-<script src="explore.js?v=31"></script>
-<script src="dragons.js?v=31"></script>
-<script src="features.js?v=37"></script>
-<script src="castle.js?v=34"></script>
-<script src="game.js?v=34"></script>
+<script src="engine.js?v=40"></script>
+<script src="life.js?v=40"></script>
+<script src="craft.js?v=40"></script>
+<script src="explore.js?v=40"></script>
+<script src="dragons.js?v=40"></script>
+<script src="features.js?v=40"></script>
+<script src="castle.js?v=40"></script>
+<script src="economy.js?v=42"></script>
+<script src="game.js?v=41"></script>
 </body>
 </html>

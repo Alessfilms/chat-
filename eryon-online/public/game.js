@@ -89,7 +89,7 @@ function buildWorld(world) {
   const [pc, pq] = canvas(4, 10); px(pq, P.ink, 0, 0, 4, 9); px(pq, P.wood, 1, 1, 2, 7); px(pq, P.woodL, 1, 0, 1, 1); PAL_IMG = pc;
   placePalisade();
   const LB = { costela: [-42, 42, -12, 0], ruinas: [4, 20, -8, 0], torre: [-13, 13, -14, 0], caverna: [-36, 36, -22, -2], buraco: [-22, 22, -16, -2], poco: [-16, 16, -14, 2], arvore: [-4, 4, -5, 0], circulo: [-6, 8, -6, 0] };
-  placeScenery(x); castleWorld(x);
+  placeScenery(x); castleWorld(x); econWorld(x);
   Object.assign(LB, { lago: [[-10, 10, -10, 0]], gigante: [-40, 40, -14, 0], acampamento: [[-36, -12, -10, 0], [12, 36, -10, 0]], cristais: [-20, 20, -10, 0], cemiterio: [[-2, 2, -1, 0]], portal: [[-27, -16, -8, 0], [16, 27, -8, 0]], ninho: [-30, 30, -10, 0] });
   for (const l of LANDMARKS) { OBJ.push({ y: l.y, x: l.x, lm: l }); const bb = LB[l.id]; if (bb) for (const b of (Array.isArray(bb[0]) ? bb : [bb])) blockers.push({ k: 'r', x0: l.x + b[0], x1: l.x + b[1], y0: l.y + b[2], y1: l.y + b[3] }); }
   OBJ.sort((a, b) => a.y - b.y);
@@ -204,6 +204,7 @@ function placeScenery(x) {
     if (Y > 690 && Math.abs(X - pathS(Y)) < 18) return false;
     if (Math.hypot(X - BRIDGE.x, Y - BRIDGE.y) < 40) return false;
     if (X > 380 && X < 700 && Y > 1230 && Y < 1610) return false;   // castelo e pedreira
+    if (Math.hypot(X - 640, (Y - 684) * 1.2) < 100) return false;    // praça da feira
     if (placed.some(p => Math.hypot(p.x - X, p.y - Y) < rad + p.r)) return false;
     if (typeof NODES !== 'undefined' && NODES.some(n => Math.hypot(n.x - X, n.y - Y) < rad + 8)) return false;
     return true;
@@ -450,7 +451,7 @@ function connect() {
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, perk: readPerk() }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
     if (onFeatureMsg(m)) return;
-    if (m.t === 'welcome') { SIGNS = m.signs || []; if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
     else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; } } }
@@ -461,7 +462,7 @@ function connect() {
     else if (m.t === 'inv') setInv(m.inv);
     else if (m.t === 'found') { FOUND = new Set(m.list || []); updFound(); }
     else if (m.t === 'nodes') { DEPL.clear(); m.dep.forEach(i => DEPL.add(i)); }
-    else if (m.t === 'decor') DECOR = m.list || [];
+    else if (m.t === 'decor') { DECOR = m.list || []; renderEcon(); }
     else if (m.t === 'lunch') onLunch(m);
     else if (m.t === 'note') sys(m.text);
     else if (m.t === 'wood') { wood = m.n; showWood(); }
@@ -578,6 +579,7 @@ function draw(t, p) {
   for (const q of players.values()) if ((q.room || '') === myRoom) list.push({ y: q.y, pl: q });
   if (!room) { for (const n of NODES) if (n.x > li - 20 && n.x < li + cw + 20 && n.y > ti - 10 && n.y < ti + ch + 20) list.push({ y: n.y, node: n }); for (const d of DECOR) if (d.x > li - 30 && d.x < li + cw + 30 && d.y > ti - 10 && d.y < ti + ch + 30) list.push({ y: d.y, decor: d }); }
   if (!room) for (const h of BUILT) if (h.x > li - 40 && h.x < li + cw + 40 && h.y > ti - 10 && h.y < ti + ch + 40) list.push({ y: h.y, built: h });
+  if (!room) for (const a of ANIMALS_L) { const q = animalPos(a, t); if (q.X > li - 20 && q.X < li + cw + 20 && q.Y > ti - 10 && q.Y < ti + ch + 20) list.push({ y: q.Y, animal: a }); }
   if (!room) for (const sg of allSigns()) if (sg.x > li - 30 && sg.x < li + cw + 30 && sg.y > ti - 10 && sg.y < ti + ch + 30) list.push({ y: sg.y, sign: sg });
   if (!room) drawDragonShadows(x, li, ti, cw, ch);
   list.sort((a, b) => a.y - b.y);
@@ -586,12 +588,15 @@ function draw(t, p) {
     if (o.pl) { const q = o.pl; drawPet(x, q, t); drawCharAt(x, q.ch, q.x, q.y, poseFor(q, t), q.face || 1); continue; }
     if (o.sign) { drawSign(x, o.sign); continue; }
     if (o.castle) { drawCastle(x, t); continue; }
+    if (o.merchant) { drawMerchant(x, t); continue; }
+    if (o.animal) { drawAnimal(x, o.animal, t); continue; }
     if (o.lm) { drawLandmark(x, o.lm, t); continue; }
     if (o.node) { drawNode(x, o.node); continue; }
     if (o.decor) { drawDecor(x, o.decor, t); continue; }
     if (o.built) { const h = o.built, spr = buildingSprite(h.type || 'casa', h.roof || 0), k = clamp((Date.now() - h.t) / 3000), X = h.x - Math.floor(spr.width / 2) + 2, Y = h.y - spr.height + 3;
       if (k < .35) { const hh = Math.max(1, Math.round(FRAME_SPR.height * k / .35)); x.drawImage(FRAME_SPR, 0, FRAME_SPR.height - hh, FRAME_SPR.width, hh, X, Y + FRAME_SPR.height - hh, FRAME_SPR.width, hh); }
       else { if (k < 1) x.drawImage(FRAME_SPR, X, Y); const hh = Math.max(1, Math.round(spr.height * Math.min(1, (k - .35) / .65))); x.drawImage(spr, 0, spr.height - hh, spr.width, hh, X, Y + spr.height - hh, spr.width, hh); }
+      if (h.type === 'moinho' && k >= 1) drawMillBlades(x, h, t);
       if (k < 1) burst(x, t, t - (Date.now() - h.t) / 1000 + 2.9, h.x, h.y - 2, 24, [P.st3, P.st4, P.wallD], 22, .9, 10, h.id * 7);
       continue; }
     if (o.tree !== undefined && URBAN.has(o.tree)) continue;
@@ -636,7 +641,7 @@ function draw(t, p) {
     const role0 = q.badge === 'criador' ? 'Criador' : NAMED[q.username]?.role || classOf(q)?.name, role = (q.lv ? 'Nv ' + q.lv + (role0 ? ' · ' : '') : '') + (role0 || ''); if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
     if (q.say && now - q.sayT < 6000) bubble(q.say, sx, sy - fs * 1.2, fs);
   }
-  if (!room) { drawSignLabels(ctx, L, T, S, fs, p); castleLabel(ctx, L, T, S, fs, p); }
+  if (!room) { drawSignLabels(ctx, L, T, S, fs, p); castleLabel(ctx, L, T, S, fs, p); econLabels(ctx, L, T, S, fs, p); }
 }
 // ---------------------------------------------------------------- ações e portas
 let ctxAct = null;
@@ -648,19 +653,20 @@ function updateContext(p, t) {
     if (!c) c = { kind: 'exit', label: 'Sair' };
   } else {
     for (const d of DOORS) if (Math.hypot(p.x - d.x, p.y - d.y) < 10) c = { kind: 'enter', label: d.label, room: d.room };
+    if (!c) { const ec = econContext(p); if (ec) c = ec; }
     if (!c) { const cc = castleContext(p); if (cc) c = cc; }
     { const pl = LM.portal; if (!c && pl && Math.abs(p.x - pl.x) < 13 && p.y > pl.y - 22 && p.y < pl.y + 10) c = { kind: 'portal', label: 'Atravessar o portal' }; }
     if (!c && B.serraria && Math.hypot(p.x - (B.serraria.x + 18), p.y - (B.serraria.y + 8)) < 18) c = { kind: 'split', label: 'Rachar lenha' };
     const kit = B.cozinha, nearKit = kit && Math.hypot(p.x - kit.x, p.y - (kit.y + 8)) < 24, lunchOn = lunch && Date.now() < lunch.until;
     if (!c && nearKit) c = lunchOn ? { kind: 'eat', label: 'Comer o almoço' } : { kind: 'lunch', label: 'Cozinhar e chamar para o almoço' };
     if (!c) { const dr = Math.abs(p.y - riverY(p.x)); if (dr > 9 && dr < 20 && Math.abs(p.x - BRIDGE.x) > 30 && !BRIDGES.some(b => Math.abs(p.x - b.x) < 30)) c = wood >= 15 ? { kind: 'bridge', label: 'Construir ponte (15 lenha)' } : { kind: 'none', label: 'Ponte: junte 15 lenhas' }; }
-    if (!c) { let best = 14, bn = null; for (const n of NODES) { if (DEPL.has(n.id)) continue; const d = Math.hypot(p.x - n.x, (p.y - n.y) * 1.2); if (d < best) { best = d; bn = n; } } if (bn) c = bn.kind === 'rock' ? { kind: 'mine', label: isQuarry(bn.id) && !castleDone() ? 'Quebrar pedra para o castelo' : 'Quebrar pedra', node: bn.id, tx: bn.x } : { kind: 'herb', label: 'Colher ervas', node: bn.id, tx: bn.x }; }
+    if (!c) { let best = 14, bn = null; for (const n of NODES) { if (DEPL.has(n.id)) continue; const d = Math.hypot(p.x - n.x, (p.y - n.y) * 1.2); if (d < best) { best = d; bn = n; } } if (bn) c = bn.kind === 'fruit' ? { kind: 'herb', label: 'Colher frutas', node: bn.id, tx: bn.x } : bn.kind === 'rock' ? { kind: 'mine', label: isQuarry(bn.id) && !castleDone() ? 'Quebrar pedra para o castelo' : 'Quebrar pedra', node: bn.id, tx: bn.x } : { kind: 'herb', label: 'Colher ervas', node: bn.id, tx: bn.x }; }
     if (!c) { const d = DECOR.find(d => d.owner === me && Math.hypot(p.x - d.x, p.y - d.y) < 14); if (d) c = { kind: 'movedecor', label: 'Mover ' + ((RBY[d.kind] || {}).name || 'objeto').toLowerCase(), id: d.id, d }; }
     if (!c && canBuildAt(p)) c = { kind: 'buildmenu', label: 'Construir aqui…' };
     if (!c) { let best = 13, bt = null; for (const tr of TREE_POS) { if (CUT.has(tr.i)) continue; const d = Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2); if (d < best) { best = d; bt = tr; } } if (bt) c = { kind: 'chop', label: 'Derrubar árvore', tree: bt.i, tx: bt.x }; }
   }
   const key = c ? c.kind + c.label + (c.tree ?? '') + (c.node ?? '') + (c.id ?? '') : '';
-  if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + (TOUCH ? '' : '  [E]'); $('act2').hidden = !(c && c.kind === 'movedecor'); }
+  if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + (TOUCH ? '' : '  [E]'); $('act2').hidden = !(c && (c.kind === 'movedecor' || c.alt)); if (c) $('act2').textContent = c.alt ? c.alt.label : 'Guardar'; }
 }
 function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; const c = ctxAct;
   if (c.kind === 'enter') { sfx.door(true); const r = roomOf(c.room); p.room = c.room; p.x = r.spawn.x; p.y = r.spawn.y; target = null; follow(); sendNow(p); return; }
@@ -670,6 +676,7 @@ function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; c
   if (c.kind === 'mine' || c.kind === 'herb') { p.face = c.tx < p.x ? -1 : 1; const kind = c.kind === 'mine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
   if (c.kind === 'pickup') { send({ t: 'pickup', id: c.id }); return; }
   if (c.kind === 'castle') { castleGive(); return; }
+  if (c.kind === 'econ') { if (c.fn) c.fn(); return; }
   if (c.kind === 'portal') { send({ t: 'tp', to: 'vila' }); doAct('magic'); return; }
   if (c.kind === 'movedecor') { startPlacing({ kind: c.d.kind, id: c.d.id, rot: c.d.rot }); return; }
   if (c.kind === 'bridge') { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'bridge', x: Math.round(p.x) })); doAct('build'); return; }
@@ -711,7 +718,7 @@ function canBuildAt(p) {
 function sendNow(p) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: false, room: p.room || '' })); }
 function showWood() { $('wood').textContent = `Lenha ${INV.lenha || 0} · Pedra ${INV.pedra || 0} · Ervas ${INV.ervas || 0}`; }
 $('actBtn').onclick = () => { sndStart(); doContext(); };
-$('act2').onclick = () => { if (ctxAct && ctxAct.kind === 'movedecor') send({ t: 'pickup', id: ctxAct.id }); };
+$('act2').onclick = () => { if (ctxAct && ctxAct.alt) ctxAct.alt.fn(); else if (ctxAct && ctxAct.kind === 'movedecor') send({ t: 'pickup', id: ctxAct.id }); };
 $('placeOk').onclick = () => { sndStart(); confirmPlacing(); };
 $('placeRot').onclick = () => { if (placing) placing.rot = placing.rot ? 0 : 1; };
 $('placeNo').onclick = () => stopPlacing();
@@ -732,7 +739,7 @@ function bubble(text, sx, sy, fs) {
 
 // ---------------------------------------------------------------- início
 fetch('world.json').then(r => r.json()).then(async w => {
-  buildWorld(w); indexBlockers(); buildNodes(); castleQuarry(); await Promise.all([document.fonts.load('700 20px Pix'), document.fonts.load('400 20px P2P')]).catch(() => {});
+  buildWorld(w); indexBlockers(); buildNodes(); castleQuarry(); econNodes(); await Promise.all([document.fonts.load('700 20px Pix'), document.fonts.load('400 20px P2P')]).catch(() => {});
   // tela de fundo atrás do login: a fogueira de Eryon
   (function idle(n) { if (me) return; draw(n / 1000, null); requestAnimationFrame(idle); })(performance.now());
   if (token) { const r = await API('/api/me?token=' + encodeURIComponent(token)); if (r.ok) { const sl = savedLook(); if (!r.data.look && sl) { await post('/api/look', { token, look: sl }); r.data.look = sl; } return afterLogin(r.data); } store.del('eryon_token'); token = null; }
