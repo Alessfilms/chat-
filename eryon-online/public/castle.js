@@ -110,25 +110,69 @@ function onCastleMsg(m) {
   if (m.n) { const me2 = players.get(myId); if (me2 && !me2.room && Math.hypot(me2.x - CASTLE.x, me2.y - CASTLE.y) < 320) { castleFx(m.n, m.fx); if (m.by === me && m.fx && !castleFx.told && (castleFx.told = 1)) fxToast('+' + m.n + ' blocos no castelo!', 'A pedra virou bloco na obra', '#ffd84a', '▣'); play('anvil_' + (Math.random() < .5 ? 0 : 1), .35); play('wood_hit', .3, .8); } }
   if (castleDone() && !wasDone && m.n) { fxToast('O CASTELO ESTÁ PRONTO!', 'Toda Eryon construiu junto. Entre pelo portão!', '#ffd84a', '♛'); fanfare(true); }
   if (!m.n) castleHint();
-  if (castleDone()) { if (!DOORS.some(d => d.room === 'castelo')) DOORS.push({ room: 'castelo', x: CASTLE.x, y: CASTLE.y + 4, label: 'Entrar no castelo' }); }
+  const stg = curStage(); if (onCastleMsg.stg !== stg) { onCastleMsg.stg = stg; delete ROOM_CACHE.castelo; }
 }
-// ---------- Salão do Trono (quando o castelo fica pronto)
-function throneRoom() {
-  const w = 240, h = 170, [c, x] = canvas(w, h);
-  for (let Y = 0; Y < h; Y++) for (let X = 0; X < w; X++) px(x, ((Math.floor(X / 12) + Math.floor(Y / 12)) & 1) ? '#7a8396' : '#939cae', X, Y);
-  for (let X = 0; X < w; X += 12) px(x, '#565e70', X, 30, 1, h); for (let Y = 30; Y < h; Y += 12) px(x, '#565e70', 0, Y, w, 1);
-  cBricks(x, 0, 0, w, 30, CSB, 77); for (const X of [30, 90, 144, 204]) cWindow(x, X, 8);
-  for (const X of [26, 76, 164, 214]) { px(x, CO, X - 6, 30, 13, 120); px(x, CS[2], X - 5, 30, 11, 118); px(x, CS[3], X - 5, 30, 3, 118); px(x, CS[1], X + 3, 30, 3, 118); px(x, CO, X - 8, 148, 17, 6); px(x, CS[3], X - 7, 149, 15, 4); }
-  for (const X of [50, 190]) { px(x, CO, X - 7, 2, 15, 30); px(x, '#c0302a', X - 6, 3, 13, 26); px(x, '#ffd84a', X - 3, 9, 7, 7); }
-  px(x, '#7a1a14', 108, 40, 24, h - 40); px(x, '#c0302a', 110, 40, 20, h - 40); for (let Y = 44; Y < h; Y += 8) px(x, '#ffd84a', 110, Y, 20, 1);
-  px(x, CO, 104, 30, 32, 16); px(x, '#ffd84a', 105, 31, 30, 14); px(x, '#f2a33a', 105, 40, 30, 5); px(x, '#c0302a', 110, 36, 20, 8); px(x, CO, 104, 22, 32, 10); px(x, '#ffd84a', 105, 23, 30, 8); px(x, '#fff3b0', 108, 24, 4, 2); px(x, '#9ff3ff', 118, 25, 4, 4);
-  for (const X of [40, 200]) { px(x, CO, X - 2, 50, 5, 14); px(x, '#3a2216', X - 1, 51, 3, 12); }
-  px(x, CO, 104, h - 8, 32, 8); px(x, '#1a1208', 106, h - 7, 28, 7);
-  const block = [[0, 0, w, 34], [0, 0, 4, h], [w - 4, 0, w, h], [100, 20, 140, 48], ...[26, 76, 164, 214].map(X => [X - 7, 140, X + 8, 154])];
-  return { id: 'castelo', name: 'Salão do Trono de Eryon', w, h, img: c, spawn: { x: 120, y: 152 }, door: { x: 120, y: 164 }, block, glows: [[40, 50, P.fire3], [200, 50, P.fire3]],
-    spots: [{ x: 120, y: 54, rx: 14, ry: 8, kind: 'magic', label: 'Sentar no trono' }], outside: { x: CASTLE.spot.x, y: CASTLE.spot.y } };
+// ---------- Salão do Trono: dá para entrar desde já; o salão vai ficando pronto junto com a obra
+function throneRoom(stage) {
+  const w = 260, h = 180, [c, x] = canvas(w, h), done = stage >= 7, st = n => stage >= n;
+  // piso: terra batida no começo, pedra quadriculada depois da fundação
+  for (let Y = 0; Y < h; Y++) for (let X = 0; X < w; X++) px(x, st(1) ? (((X / 12 | 0) + (Y / 12 | 0)) & 1 ? '#7a8396' : '#939cae') : (h2(X >> 1, Y >> 1) > .5 ? '#8a5430' : '#9a6538'), X, Y);
+  if (st(1)) { for (let X = 0; X < w; X += 12) px(x, '#565e70', X, 34, 1, h); for (let Y = 34; Y < h; Y += 12) px(x, '#565e70', 0, Y, w, 1); }
+  // parede do fundo
+  if (st(2)) { cBricks(x, 0, 0, w, 34, CSB, 77); for (const X of [24, 74, 170, 220]) cWindow(x, X, 8); fBeam(x, 24, 35, 6, 40); fBeam(x, 220, 35, 6, 40); }
+  else { px(x, '#4a5060', 0, 0, w, 34); for (let X = 0; X < w; X += 26) { px(x, '#3a2216', X + 6, 0, 3, 34); px(x, '#b8814a', X + 7, 0, 1, 34); } px(x, '#3a2216', 0, 14, w, 3); px(x, '#b8814a', 0, 14, w, 1); }
+  // colunas
+  if (st(3)) for (const X of [30, 84, 176, 230]) { px(x, CO, X - 7, 34, 15, 112); px(x, CS[2], X - 6, 34, 13, 110); px(x, CS[3], X - 6, 34, 3, 110); px(x, CS[1], X + 3, 34, 4, 110); px(x, CO, X - 9, 144, 19, 7); px(x, CS[3], X - 8, 145, 17, 5); }
+  // tapete vermelho, estrado e trono
+  if (st(5)) { px(x, '#7a1a14', 116, 52, 28, h - 52); px(x, '#c0302a', 118, 52, 24, h - 52); for (let Y = 56; Y < h; Y += 8) px(x, '#ffd84a', 118, Y, 24, 1);
+    px(x, CO, 96, 34, 68, 22); px(x, CS[2], 97, 35, 66, 20); px(x, CS[3], 97, 35, 66, 2); px(x, CS[1], 97, 49, 66, 2); px(x, CS[3], 97, 50, 66, 1);
+    px(x, CO, 116, 22, 28, 26); px(x, '#ffd84a', 117, 23, 26, 24); px(x, '#f2a33a', 117, 40, 26, 7); px(x, '#c0302a', 121, 30, 18, 12); px(x, CO, 116, 14, 28, 10); px(x, '#ffd84a', 117, 15, 26, 8); px(x, '#fff3b0', 119, 16, 6, 2); px(x, '#9ff3ff', 128, 17, 4, 4); }
+  // mesa do banquete e lustres (castelo pronto)
+  if (done) { fBox(x, 34, 70, 30, 60, '#7a4a2a', '#a3794b'); fBox(x, 196, 70, 30, 60, '#7a4a2a', '#a3794b');
+    for (const X0 of [34, 196]) { for (let k = 0; k < 6; k++) { fChair(x, X0 - 8, 74 + k * 9); fChair(x, X0 + 32, 74 + k * 9); }
+      for (let k = 0; k < 7; k++) { const Y = 74 + k * 8; disc(x, X0 + 8, Y, 2, '#f4f0d8'); px(x, ['#e04a3a', '#ffd84a', '#3c8e42', '#a8482c'][k % 4], X0 + 7, Y - 1, 2, 2); px(x, '#c9a46a', X0 + 20, Y - 2, 3, 4); } }
+    for (const [X, Y] of [[130, 90], [130, 140]]) { ring(x, X, Y, 9, '#c9a46a'); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; px(x, '#ffd84a', Math.round(X + Math.cos(a) * 9), Math.round(Y + Math.sin(a) * 9) - 1, 1, 2); } }
+    for (const X of [12, 248]) { px(x, CO, X - 4, 60, 9, 18); px(x, '#a2abbc', X - 3, 61, 7, 16); px(x, '#565e70', X - 3, 66, 7, 1); px(x, '#c3cad6', X - 2, 61, 2, 5); }
+    for (const X of [50, 210]) { px(x, CO, X - 7, 2, 15, 30); px(x, '#c0302a', X - 6, 3, 13, 26); px(x, '#ffd84a', X - 3, 9, 7, 7); } }
+  // obra: andaimes, blocos e ferramentas enquanto não fica pronto
+  if (!done) { for (const X of [20, 90, 160, 230]) { px(x, '#3a2216', X, 36, 3, 50); px(x, '#b8814a', X + 1, 36, 1, 50); } px(x, '#3a2216', 16, 60, 220, 3); px(x, '#b8814a', 16, 60, 220, 1);
+    for (let i = 0; i < 9; i++) { const X = 40 + (i % 3) * 8 + (i > 5 ? 150 : 0), Y = 120 + Math.floor(i / 3) * 5; px(x, CO, X - 1, Y - 1, 8, 6); px(x, CS[2], X, Y, 6, 4); px(x, CS[3], X, Y, 6, 1); }
+    px(x, CO, 200, 140, 20, 8); px(x, '#8a5530', 201, 141, 18, 6); px(x, '#c3cad6', 206, 136, 2, 6); px(x, '#3a2216', 214, 137, 2, 6); }
+  // escada para a torre (lateral direita)
+  if (st(6)) fStairs(x, 236, 120, 18, 6, true);
+  // porta
+  px(x, CO, 112, h - 8, 36, 8); px(x, '#1a1208', 114, h - 7, 32, 7);
+  const block = [[0, 0, w, 38], [0, 0, 4, h], [w - 4, 0, w, h]];
+  if (st(3)) for (const X of [30, 84, 176, 230]) block.push([X - 8, 140, X + 9, 152]);
+  if (st(5)) block.push([95, 18, 165, 50]);
+  if (done) block.push([30, 68, 70, 132], [192, 68, 232, 132]);
+  const spots = [];
+  if (st(5)) spots.push({ x: 130, y: 54, rx: 14, ry: 6, kind: 'magic', label: 'Sentar no trono' });
+  if (st(6)) spots.push({ x: 245, y: 136, rx: 12, ry: 14, kind: 'stairs', to: 'castelo_torre', label: 'Subir para a Torre do Rei' });
+  if (done) spots.push({ x: 50, y: 100, rx: 22, ry: 34, kind: 'eat', label: 'Comer no banquete' }, { x: 211, y: 100, rx: 22, ry: 34, kind: 'eat', label: 'Comer no banquete' });
+  return { id: 'castelo', name: done ? 'Salão do Trono de Eryon' : `Castelo de Eryon · em obras (${stage}/7)`, w, h, img: c, spawn: { x: 130, y: 166 }, door: { x: 130, y: 174 }, block, stairsAt: { x: 228, y: 140 },
+    glows: [[40, 50, P.fire3], [220, 50, P.fire3]], spots, outside: { x: CASTLE.spot.x, y: CASTLE.spot.y - 10 } };
 }
-
+// ---------- Torre do Rei: biblioteca e quarto real
+function towerRoom() {
+  const w = 200, h = 150, [c, x] = canvas(w, h);
+  for (let Y = 0; Y < h; Y++) for (let X = 0; X < w; X++) px(x, ((X / 10 | 0) + (Y / 10 | 0)) & 1 ? '#6b4630' : '#7a4f2e', X, Y);
+  cBricks(x, 0, 0, w, 30, CSB, 91); cWindow(x, 96, 8); fBeam(x, 96, 31, 6, 50);
+  fShelf(x, 6, 30, 40, 40, 5); fShelf(x, 154, 30, 40, 40, 17); fShelf(x, 6, 74, 22, 40, 23);
+  // cama com dossel
+  px(x, FO, 120, 78, 38, 48); for (const [X, Y] of [[120, 78], [156, 78], [120, 124], [156, 124]]) px(x, '#ffd84a', X, Y, 3, 3);
+  fBed(x, 126, 84, '#7a1a14', '#c0302a'); px(x, '#6e4a8a', 120, 76, 40, 4); px(x, '#b08af0', 120, 76, 40, 1);
+  // mesa com mapa, globo, luneta e baú de ouro
+  fBox(x, 54, 46, 40, 16, '#5a3420', '#7a4a2a'); px(x, '#e4d0a0', 58, 48, 22, 11); px(x, '#3c8e42', 60, 50, 8, 5); px(x, '#3f6fc0', 70, 52, 8, 4); px(x, '#a83a32', 66, 51, 1, 1); fChair(x, 70, 66);
+  disc(x, 104, 52, 6, FO); disc(x, 104, 52, 5, '#3f6fc0'); disc(x, 102, 51, 2, '#3c8e42'); px(x, '#c9a46a', 103, 58, 3, 4);
+  px(x, FO, 92, 26, 3, 14); px(x, '#c9a46a', 93, 27, 1, 12); px(x, FO, 88, 24, 10, 4); px(x, '#ffd84a', 89, 25, 8, 2);
+  fChest(x, 40, 120, true); fChest(x, 62, 124, true); fRug(x, 60, 86, 44, 26, '#1d3550', '#3f6fc0'); fPlant(x, 186, 136);
+  fStairs(x, 8, 120, 18, 6, false);
+  const block = [[0, 0, w, 34], [5, 29, 47, 71], [153, 29, 195, 71], [5, 73, 29, 115], [119, 77, 160, 127], [53, 45, 95, 63], [97, 45, 111, 61], [38, 118, 82, 136], [180, 128, 195, 145], [0, 0, 3, h], [w - 3, 0, w, h], [0, h - 3, w, h]];
+  return { id: 'castelo_torre', name: 'Torre do Rei', w, h, img: c, spawn: { x: 36, y: 130 }, door: { x: -999, y: -999 }, block, stairsAt: { x: 36, y: 130 }, glows: [[104, 40, P.fire3]],
+    spots: [{ x: 17, y: 132, rx: 12, ry: 14, kind: 'stairs', to: 'castelo', label: 'Descer para o salão' }, { x: 74, y: 66, rx: 12, ry: 6, kind: 'magic', label: 'Estudar o mapa de Eryon' }, { x: 139, y: 108, rx: 14, ry: 22, kind: 'heal', label: 'Descansar na cama do rei' }],
+    outside: { x: CASTLE.spot.x, y: CASTLE.spot.y - 10 } };
+}
 // placas fixas apontando para a obra
 const CASTLE_SIGNS = [{ x: 378, y: 1014, text: '↓ Obra do Castelo de Eryon · siga a estrada', color: '#ffd84a', fixed: true }, { x: 384, y: 1446, text: '→ Castelo de Eryon (obra) · leve pedras!', color: '#ffd84a', fixed: true }];
 const allSigns = () => SIGNS.concat(CASTLE_SIGNS);

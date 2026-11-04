@@ -329,6 +329,9 @@ const sMin = () => Math.max(1, cv.width / 700, cv.height / 1250);
 const sFor = z => clamp(baseS * z, sMin(), baseS * 3);
 function applyZoom() { S = sFor(zoomMul); }
 function setZoom(z, focus, instant) { zoomTarget = clamp(z, .3, 3); zoomFocus = focus || null; zoomSnapT = performance.now() + 260; if (instant) { const S0 = S; zoomMul = zoomTarget; applyZoom(); keepFocus(S0); } }
+// câmera mais perto dentro das casas e do castelo
+let zoomOutside = null;
+function roomZoom(inside) { if (inside) { if (zoomOutside === null) zoomOutside = zoomTarget; zoomTarget = clamp(zoomOutside * 1.3, .3, 3); zoomSnapT = performance.now() + 50; } else if (zoomOutside !== null) { zoomTarget = zoomOutside; zoomOutside = null; zoomSnapT = performance.now() + 50; } }
 function zoomStepBtn(dir) { const si = Math.max(Math.ceil(sMin()), Math.round(S) + dir); zoomTarget = clamp(si / baseS, .3, 3); zoomFocus = null; zoomSnapT = 0; }
 function keepFocus(S0) { if (!zoomFocus || cam.mode !== 'free' || S === S0) return; const wx = cam.L + zoomFocus.x / S0, wy = cam.T + zoomFocus.y / S0; cam.L = wx - zoomFocus.x / S; cam.T = wy - zoomFocus.y / S; cam.x = cam.L + cv.width / S / 2; cam.y = cam.T + cv.height / S / 2; }
 function zoomStep(dt) {
@@ -651,8 +654,8 @@ function updateContext(p, t) {
   if (p.fly) c = { kind: 'econ', label: isFairy(p) ? 'Pousar' : 'Pousar o balão', fn: toggleBalloon };
   else   if (p.room) {
     const r = roomOf(p.room);
-    for (const s of r.spots) if (Math.abs(p.x - s.x) < s.rx && Math.abs(p.y - s.y) < s.ry) c = s.node && DEPL.has(s.node) ? { kind: 'none', label: 'Volta a crescer logo' } : { kind: s.kind, label: s.label, node: s.node };
-    if (!c) c = { kind: 'exit', label: 'Sair' };
+    for (const s of r.spots) if (Math.abs(p.x - s.x) < s.rx && Math.abs(p.y - s.y) < s.ry) c = s.node && DEPL.has(s.node) ? { kind: 'none', label: 'Volta a crescer logo' } : { kind: s.kind, label: s.label, node: s.node, to: s.to };
+    if (!c) c = r.door.x < 0 ? { kind: 'stairs', to: (r.spots.find(s2 => s2.kind === 'stairs') || {}).to, label: 'Descer a escada' } : { kind: 'exit', label: 'Sair' };
   } else {
     for (const d of DOORS) if (Math.hypot(p.x - d.x, p.y - d.y) < 10) c = { kind: 'enter', label: d.label, room: d.room };
     if (!c) { const ec = econContext(p); if (ec) c = ec; }
@@ -671,7 +674,8 @@ function updateContext(p, t) {
   if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + (TOUCH ? '' : '  [E]'); $('act2').hidden = !(c && (c.kind === 'movedecor' || c.alt)); if (c) $('act2').textContent = c.alt ? c.alt.label : 'Guardar'; }
 }
 function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; const c = ctxAct;
-  if (c.kind === 'enter') { sfx.door(true); const r = roomOf(c.room); p.room = c.room; p.x = r.spawn.x; p.y = r.spawn.y; target = null; follow(); sendNow(p); return; }
+  if (c.kind === 'enter') { sfx.door(true); const r = roomOf(c.room); roomZoom(true); p.room = c.room; p.x = r.spawn.x; p.y = r.spawn.y; target = null; follow(); sendNow(p); return; }
+  if (c.kind === 'stairs' && c.to) { const r = roomOf(c.to), at = r.stairsAt || r.spawn; play('step_wood_0', .6); setTimeout(() => play('step_wood_1', .6), 140); p.room = c.to; p.x = at.x; p.y = at.y; target = null; follow(); sendNow(p); return; }
   if (c.kind === 'exit') return exitRoom(p);
   if (c.kind === 'none') return;
   if (c.kind === 'cmine' || c.kind === 'cherb') { const kind = c.kind === 'cmine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
@@ -702,7 +706,7 @@ function actSound(kind) {
   else if (kind === 'mine') rep(() => play(pick('anvil_', 2), .45, .6), 4, 300, 500); else if (kind === 'gather') rep(() => sfx.step(false), 3, 200, 400);
   else if (kind === 'cook') sfx.pot(); else if (kind === 'heal') sfx.heal(); else if (kind === 'lute') sfx.lute(); else if (kind === 'serve') sfx.coins();
 }
-function exitRoom(p) { sfx.door(false); const r = roomOf(p.room); p.room = ''; p.x = r.outside.x; p.y = r.outside.y; target = null; follow(); sendNow(p); }
+function exitRoom(p) { sfx.door(false); const r = roomOf(p.room); roomZoom(false); p.room = ''; p.x = r.outside.x; p.y = r.outside.y; target = null; follow(); sendNow(p); }
 function doSkill() { const p = players.get(myId); const c = classOf(p);
   if (c && c.skill === 'zap') return castZap(p);
   if (c && c.skill === 'flyfairy') return toggleBalloon();

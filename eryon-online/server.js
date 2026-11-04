@@ -323,7 +323,7 @@ const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || 
 const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', cost: { lenha: 14, pedra: 4 } }, mercado: { name: 'Mercado', cost: { lenha: 12, pedra: 4, ervas: 2 } }, hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 } },
   escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 },
   cabana: { name: 'Cabana', cost: { lenha: 8 } }, casarao: { name: 'Casarão', cost: { lenha: 18, pedra: 8 } }, celeiro: { name: 'Celeiro', cost: { lenha: 14, pedra: 2 } }, torre_vigia: { name: 'Torre de vigia', cost: { lenha: 6, pedra: 14 } }, moinho: { name: 'Moinho', cost: { lenha: 12, pedra: 10 } } };
-const ROOM_OK = /^(|taverna|gruta|abismo|castelo|casa_[1-9]|h_[0-9]{1,6})$/;
+const ROOM_OK = /^(|taverna|gruta|abismo|castelo|castelo_torre|casa_[1-9](_up)?|h_[0-9]{1,6}(_up)?)$/;
 const LANDMARK_NAMES = { costela: 'a Costela de Dragão', ruinas: 'as Ruínas da Inscrição', torre: 'a Torre Antiga', caverna: 'a Caverna Escondida', buraco: 'o Buraco Misterioso', circulo: 'o Círculo de Pedras', arvore: 'a Árvore Ancestral', poco: 'o Poço da Lua', lago: 'o Lago Espelhado', gigante: 'a Estátua do Gigante', acampamento: 'o Acampamento Abandonado', cristais: 'o Jardim de Cristais', cemiterio: 'o Cemitério Antigo', portal: 'o Portal Esquecido', ninho: 'o Ninho do Dragão' };
 const ACTS = new Set(['zap', 'mine', 'gather', 'eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
 db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;

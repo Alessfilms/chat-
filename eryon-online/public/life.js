@@ -38,29 +38,92 @@ function tavernRoom() {
   return { id: 'taverna', name: 'Taverna do Valis', w, h, img: c, spawn: { x: 100, y: 124 }, door: { x: 100, y: 133 }, fire: { x: 183, y: 56 }, block,
     spots: [{ x: 60, y: 50, rx: 52, ry: 9, kind: 'drink', label: 'Beber vinho' }], outside: B.taverna ? { x: B.taverna.x, y: B.taverna.y + 6 } : { x: 362, y: 584 } };
 }
+// ---------- móveis (pixel art com contorno)
+const FO = '#1a120c';
+function fBox(x, X, Y, w, h, c1, c2, c3) { px(x, FO, X - 1, Y - 1, w + 2, h + 2); px(x, c1, X, Y, w, h); if (c2) px(x, c2, X, Y, w, 2); if (c3) px(x, c3, X, Y + h - 2, w, 2); }
+function fBed(x, X, Y, q1, q2) { fBox(x, X, Y, 26, 34, '#6b4630', '#8b5e3c'); px(x, '#4a2f22', X, Y, 26, 5); px(x, '#a3794b', X + 1, Y + 1, 24, 1);
+  px(x, '#f4f0d8', X + 3, Y + 6, 20, 7); px(x, '#c9c3b0', X + 3, Y + 11, 20, 2); px(x, '#ffffff', X + 4, Y + 7, 8, 2);
+  for (let j = 0; j < 18; j++) for (let i = 0; i < 24; i++) px(x, ((Math.floor(i / 4) + Math.floor(j / 4)) & 1) ? q1 : q2, X + 1 + i, Y + 14 + j); px(x, shadeHex(q1, .7), X + 1, Y + 31, 24, 1); px(x, '#f4f0d8', X + 1, Y + 14, 24, 1); }
+function fChair(x, X, Y) { fBox(x, X, Y, 6, 6, '#8b5e3c', '#a3794b'); px(x, '#5a3420', X, Y + 4, 6, 1); }
+function fTableRound(x, X, Y, r) { disc(x, X, Y, r + 1, FO); disc(x, X, Y, r, '#8b5e3c'); disc(x, X - 1, Y - 1, r - 2, '#a3794b'); px(x, '#c9a46a', X - r + 3, Y - r + 2, 3, 1); }
+function fShelf(x, X, Y, w, h, seed) { fBox(x, X, Y, w, h, '#5a3420', '#7a4a2a'); for (let r = 0; r < Math.floor(h / 7); r++) { const y0 = Y + 2 + r * 7; px(x, '#3a2216', X, y0 + 5, w, 1); for (let k = 0; k < w - 2; k += 2) if (h2(k + seed, r) > .25) px(x, ['#a83a32', '#3f6fc0', '#3c8e42', '#d0a020', '#6e4a8a', '#c06030'][Math.floor(h2(r, k + seed) * 6)], X + 1 + k, y0 + (h2(k, r * 3) > .7 ? 1 : 0), 2, 5 - (h2(k, r * 3) > .7 ? 1 : 0)); } }
+function fWindow(x, X, Y, w = 18, h = 12, cur = '#a83a32') { px(x, FO, X - 1, Y - 1, w + 2, h + 2); px(x, '#9ff3ff', X, Y, w, h); px(x, '#cfefff', X, Y, w, 3); px(x, '#3f7ab0', X, Y + h - 4, w, 4); px(x, FO, X + w / 2, Y, 1, h); px(x, FO, X, Y + h / 2, w, 1);
+  px(x, cur, X - 3, Y - 1, 3, h + 3); px(x, cur, X + w, Y - 1, 3, h + 3); px(x, shadeHex(cur, .7), X - 3, Y + h, 3, 2); px(x, shadeHex(cur, .7), X + w, Y + h, 3, 2); }
+function fBeam(x, X, Y, w, h) { x.globalAlpha = .13; x.fillStyle = '#fff3b0'; x.beginPath(); x.moveTo(X, Y); x.lineTo(X + w, Y); x.lineTo(X + w + 10, Y + h); x.lineTo(X + 10, Y + h); x.closePath(); x.fill(); x.globalAlpha = 1; }
+function fPlant(x, X, Y) { px(x, FO, X - 3, Y, 7, 6); px(x, '#a8482c', X - 2, Y + 1, 5, 4); disc(x, X, Y - 3, 5, FO); disc(x, X, Y - 3, 4, '#3c8e42'); disc(x, X - 1, Y - 4, 2, '#74c05c'); px(x, '#f6b6d8', X + 2, Y - 5, 1, 1); }
+function fRug(x, X, Y, w, h, a, b) { px(x, FO, X - 1, Y - 1, w + 2, h + 2); px(x, a, X, Y, w, h); px(x, b, X + 2, Y + 2, w - 4, h - 4); px(x, a, X + 4, Y + 4, w - 8, h - 8); for (let k = 0; k < w; k += 3) { px(x, b, X + k, Y - 2, 1, 2); px(x, b, X + k, Y + h, 1, 2); } }
+function fFireplace(x, X, Y) { fBox(x, X, Y, 26, 26, '#6e7789', '#939cae'); for (let y = Y + 3; y < Y + 24; y += 4) for (let k = 0; k < 26; k += 6) px(x, '#565e70', X + k + ((y >> 2) % 2) * 3, y, 4, 1); px(x, FO, X + 5, Y + 10, 16, 16); px(x, '#140808', X + 6, Y + 11, 14, 15); px(x, '#4a2f22', X + 7, Y + 23, 12, 2); px(x, FO, X - 2, Y + 7, 30, 3); px(x, '#a3794b', X - 1, Y + 8, 28, 1); px(x, '#c9a46a', X + 3, Y + 5, 3, 2); px(x, '#e4d0a0', X + 18, Y + 4, 2, 3); }
+function fStairs(x, X, Y, w, n, up = true) { px(x, FO, X - 1, Y - 1, w + 2, n * 4 + 2); for (let k = 0; k < n; k++) { const yy = Y + k * 4; px(x, k % 2 ? '#8b5e3c' : '#a3794b', X, yy, w, 4); px(x, '#c9a46a', X, yy, w, 1); px(x, '#5a3420', X, yy + 3, w, 1); }
+  px(x, '#5a3420', X - 2, Y, 2, n * 4); px(x, '#5a3420', X + w, Y, 2, n * 4); px(x, '#ffd84a', X + w / 2 - 1, up ? Y + 1 : Y + n * 4 - 3, 3, 1); }
+function fCounter(x, X, Y, w) { fBox(x, X, Y, w, 12, '#7a4a2a', '#c9a46a', '#5a3420'); for (let k = 4; k < w - 4; k += 9) { disc(x, X + k + 2, Y + 4, 3, FO); disc(x, X + k + 2, Y + 4, 2, ['#565e70', '#a8482c', '#3c8e42'][(k / 9 | 0) % 3]); } px(x, '#f4f0d8', X + w - 7, Y + 2, 4, 3); }
+function fWardrobe(x, X, Y) { fBox(x, X, Y, 16, 22, '#6b4630', '#8b5e3c', '#4a2f22'); px(x, '#4a2f22', X + 8, Y + 2, 1, 18); px(x, '#ffd84a', X + 6, Y + 10, 1, 2); px(x, '#ffd84a', X + 9, Y + 10, 1, 2); }
+function fNight(x, X, Y) { fBox(x, X, Y, 8, 7, '#6b4630', '#8b5e3c'); px(x, '#f4f0d8', X + 3, Y - 4, 2, 4); px(x, '#ffd84a', X + 3, Y - 6, 2, 2); }
+function fChest(x, X, Y, gold) { fBox(x, X, Y, 18, 11, '#6b4630', '#8b5e3c'); px(x, '#3a2618', X, Y + 4, 18, 1); px(x, '#c9a46a', X + 8, Y + 4, 2, 3); if (gold) { px(x, '#ffd84a', X + 2, Y - 2, 14, 2); px(x, '#fff3b0', X + 4, Y - 3, 3, 1); } }
+function fClock(x, X, Y) { fBox(x, X, Y, 8, 18, '#5a3420', '#7a4a2a'); disc(x, X + 4, Y + 4, 3, FO); disc(x, X + 4, Y + 4, 2, '#f4f0d8'); px(x, FO, X + 4, Y + 3, 1, 2); px(x, '#ffd84a', X + 3, Y + 11, 2, 4); }
+function fPainting(x, X, Y, a) { px(x, FO, X - 1, Y - 1, 14, 11); px(x, '#c9a46a', X, Y, 12, 9); px(x, a, X + 1, Y + 1, 10, 7); px(x, '#3c8e42', X + 1, Y + 5, 10, 3); px(x, '#fff3b0', X + 7, Y + 2, 2, 2); }
+
+// ---------- casa por dentro (térreo)
 function houseRoom(id, bb) {
   const b = bb || B[id] || { x: 360, y: 640, telhado: 0 }, roof = ROOFS[b.telhado || 0];
-  const w = 130, h = 100, [c, x] = canvas(w, h);
-  planks(x, w, h, 22, '#8b5e3c', '#7a4f2e');
-  px(x, '#e4d0a0', 0, 0, w, 22); px(x, '#c9a46a', 0, 18, w, 4); px(x, P.ink, 0, 21, w, 2); for (let k = 0; k < w; k += 32) px(x, '#7a4f2e', k, 0, 3, 22);
-  px(x, P.ink, 54, 4, 20, 12); px(x, '#9ff3ff', 55, 5, 18, 10); px(x, '#3f7ab0', 55, 11, 18, 4); px(x, P.ink, 63, 5, 1, 10);
-  // cama
-  px(x, P.ink, 5, 24, 28, 30); px(x, '#7a4f2e', 6, 25, 26, 28); px(x, '#eef0ea', 8, 26, 22, 7); px(x, roof[0], 7, 34, 24, 18); px(x, roof[1], 7, 46, 24, 1);
-  // mesa e cadeiras
-  for (const [sx, sy] of [[-12, 0], [12, 0]]) { px(x, P.ink, 64 + sx - 3, 62 + sy - 3, 7, 7); px(x, '#a3794b', 64 + sx - 2, 62 + sy - 2, 5, 5); }
-  px(x, P.ink, 54, 54, 21, 14); px(x, '#8b5e3c', 55, 55, 19, 12); px(x, '#a3794b', 55, 55, 19, 3); px(x, '#fff3b0', 60, 57, 3, 3); px(x, '#a83a32', 66, 58, 3, 2);
-  // baú e planta
-  px(x, P.ink, 98, 24, 24, 14); px(x, '#6b4630', 99, 25, 22, 12); px(x, '#ffd84a', 109, 29, 2, 3); px(x, '#3a2618', 99, 30, 22, 1);
-  disc(x, 116, 80, 5, P.ink); disc(x, 116, 80, 4, '#6b4630'); disc(x, 116, 75, 6, '#3c5d4a'); disc(x, 114, 73, 3, '#7c9b5b');
-  // tapete e porta
-  px(x, roof[1], 44, 74, 42, 16); px(x, roof[0], 46, 76, 38, 12);
-  px(x, P.ink, 56, 92, 18, 8); px(x, '#1a1208', 58, 93, 14, 7);
-  const block = [[0, 0, w, 26], [3, 22, 35, 56], [52, 52, 77, 70], [96, 22, 124, 40], [109, 72, 123, 86], [0, 0, 3, h], [127, 0, w, h]];
-  return { id, name: 'Casa', w, h, img: c, spawn: { x: 65, y: 86 }, door: { x: 65, y: 93 }, fire: null, block, spots: [], outside: { x: b.x - 1, y: b.y + 6 } };
+  const w = 150, h = 112, [c, x] = canvas(w, h);
+  planks(x, w, h, 26, '#8b5e3c', '#7a4f2e');
+  // parede de trás: papel listrado, rodapé de madeira, janelas, quadro, relógio
+  for (let X = 0; X < w; X++) px(x, (X >> 2) % 2 ? '#e4d0a0' : '#ecdcb4', X, 0, 1, 20); px(x, '#a3794b', 0, 20, w, 6); px(x, '#c9a46a', 0, 20, w, 1); px(x, FO, 0, 25, w, 2);
+  fWindow(x, 44, 4, 18, 12, roof[0]); fWindow(x, 96, 4, 16, 12, roof[0]); fPainting(x, 70, 6, '#6f9be0'); fClock(x, 84, 4);
+  fBeam(x, 44, 27, 18, 26); fBeam(x, 96, 27, 16, 26);
+  // quarto: cama, criado-mudo, guarda-roupa
+  fBed(x, 4, 24, roof[0], shadeHex(roof[0], 1.25)); fNight(x, 32, 26); fWardrobe(x, 4, 62 - 2);
+  // lareira + poltrona
+  fFireplace(x, 120, 2); fChair(x, 112, 34);
+  // cozinha no canto direito
+  fCounter(x, 118, 44, 28);
+  // sala: tapete, mesa redonda com cadeiras, frutas
+  fRug(x, 46, 58, 52, 30, roof[1], roof[0]);
+  fTableRound(x, 72, 70, 8); for (const [dx2, dy2] of [[-13, 0], [13, 0], [0, 11]]) fChair(x, 72 + dx2 - 3, 70 + dy2 - 3);
+  px(x, '#e04a3a', 69, 68, 2, 2); px(x, '#ffd84a', 72, 67, 2, 2); px(x, '#3c8e42', 74, 69, 2, 2);
+  fShelf(x, 124, 62, 22, 22, 3); fPlant(x, 40, 98); fPlant(x, 138, 100); fChest(x, 26, 64, false);
+  // escada para cima e porta
+  fStairs(x, 6, 86, 16, 5, true);
+  px(x, FO, 66, 104, 18, 8); px(x, '#1a1208', 68, 105, 14, 7); px(x, '#c9a46a', 64, 102, 22, 2);
+  const block = [[0, 0, w, 30], [3, 23, 31, 59], [31, 25, 41, 34], [3, 58, 21, 82], [118, 0, w, 30], [116, 42, w, 57], [122, 60, w, 86], [62, 62, 83, 79], [33, 94, 46, 104], [131, 96, 145, 107], [24, 62, 45, 76], [0, 0, 3, h], [w - 3, 0, w, h]];
+  return { id, name: 'Casa', w, h, img: c, spawn: { x: 75, y: 98 }, door: { x: 75, y: 105 }, fire: { x: 133, y: 26 }, block, stairsAt: { x: 30, y: 96 },
+    spots: [{ x: 14, y: 96, rx: 11, ry: 12, kind: 'stairs', to: id + '_up', label: 'Subir a escada' }, { x: 131, y: 62, rx: 14, ry: 6, kind: 'cook', label: 'Cozinhar' }, { x: 17, y: 62, rx: 14, ry: 4, kind: 'heal', label: 'Descansar na cama' }],
+    outside: { x: b.x - 1, y: b.y + 6 } };
 }
-function roomOf(id) { if (!ROOM_CACHE[id]) { if (id === 'castelo') ROOM_CACHE[id] = throneRoom(); else if (id === 'taverna') ROOM_CACHE[id] = tavernRoom(); else if (id === 'gruta' || id === 'abismo') ROOM_CACHE[id] = caveRoom(id); else if (id.startsWith('h_')) { const h = BUILT.find(q => 'h_' + q.id === id) || { x: 360, y: 700, roof: 0 }; const T = BTYPES[h.type] || BTYPES.casa;
-      const r = h.type === 'bar' ? { ...tavernRoom(), id, outside: { x: h.x + 1, y: h.y + 6 } } : houseRoom(id, { x: h.x, y: h.y, telhado: h.roof }); r.outside = { x: h.x + 1, y: h.y + 6 };
-      r.name = h.type === 'prefeitura' ? 'Prefeitura de Eryon' : `${T.name} de @${h.owner || 'alguém'}`; ROOM_CACHE[id] = r; } else ROOM_CACHE[id] = houseRoom(id); } return ROOM_CACHE[id]; }
+// ---------- andar de cima (sótão com quarto)
+function houseUpRoom(id, base, bb) {
+  const b = bb || B[base] || { x: 360, y: 640, telhado: 0 }, roof = ROOFS[b.telhado || 0];
+  const w = 132, h = 96, [c, x] = canvas(w, h);
+  planks(x, w, h, 22, '#a3794b', '#8b5e3c');
+  // teto inclinado de madeira com vigas e janela redonda
+  for (let Y = 0; Y < 22; Y++) px(x, Y % 4 === 0 ? '#5a3420' : '#7a4a2a', 0, Y, w, 1); for (let X = 8; X < w; X += 22) px(x, '#3a2216', X, 0, 3, 22); px(x, FO, 0, 21, w, 2);
+  disc(x, 66, 10, 7, FO); disc(x, 66, 10, 6, '#9ff3ff'); disc(x, 64, 8, 2, '#e8f8ff'); px(x, FO, 66, 4, 1, 13); px(x, FO, 60, 10, 13, 1); fBeam(x, 60, 23, 12, 30);
+  fBed(x, 6, 24, '#3f6fc0', '#6f9be0'); fNight(x, 34, 26); fBed(x, 98, 24, '#3c8e42', '#74c05c'); fNight(x, 88, 26);
+  // escrivaninha com livros e luneta na janela
+  fBox(x, 50, 40, 30, 9, '#6b4630', '#8b5e3c'); px(x, '#f4f0d8', 54, 41, 8, 5); px(x, '#a83a32', 64, 41, 4, 5); px(x, '#3f6fc0', 68, 41, 3, 5); fChair(x, 62, 52);
+  px(x, FO, 76, 26, 3, 12); px(x, '#c9a46a', 77, 27, 1, 10); px(x, FO, 72, 24, 9, 4); px(x, '#c9a46a', 73, 25, 7, 2);
+  fRug(x, 46, 62, 40, 20, '#6e4a8a', '#b08af0'); fChest(x, 104, 70, false); fPlant(x, 124, 88); fShelf(x, 36, 64, 8, 22, 9);
+  // brinquedos
+  disc(x, 70, 70, 3, FO); disc(x, 70, 70, 2, '#e04a3a'); px(x, '#ffffff', 69, 69, 1, 1); px(x, FO, 56, 70, 6, 6); px(x, '#ffd84a', 57, 71, 4, 4);
+  fStairs(x, 6, 72, 16, 5, false);
+  const block = [[0, 0, w, 26], [3, 23, 31, 59], [31, 25, 41, 34], [95, 23, w - 3, 59], [86, 25, 95, 34], [49, 39, 81, 50], [102, 68, 123, 82], [118, 84, 130, 95], [35, 63, 45, 87], [0, 0, 3, h], [w - 3, 0, w, h], [0, h - 3, w, h]];
+  return { id, name: 'Andar de cima', w, h, img: c, spawn: { x: 30, y: 80 }, door: { x: -999, y: -999 }, fire: null, block, stairsAt: { x: 30, y: 80 },
+    spots: [{ x: 14, y: 82, rx: 11, ry: 12, kind: 'stairs', to: base, label: 'Descer a escada' }, { x: 64, y: 55, rx: 10, ry: 5, kind: 'magic', label: 'Ler um livro' }],
+    outside: { x: b.x - 1, y: b.y + 6 } };
+}
+function makeRoom(id) {
+  if (id === 'castelo') return throneRoom(curStage());
+  if (id === 'castelo_torre') return towerRoom();
+  if (id === 'taverna') return tavernRoom();
+  if (id === 'gruta' || id === 'abismo') return caveRoom(id);
+  const up = id.endsWith('_up'), base = up ? id.slice(0, -3) : id;
+  let bb = null, name = 'Casa', outside = null;
+  if (base.startsWith('h_')) { const h = BUILT.find(q => 'h_' + q.id === base) || { x: 360, y: 700, roof: 0 }, T = BTYPES[h.type] || BTYPES.casa;
+    if (!up && h.type === 'bar') return { ...tavernRoom(), id, name: `Bar de @${h.owner || 'alguém'}`, outside: { x: h.x + 1, y: h.y + 6 } };
+    bb = { x: h.x, y: h.y, telhado: h.roof }; name = h.type === 'prefeitura' ? 'Prefeitura de Eryon' : `${T.name} de @${h.owner || 'alguém'}`; outside = { x: h.x + 1, y: h.y + 6 }; }
+  const r = up ? houseUpRoom(id, base, bb) : houseRoom(id, bb); r.name = up ? name + ' · andar de cima' : name; if (outside) r.outside = outside; return r;
+}
+function roomOf(id) { if (!ROOM_CACHE[id]) ROOM_CACHE[id] = makeRoom(id); return ROOM_CACHE[id]; }
 function roomBlocked(id, x, y) { const r = roomOf(id); if (x < 4 || x > r.w - 4 || y < 10 || y > r.h - 3) return true; return rectsBlock(r.block, x, y); }
 // portas no mapa de fora
 function doorsOutside() {
@@ -68,6 +131,7 @@ function doorsOutside() {
   if (B.taverna) d.push({ room: 'taverna', x: B.taverna.x, y: B.taverna.y + 3, label: 'Entrar na taverna' });
   for (let i = 1; i <= 9; i++) { const b = B['casa_' + i]; if (b) d.push({ room: 'casa_' + i, x: b.x - 1, y: b.y + 3, label: 'Entrar na casa' }); }
   for (const l of LANDMARKS) if (l.hole) d.push({ room: l.hole, x: l.x, y: l.y + (l.id === 'buraco' ? 4 : 8), label: l.holeLabel });
+  if (typeof CASTLE !== 'undefined') d.push({ room: 'castelo', x: CASTLE.x, y: CASTLE.y + 5, label: 'Entrar no castelo' });
   return d;
 }
 
