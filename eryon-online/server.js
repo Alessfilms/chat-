@@ -413,7 +413,7 @@ const LM_POS = { costela: [170, 1060], ruinas: [520, 400], torre: [290, 118], ca
 // APOIADORES, BICHINHOS, CRIADOR e PLACAS PATROCINADAS
 // =====================================================================
 const PETS = new Set(['gato', 'raposa', 'dragao', 'coruja']);
-const SUPPORT_URL = process.env.SUPPORT_URL || '', PIX_KEY = process.env.PIX_KEY || '';
+const SUPPORT_URL = process.env.SUPPORT_URL || '', PIX_KEY = process.env.PIX_KEY || '98988907210';   // chave Pix do criador (pode trocar no /admin)
 const badgeOf = u => { const r = db.users[u] || {}; return db.staff[u] ? 'criador' : r.sup ? 'apoiador' : ''; };
 
 wss.on('connection', (ws, req) => {
