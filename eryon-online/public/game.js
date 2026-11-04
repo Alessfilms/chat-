@@ -99,9 +99,9 @@ const [light, lx] = canvas(view.width, view.height);
 
 // ---------------------------------------------------------------- login e aparência
 function showErr(m) { $('err').textContent = m || ''; }
-let verifyOn = false, postUrl = '', pollT = null;
-fetch('/api/config').then(r => r.json()).then(c => { verifyOn = !!c.verify; postUrl = c.postUrl || ''; if (!verifyOn) showCode(true); }).catch(() => showCode(true));
-function showCode(on) { $('codeRow').hidden = !on; $('haveCode').hidden = on || !verifyOn; $('enter').textContent = on ? 'Entrar em Eryon' : 'Continuar';
+let verifyOn = false, openOn = false, postUrl = '', pollT = null;
+fetch('/api/config').then(r => r.json()).then(c => { openOn = !!c.open; verifyOn = !!c.verify; postUrl = c.postUrl || ''; if (openOn) { $('enter').textContent = 'Entrar em Eryon'; $('haveCode').hidden = false; $('sub').innerHTML = 'A cidade dos seguidores.<br>Digite o seu @ do Instagram e entre.'; } else if (!verifyOn) showCode(true); }).catch(() => showCode(true));
+function showCode(on) { $('codeRow').hidden = !on; $('haveCode').hidden = on || !(verifyOn || openOn); $('enter').textContent = on ? 'Entrar em Eryon' : 'Continuar';
   $('sub').innerHTML = on ? 'A cidade dos seguidores.<br>Entre com o seu @ e o código que você recebeu.' : 'A cidade dos seguidores.<br>Digite o seu @ do Instagram para entrar.'; }
 $('haveCode').onclick = () => showCode(true);
 const post = (p, b) => API(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
@@ -113,6 +113,12 @@ $('enter').onclick = async () => {
     const r = await post('/api/login', { username, code }); $('enter').disabled = false;
     if (!r.ok) return showErr(r.data.error || 'Não foi possível entrar.');
     token = r.data.token; store.set('eryon_token', token); return afterLogin(r.data);
+  }
+  if (openOn) {                                      // entrada livre
+    const j = await post('/api/join', { username }); $('enter').disabled = false;
+    if (j.ok) { token = j.data.token; store.set('eryon_token', token); return afterLogin(j.data); }
+    if (j.data.reserved) showCode(true);
+    return showErr(j.data.error || 'Não foi possível entrar.');
   }
   const r = await post('/api/start', { username }); $('enter').disabled = false;   // verificação pelo comentário
   if (!r.ok) return showErr(r.data.error || 'Não foi possível começar.');

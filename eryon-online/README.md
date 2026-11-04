@@ -6,6 +6,14 @@ Só entra quem você liberar, ou seja, quem comentou no post.
 
 ## Como funciona o acesso
 
+**Padrão: entrada livre.** Qualquer pessoa digita o @ e entra na hora.
+- Não dá para entrar com um @ que já está online.
+- Os 10 moradores dos episódios só entram com o código do painel `/admin` (ninguém se passa por eles).
+- No painel, **Remover** bloqueia um @.
+
+Para voltar a exigir código ou o comentário no post, adicione no Render a variável `ACCESS_MODE=restrito`.
+O modo restrito funciona como descrito abaixo.
+
 ### Jeito principal: o seguidor prova que é ele comentando (automático)
 
 1. O seguidor abre o site e digita só o @ dele.
@@ -87,6 +95,7 @@ ADMIN_KEY=uma-senha-forte node server.js
 | `IG_ACCESS_TOKEN` | Token da API do Instagram (liga a verificação pelo comentário). |
 | `IG_POST_URL` | Link do post mostrado no botão "Abrir o post". |
 | `IG_MEDIA_IDS` | (Opcional) IDs dos posts a verificar. Padrão: os 3 mais recentes. |
+| `ACCESS_MODE` | `livre` (padrão: qualquer um entra com o @) ou `restrito` (só com código ou comentário). |
 | `DATA_DIR` | Pasta onde fica o `db.json` (posições, cores, removidos). Padrão: `./data`. |
 
 ## Segurança

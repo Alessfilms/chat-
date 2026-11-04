@@ -81,6 +81,10 @@ async function igRefresh() {
   catch (e) { console.warn('[instagram] renovação do token:', e.message); }
 }
 setInterval(igRefresh, 24 * 3600e3).unref(); setTimeout(igRefresh, 60e3).unref();
+// Acesso livre (padrão): qualquer pessoa entra só com o @. ACCESS_MODE=restrito volta a exigir código/comentário.
+const OPEN = (process.env.ACCESS_MODE || 'livre').toLowerCase() !== 'restrito';
+// os moradores dos episódios só entram com código (ninguém se passa por eles)
+const RESERVED = new Set(['heitor_morrone', 'lorhan_cristian', 'maicon.sg2010', 'pablopaesrocha', '_ray_hpl', 'paocombiscoito', 'altanat19', 'eo_preto.031', 'bio_leocordeiro', 'kaguya.xs']);
 const pending = new Map();      // id -> { u, word, exp }
 const WORD_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newWord = () => 'ERYON ' + Array.from({ length: 4 }, () => WORD_ALPHA[crypto.randomInt(WORD_ALPHA.length)]).join('');
@@ -115,7 +119,19 @@ const server = http.createServer(async (req, res) => {
       const tok = newToken(); db.sessions[tok] = u; rec.lastLogin = Date.now(); save();
       return send(res, 200, { token: tok, username: u, look: rec.look || null });
     }
-    if (p === '/api/config') return send(res, 200, { verify: igOn(), postUrl: IG_POST_URL });
+    if (p === '/api/config') return send(res, 200, { open: OPEN, verify: igOn(), postUrl: IG_POST_URL });
+    if (p === '/api/join' && req.method === 'POST') {
+      if (!OPEN) return send(res, 403, { error: 'A entrada livre está desligada.' });
+      if (limited('join:' + ipOf(req), 20, 10 * 60000)) return send(res, 429, { error: 'Muitas tentativas. Espere alguns minutos.' });
+      const b = await body(req), u = norm(b.username);
+      if (!validUser(u)) return send(res, 400, { error: 'Use só letras, números, ponto e _ (até 30).' });
+      if (db.users[u] && db.users[u].removed) return send(res, 403, { error: 'Esse @ não pode entrar em Eryon.' });
+      if (RESERVED.has(u)) return send(res, 403, { reserved: true, error: 'Esse @ é de um morador dos episódios. Entre com o código que você recebeu.' });
+      if ([...clients].some(c => c.user === u)) return send(res, 409, { error: 'Esse @ já está em Eryon agora. Escolha outro.' });
+      let rec = db.users[u]; if (!rec) rec = db.users[u] = { v: 0, createdAt: Date.now(), open: true };
+      rec.lastLogin = Date.now(); const tok = newToken(); db.sessions[tok] = u; save();
+      return send(res, 200, { token: tok, username: u, look: rec.look || null });
+    }
     if (p === '/api/start' && req.method === 'POST') {
       if (limited('start:' + ipOf(req), 15, 10 * 60000)) return send(res, 429, { error: 'Muitas tentativas. Espere alguns minutos.' });
       if (!igOn()) return send(res, 503, { error: 'A verificação pelo Instagram ainda não foi configurada. Use um código de acesso.' });
