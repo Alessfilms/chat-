@@ -61,7 +61,7 @@ function drawGiantAt(x, X, Y, f, face, t, flash) {
   for (const [ex, ey] of s.eyes) glow(x, ox + (flip ? s.W - ex : ex), oy + ey, 6, '#9ff3ff', .2 + .08 * Math.sin(t * 4));
   if (flash) { x.globalAlpha = .45; x.globalCompositeOperation = 'lighter'; x.drawImage(flip ? s.l : s.r, ox, oy); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; }
 }
-function drawGiant(x, t) { const L = GIANT.live; if (!L) return; drawGiantAt(x, Math.round(L.x), Math.round(L.y), giantFrame(t), L.face, t, performance.now() - (GFX.lastHitT || 0) < 160); }
+function drawGiant(x, t) { const L = GIANT.live; if (!L) return; (L.kind === 'fogo' ? drawFireAt : drawGiantAt)(x, Math.round(L.x), Math.round(L.y), giantFrame(t), L.face, t, performance.now() - (GFX.lastHitT || 0) < 160); }
 // ---------- catapulta (objeto que todos podem criar): base fixa + braço que gira quando dispara
 let CAT_SPR = null;
 function catapultSprite() { if (CAT_SPR) return CAT_SPR; const [c, x] = canvas(36, 30), O = '#1a120c', WD = ['#4a2f22', '#6b4630', '#8b5e3c', '#b8814a'];
@@ -93,13 +93,14 @@ function drawCatapultArm(x, d, t) {
 // ---------- mensagens do servidor
 function onGiantMsg(m) {
   if (m.t === 'giant') { const was = GIANT.state; GIANT.at = m.at; GIANT.state = m.state; GIANT.result = m.result; GIANT.damaged = new Set(m.damaged || []); GIANT.live = m.live;
-    if (m.start) { giantHorn(); setTimeout(() => dragonRoar && SND.ctx && dragonRoar(.45), 900); fxToast('O GIGANTE ACORDOU!', 'Ele vem do leste. Defendam Eryon!', '#e04a3a', '⚠'); }
-    if (m.end) { fxToast(m.end === 'won' ? 'VITÓRIA!' : 'A cidade foi danificada', m.end === 'won' ? 'Eryon venceu o Gigante de Pedra!' : 'Consertem as casas com lenha', m.end === 'won' ? '#ffd84a' : '#e04a3a', m.end === 'won' ? '♛' : '⚠'); if (m.end === 'won') fanfare(true); }
+    const fogo = (m.live && m.live.kind === 'fogo') || (m.end && GIANT.lastKind === 'fogo'); if (m.live) GIANT.lastKind = m.live.kind;
+    if (m.start) { giantHorn(); setTimeout(() => dragonRoar && SND.ctx && dragonRoar(.45), 900); fxToast(fogo ? 'A FERA DE FOGO APARECEU!' : 'O GIGANTE ACORDOU!', fogo ? 'Ela vem do leste queimando tudo. Defendam Eryon!' : 'Ele vem do leste. Defendam Eryon!', '#e04a3a', fogo ? '🔥' : '⚠'); }
+    if (m.end) { fxToast(m.end === 'won' ? 'VITÓRIA!' : 'A cidade foi danificada', m.end === 'won' ? (fogo ? 'Eryon venceu a Fera de Fogo!' : 'Eryon venceu o Gigante de Pedra!') : 'Consertem as casas com lenha', m.end === 'won' ? '#ffd84a' : '#e04a3a', m.end === 'won' ? '♛' : '⚠'); if (m.end === 'won') fanfare(true); }
     updGiantHud(); return true; }
   if (m.t === 'giantHit') { GFX.lastHitT = performance.now(); if (GIANT.live) GFX.hits.push({ x: GIANT.live.x + (Math.random() - .5) * 30, y: GIANT.live.y - 70 - Math.random() * 24, d: m.d, t0: performance.now(), big: m.d >= 20 }); if (m.kind === 'zap' && SND.ctx) thunder(); return true; }
   if (m.t === 'giantSmash') { GFX.lastSmashT = performance.now(); GFX.smash.push({ x: m.x, y: m.y, t0: performance.now() }); const p = players.get(myId);
     if (p && !p.room && Math.hypot(p.x - m.x, p.y - m.y) < 260) { stomp(); shake(); } return true; }
-  if (m.t === 'stunned') { GFX.stunUntil = performance.now() + (m.ms || 2000); shake(); stomp(.6); sys('O gigante te acertou! Você ficou tonto...'); return true; }
+  if (m.t === 'stunned') { GFX.stunUntil = performance.now() + (m.ms || 2000); shake(); stomp(.6); sys(GIANT.live && GIANT.live.kind === 'fogo' ? 'A fera te queimou! Você ficou tonto...' : 'O gigante te acertou! Você ficou tonto...'); return true; }
   if (m.t === 'catShot') { GFX.catFire[m.id] = performance.now(); GFX.shots.push({ ...m, t0: performance.now() + 200 }); const p = players.get(myId); if (p && !p.room && Math.hypot(p.x - m.x, p.y - m.y) < 220) play('wood_hit', .5, .7); return true; }
   return false;
 }
@@ -122,8 +123,8 @@ function drawGiantWorld(x, t, li, ti, cw, ch) {
 }
 // ---------- textos na tela: nome, vida e números de dano
 function giantLabels(ctx2, L, T, S, fs) {
-  const G2 = GIANT.live; if (!G2) return; const sx = Math.round((G2.x - L) * S), sy = Math.round((G2.y - 118 - T) * S);
-  if (sx > -300 && sx < cv.width + 300 && sy > -100 && sy < cv.height + 200) { ctx2.textAlign = 'center'; ctx2.textBaseline = 'bottom'; ctx2.font = `700 ${Math.round(fs * 1.05)}px Pix, monospace`; ctx2.lineWidth = Math.max(3, fs / 4); ctx2.strokeStyle = '#140e06'; ctx2.strokeText('GIGANTE DE PEDRA', sx, sy); ctx2.fillStyle = '#ff9a8a'; ctx2.fillText('GIGANTE DE PEDRA', sx, sy);
+  const G2 = GIANT.live; if (!G2) return; const sx = Math.round((G2.x - L) * S), sy = Math.round((G2.y - (G2.kind === 'fogo' ? 96 : 118) - T) * S);
+  if (sx > -300 && sx < cv.width + 300 && sy > -100 && sy < cv.height + 200) { ctx2.textAlign = 'center'; ctx2.textBaseline = 'bottom'; ctx2.font = `700 ${Math.round(fs * 1.05)}px Pix, monospace`; ctx2.lineWidth = Math.max(3, fs / 4); ctx2.strokeStyle = '#140e06'; const NM = G2.kind === 'fogo' ? 'FERA DE FOGO' : 'GIGANTE DE PEDRA'; ctx2.strokeText(NM, sx, sy); ctx2.fillStyle = G2.kind === 'fogo' ? '#ffb04a' : '#ff9a8a'; ctx2.fillText(NM, sx, sy);
     const w = fs * 7, h = Math.max(6, fs * .45); ctx2.fillStyle = '#140e06'; ctx2.fillRect(sx - w / 2 - 2, sy + 3, w + 4, h + 4); ctx2.fillStyle = '#3a1410'; ctx2.fillRect(sx - w / 2, sy + 5, w, h); ctx2.fillStyle = '#e04a3a'; ctx2.fillRect(sx - w / 2, sy + 5, w * Math.max(0, G2.hp) / G2.max, h); }
   for (let i = GFX.hits.length - 1; i >= 0; i--) { const hh = GFX.hits[i], k = (performance.now() - hh.t0) / 900; if (k > 1) { GFX.hits.splice(i, 1); continue; }
     const X = Math.round((hh.x - L) * S), Y = Math.round((hh.y - k * 18 - T) * S); ctx2.globalAlpha = 1 - k; ctx2.font = `700 ${Math.round(fs * (hh.big ? 1.4 : 1))}px Pix, monospace`; ctx2.strokeText('-' + hh.d, X, Y); ctx2.fillStyle = hh.big ? '#9ff3ff' : '#ffd84a'; ctx2.fillText('-' + hh.d, X, Y); ctx2.globalAlpha = 1; }
@@ -132,7 +133,7 @@ function giantLabels(ctx2, L, T, S, fs) {
 function fmtLeft(ms) { const m = Math.max(0, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h}h${String(m % 60).padStart(2, '0')}` : `${m} min`; }
 function updGiantHud() {
   const el = $('giantHud'); if (!el) return; const now = Date.now(), L = GIANT.live;
-  if (L) { el.hidden = false; el.className = 'gh battle'; el.innerHTML = (L.phase === 'leave' ? `<div class="gl">O GIGANTE ESTÁ INDO EMBORA</div>` : L.engaged ? `<div class="gl">⚔ LUTA ATÉ O FIM</div>` : `<div class="gl">Ataque o gigante para enfrentá-lo!</div>`) + `<div class="gl">GIGANTE <b>${Math.max(0, L.hp)}</b></div><div class="gb"><i style="width:${Math.max(0, 100 * L.hp / L.max)}%"></i></div><div class="gl">CIDADE <b>${L.city}%</b></div><div class="gb city"><i style="width:${L.city}%"></i></div>`; return; }
+  if (L) { el.hidden = false; el.className = 'gh battle'; el.innerHTML = (L.phase === 'leave' ? `<div class="gl">${L.kind === 'fogo' ? 'A FERA ESTÁ INDO EMBORA' : 'O GIGANTE ESTÁ INDO EMBORA'}</div>` : L.engaged ? `<div class="gl">⚔ LUTA ATÉ O FIM</div>` : `<div class="gl">${L.kind === 'fogo' ? 'Ataque a fera para enfrentá-la!' : 'Ataque o gigante para enfrentá-lo!'}</div>`) + `<div class="gl">${L.kind === 'fogo' ? 'FERA DE FOGO' : 'GIGANTE'} <b>${Math.max(0, L.hp)}</b></div><div class="gb"><i style="width:${Math.max(0, 100 * L.hp / L.max)}%"></i></div><div class="gl">CIDADE <b>${L.city}%</b></div><div class="gb city"><i style="width:${L.city}%"></i></div>`; return; }
   if (GIANT.state === 'scheduled' && GIANT.at > now && GIANT.at - now < 36 * 3600e3) { const hh = new Date(GIANT.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); el.hidden = false; el.className = 'gh warn'; el.innerHTML = `⚠ O GIGANTE ATACA ÀS ${hh} · faltam <b>${fmtLeft(GIANT.at - now)}</b><small>Crie lanças e catapultas (botão Criar) e defenda Eryon!</small>`; return; }
   if (GIANT.damaged.size) { el.hidden = false; el.className = 'gh warn'; el.innerHTML = `A cidade foi danificada · ${GIANT.damaged.size} construções<small>Chegue perto de uma e toque em "Consertar" (2 lenhas)</small>`; return; }
   el.hidden = true;
@@ -145,7 +146,7 @@ function giantContext(p) {
   if (L && L.phase === 'leave') return null;
   if (L) { const eq = (p.look && p.look.equip) || '', ranged = eq === 'arco' || (classOf(p) || {}).id === 'arqueira', reach = ranged ? 150 : 62, d = Math.hypot(p.x - L.x, p.y - L.y);
     for (const dd of DECOR) if (dd.kind === 'catapulta' && Math.hypot(p.x - dd.x, p.y - dd.y) < 24) return { kind: 'econ', label: 'Disparar catapulta (1 pedra)', fn: () => { send({ t: 'fireCat', id: dd.id }); doAct('hammer'); } };
-    if (d < reach) return { kind: 'econ', label: 'Atacar o gigante!', fn: () => { const now = performance.now(); if (now < gHitReady) return; gHitReady = now + 1400; p.face = L.x < p.x ? -1 : 1; doAct(ranged ? 'arrow' : eq === 'espada' || eq === 'lanca' || ['guarda', 'guerreiro'].includes((classOf(p) || {}).id) ? 'sword' : 'chop'); send({ t: 'hitGiant' }); } };
+    if (d < reach) return { kind: 'econ', label: L.kind === 'fogo' ? 'Atacar a fera!' : 'Atacar o gigante!', fn: () => { const now = performance.now(); if (now < gHitReady) return; gHitReady = now + 1400; p.face = L.x < p.x ? -1 : 1; doAct(ranged ? 'arrow' : eq === 'espada' || eq === 'lanca' || ['guarda', 'guerreiro'].includes((classOf(p) || {}).id) ? 'sword' : 'chop'); send({ t: 'hitGiant' }); } };
     return null; }
   for (const id of GIANT.damaged) { const b = bldPos(id); if (b && Math.hypot(p.x - b.x, p.y - (b.y + 4)) < 26) return { kind: 'econ', label: 'Consertar (2 lenhas)', fn: () => { send({ t: 'repair', id }); doAct('build'); } }; }
   return null;
@@ -215,3 +216,69 @@ function guardLabels(ctx2, L, T, S, fs) {
 // estrelinhas girando sobre a cabeça de quem foi atordoado
 function drawStun(x, t) { const p = players.get(myId); if (!p || p.room || performance.now() > (GFX.stunUntil || 0)) return;
   for (let k = 0; k < 3; k++) { const a = t * 5 + k * 2.09, X = Math.round(p.x + Math.cos(a) * 7), Y = Math.round(p.y - 22 + Math.sin(a) * 2); px(x, '#140e06', X - 1, Y - 1, 3, 3); px(x, '#ffd84a', X, Y, 1, 1); px(x, '#ffd84a', X - 1, Y, 3, 1); } }
+
+// =====================================================================
+// FERA DE FOGO — salamandra gigante de lava (desenhada olhando para a esquerda)
+// =====================================================================
+const FSPR = {};
+function fireSprite(f) {   // f: 0/1 andando, 2 rugindo (cabeça erguida), 3 pisada/baforada
+  if (FSPR[f]) return FSPR[f]; const W = 124, H = 86, [c, x] = canvas(W, H), O = '#140806';
+  const BD = ['#4a120c', '#8a2414', '#c8441a', '#f07a2a'], DK = ['#2a0c08', '#521a10', '#7a2614', '#a83a18'], HR = ['#1a1208', '#3a2a20', '#5e4c3c', '#8a7a6a'];
+  const sw = f === 0 ? 1 : f === 1 ? -1 : 0, roar = f === 2, hit = f === 3, foot = 80;
+  const hx = roar ? 22 : hit ? 20 : 24, hy = roar ? 30 : hit ? 50 : 40;
+  const pt = painter(x);
+  // pernas de trás (lado de longe), mais escuras
+  pt.tube([[50, 58], [48 - sw * 4, foot - 2]], 5, DK, O).tube([[86, 58], [88 + sw * 4, foot - 2]], 6, DK, O).done();
+  pt.ell(47 - sw * 4, foot - 1, 6, 3, DK, O).ell(89 + sw * 4, foot - 1, 7, 3, DK, O).done();
+  // cauda (afina e sobe)
+  pt.tube([[88, 54, 10], [104, 50, 7], [114, 40, 5], [116, 28, 3]], 4, BD, O).done();
+  // corpo
+  pt.ell(64, 52, 31, 15, BD, O).done();
+  // pescoço e cabeça
+  pt.tube([[42, 48, 10], [hx + 8, hy + 4, 8]], 8, BD, O).ell(hx, hy, 14, 10, BD, O).ell(hx - 10, hy + 4, 9, 6, BD, O).done();
+  // pernas da frente (lado de perto)
+  const fl = hit ? -6 : sw * 4;
+  pt.tube([[42, 58], [40 + fl, foot - 2]], 6, BD, O).tube([[80, 58], [82 - sw * 4, foot - 2]], 7, BD, O).done();
+  pt.ell(39 + fl, foot - 1, 7, 3, BD, O).ell(83 - sw * 4, foot - 1, 8, 3, BD, O).done();
+  // chifres
+  pt.tube([[hx + 6, hy - 7], [hx + 14, hy - 15], [hx + 22, hy - 17]], 2, HR, O).tube([[hx - 2, hy - 8], [hx + 2, hy - 18]], 2, HR, O).done();
+  // barriga dourada (parte de baixo do corpo e do pescoço)
+  for (let Y = 56; Y <= 67; Y++) for (let X = 36; X < 94; X++) { const u = (X + .5 - 64) / 31, v = (Y + .5 - 52) / 15; if (u * u + v * v < .82) px(x, Y > 63 ? '#c86a1a' : (X + Y) & 1 ? '#f0a83a' : '#e8962a', X, Y); }
+  for (let X = 40; X < 90; X += 5) px(x, '#a8501a', X, 60, 1, 6);
+  // placas/espinhos escuros nas costas
+  for (let k = 0; k < 8; k++) { const X = 40 + k * 7, Y = 38 + Math.round(Math.abs(k - 3.5) * .9); px(x, O, X - 2, Y - 5, 5, 5); px(x, '#3a1410', X - 1, Y - 4, 3, 4); px(x, '#6a2414', X, Y - 5, 1, 2); }
+  // rachaduras de lava brilhando
+  const crack = pts => { for (let i = 0; i < pts.length - 1; i++) { const [a1, b1] = pts[i], [a2, b2] = pts[i + 1], n = Math.max(Math.abs(a2 - a1), Math.abs(b2 - b1)); for (let k = 0; k <= n; k++) { const X = Math.round(a1 + (a2 - a1) * k / n), Y = Math.round(b1 + (b2 - b1) * k / n); px(x, '#ffd84a', X, Y, 1, 1); px(x, '#fff3b0', X, Y - 1, 1, 1); } } };
+  crack([[50, 44], [56, 49], [53, 54]]); crack([[68, 42], [72, 47], [78, 46], [81, 51]]); crack([[92, 50], [100, 48]]); crack([[106, 44], [110, 38]]); crack([[hx + 2, hy - 2], [hx + 7, hy + 2]]);
+  // olho em brasa, narinas e boca
+  px(x, O, hx - 6, hy - 4, 6, 4); px(x, '#ffe04a', hx - 5, hy - 3, 4, 2); px(x, '#ffffff', hx - 5, hy - 3, 1, 1); px(x, O, hx - 3, hy - 3, 1, 2);
+  px(x, O, hx - 17, hy + 1, 2, 1);
+  if (roar || hit) { px(x, O, hx - 19, hy + 5, 14, 5); px(x, '#5a0c08', hx - 18, hy + 6, 12, 3); px(x, '#ffd84a', hx - 17, hy + 6, 10, 1); for (let k = 0; k < 4; k++) px(x, '#fff3b0', hx - 17 + k * 3, hy + 5, 1, 1); }
+  else { px(x, O, hx - 18, hy + 6, 12, 1); px(x, '#fff3b0', hx - 15, hy + 7, 1, 1); px(x, '#fff3b0', hx - 11, hy + 7, 1, 1); }
+  const spine = []; for (let k = 0; k < 8; k++) spine.push([40 + k * 7, 33 + Math.round(Math.abs(k - 3.5) * .9)]);
+  return FSPR[f] = { r: c, l: flipped(c), W, H, mouth: [hx - 18, hy + 6], tail: [116, 26], spine, eye: [hx - 3, hy - 2] };
+}
+function flame(x, X, Y, hgt, t, seed) {   // labareda vertical tremulante
+  const fl = Math.floor(t * 14 + seed); for (let k = 0; k < hgt; k++) { const w = Math.max(1, Math.round((1 - k / hgt) * 3 + h2(k, fl) * 1.5)), dx = Math.round(Math.sin(t * 9 + k * .6 + seed) * k / hgt * 2);
+    px(x, k < hgt * .25 ? '#fff3b0' : k < hgt * .5 ? P.fire3 : k < hgt * .8 ? P.fire2 : P.fire1, X - Math.floor(w / 2) + dx, Y - k, w, 1); } }
+function drawFireAt(x, X, Y, f, face, t, flash) {
+  const s = fireSprite(f), flip = face > 0, ox = X - s.W / 2, oy = Y - s.H + 6, mx = p => flip ? s.W - p : p;
+  x.fillStyle = 'rgba(30,8,4,.45)'; x.beginPath(); x.ellipse(X, Y, 42, 9, 0, 0, 6.283); x.fill();
+  // chão queimando por onde passa
+  glow(x, X, Y, 30, P.fire2, .1);
+  x.drawImage(flip ? s.l : s.r, ox, oy);
+  if (flash) { x.globalAlpha = .5; x.globalCompositeOperation = 'lighter'; x.drawImage(flip ? s.l : s.r, ox, oy); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; }
+  // crista de fogo nas costas e na ponta da cauda
+  s.spine.forEach(([sx, sy], i) => flame(x, Math.round(ox + mx(sx)), Math.round(oy + sy), 7 + Math.round(4 * Math.abs(Math.sin(t * 3 + i))), t, i * 3));
+  flame(x, Math.round(ox + mx(s.tail[0])), Math.round(oy + s.tail[1]), 16, t, 40); flame(x, Math.round(ox + mx(s.tail[0]) + (flip ? 2 : -2)), Math.round(oy + s.tail[1] + 2), 10, t, 47);
+  glow(x, ox + mx(s.tail[0]), oy + s.tail[1] - 6, 12, P.fire3, .2); glow(x, X, oy + 40, 34, P.fire2, .09 + .04 * Math.sin(t * 5));
+  glow(x, ox + mx(s.eye[0]), oy + s.eye[1], 5, '#ffe04a', .3);
+  // fagulhas subindo
+  for (let i = 0; i < 10; i++) { const ph = (t * .7 + i / 10) % 1, ex = ox + mx(40 + (i * 13) % 70) + Math.sin(ph * 8 + i) * 4, ey = oy + 30 - ph * 46; x.globalAlpha = 1 - ph; px(x, ph < .4 ? P.fire4 : P.fire2, Math.round(ex), Math.round(ey), 1, 1); } x.globalAlpha = 1;
+  // baforada de fogo logo depois de uma pisada
+  const k = (performance.now() - (GFX.lastSmashT || 0)) / 1000;
+  if (k < 1.1) { const dir = flip ? 1 : -1, bx = ox + mx(s.mouth[0]), by = oy + s.mouth[1], len = 70 * Math.min(1, k * 4);
+    x.globalCompositeOperation = 'lighter'; for (let i = 0; i < 46; i++) { const u = h2(i, 7), d = u * len, spread = d * .32, yy = by + d * .25 + (h2(i, 3) - .5) * spread * 2, r = 2 + u * 5, a = (1 - k / 1.1) * (1 - u * .5);
+      x.globalAlpha = a * .8; disc(x, Math.round(bx + dir * d + Math.sin(t * 20 + i) * 2), Math.round(yy), Math.round(r), u < .3 ? '#fff3b0' : u < .6 ? P.fire3 : P.fire2); }
+    x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
+}
