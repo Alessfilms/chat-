@@ -22,7 +22,55 @@ let db = { users: {}, sessions: {} };
 try { db = JSON.parse(fs.readFileSync(DBF, 'utf8')); } catch { /* primeiro uso */ }
 db.users ||= {}; db.sessions ||= {};
 let saveTimer = null;
-function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { fs.writeFile(DBF + '.tmp', JSON.stringify(db), e => { if (!e) fs.rename(DBF + '.tmp', DBF, () => {}); }); }, 400); }
+let dirty = false;
+function save() { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(() => { fs.writeFile(DBF + '.tmp', JSON.stringify(db), e => { if (!e) fs.rename(DBF + '.tmp', DBF, () => {}); }); }, 400); }
+function initDb() {
+  db.users ||= {}; db.sessions ||= {}; db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
+  db.decor ||= []; db.nextDecor ||= 1; db.firsts ||= {};
+}
+initDb();
+
+// ---------------------------------------------------------------- memória permanente (Upstash Redis, grátis)
+// No Render grátis o disco é apagado a cada reinício. Com UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN
+// o mundo inteiro (casas, construções, decoração, mochilas, avatares) fica guardado fora do servidor.
+const zlib = require('zlib');
+const UP_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/+$/, ''), UP_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const DB_KEY = process.env.DB_KEY || 'eryon_db';
+const remoteOn = () => !!(UP_URL && UP_TOKEN);
+const remote = { ok: false, lastSave: 0, error: '' };
+async function upstash(cmd) {
+  const r = await fetch(UP_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + UP_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(cmd), signal: AbortSignal.timeout(15000) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
+  return j.result;
+}
+function pruneSessions() {
+  const s = Object.entries(db.sessions); if (s.length <= 5000) return;
+  db.sessions = Object.fromEntries(s.slice(-5000)); // mantém as 5000 sessões mais recentes
+}
+async function remoteLoad() {
+  if (!remoteOn()) return;
+  for (let i = 0; i < 4; i++) {
+    try {
+      const v = await upstash(['GET', DB_KEY]);
+      if (v) { db = JSON.parse(zlib.gunzipSync(Buffer.from(v, 'base64')).toString('utf8')); initDb(); console.log('[memória] mundo carregado do Upstash:', Object.keys(db.users).length, 'jogadores,', db.houses.length, 'construções,', db.decor.length, 'decorações'); }
+      else { console.log('[memória] Upstash vazio: começando com o mundo local e salvando lá.'); dirty = true; }
+      remote.ok = true; return;
+    } catch (e) { remote.error = String(e.message || e); console.warn('[memória] falha ao carregar do Upstash:', remote.error); await new Promise(r => setTimeout(r, 2000 * (i + 1))); }
+  }
+}
+let saving = null;
+async function remoteSave(force) {
+  if (!remoteOn() || !remote.ok || (!dirty && !force)) return;
+  if (saving) return saving;
+  dirty = false; pruneSessions();
+  const data = zlib.gzipSync(JSON.stringify(db)).toString('base64');
+  saving = upstash(['SET', DB_KEY, data]).then(() => { remote.lastSave = Date.now(); remote.error = ''; })
+    .catch(e => { dirty = true; remote.error = String(e.message || e); console.warn('[memória] falha ao salvar:', remote.error); })
+    .finally(() => { saving = null; });
+  return saving;
+}
+setInterval(() => remoteSave(), 8000).unref();
 
 const norm = u => String(u || '').trim().toLowerCase().replace(/^@+/, '');
 const validUser = u => /^[a-z0-9._]{1,30}$/.test(u);
@@ -177,7 +225,7 @@ const server = http.createServer(async (req, res) => {
       if (!ADMIN_KEY) return send(res, 503, { error: 'Defina a variável ADMIN_KEY no servidor.' });
       if (limited('admin:' + ipOf(req), 60, 60000)) return send(res, 429, { error: 'Muitas requisições.' });
       if (!isAdmin(req)) return send(res, 401, { error: 'Chave de admin incorreta.' });
-      if (p === '/api/admin/list') return send(res, 200, { users: listUsers(), instagram: { on: igOn(), error: igCache.err, comments: igCache.comments.length, postUrl: IG_POST_URL } });
+      if (p === '/api/admin/list') return send(res, 200, { users: listUsers(), instagram: { on: igOn(), error: igCache.err, comments: igCache.comments.length, postUrl: IG_POST_URL }, storage: { permanent: remoteOn() && remote.ok, configured: remoteOn(), lastSave: remote.lastSave, error: remote.error, houses: db.houses.length, decor: db.decor.length } });
       if (p === '/api/admin/add' && req.method === 'POST') {
         const b = await body(req), raw = Array.isArray(b.usernames) ? b.usernames : String(b.usernames || '').split(/[\s,;]+/);
         const added = [], invalid = [];
@@ -370,4 +418,17 @@ setInterval(() => {
 // mantém conexões vivas e salva posições
 setInterval(() => { for (const c of clients) { const rec = db.users[c.user]; if (rec) { rec.x = Math.round(c.x); rec.y = Math.round(c.y); } } save(); }, 30000);
 
-server.listen(PORT, () => console.log(`Eryon Online rodando em http://localhost:${PORT}  (admin: /admin)`));
+let stopping = false;
+async function shutdown(sig) {
+  if (stopping) return; stopping = true;
+  for (const c of clients) { const rec = db.users[c.user]; if (rec) { rec.x = Math.round(c.x); rec.y = Math.round(c.y); } }
+  try { fs.writeFileSync(DBF, JSON.stringify(db)); } catch {}
+  try { if (saving) await saving; await remoteSave(true); } catch {}
+  console.log('[memória] mundo salvo antes de desligar (' + sig + ').'); process.exit(0);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM')); process.on('SIGINT', () => shutdown('SIGINT'));
+
+remoteLoad().finally(() => {
+  if (!remoteOn()) console.warn('[memória] UPSTASH não configurado: no Render grátis as construções somem quando o servidor reinicia. Veja o README.');
+  server.listen(PORT, () => console.log(`Eryon Online rodando em http://localhost:${PORT}  (admin: /admin)`));
+});

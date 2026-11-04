@@ -76,6 +76,20 @@ Atenção:
 
 Outras opções que funcionam igual: Railway, Fly.io ou qualquer VPS com Node.js 18+.
 
+## Memória permanente do mundo (casas, construções, mochilas)
+
+No Render grátis o disco é apagado sempre que o servidor reinicia ou você faz um deploy novo.
+Para tudo que a comunidade constrói ficar guardado para sempre, ligue o Upstash (Redis grátis, 2 minutos):
+
+1. Entre em https://console.upstash.com (pode entrar com a conta do Google ou GitHub).
+2. **Create Database** → tipo **Redis** → nome `eryon` → região mais perto (ex.: São Paulo) → plano **Free** → Create.
+3. Na página do banco, procure a seção **REST API** e copie `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`.
+4. No Render: seu serviço → **Environment** → **Add Environment Variable** → crie as duas com os valores copiados → **Save Changes** (ele reinicia sozinho).
+5. Abra `/admin`, entre com a chave: em **Memória do mundo** deve aparecer *Permanente (Upstash) ✓*.
+
+O servidor carrega o mundo ao ligar, salva as mudanças a cada 8 segundos e salva tudo antes de desligar.
+(Alternativa paga: um Disk no Render montado em `/data` com `DATA_DIR=/data`.)
+
 ## Rodar no seu computador
 
 ```bash
@@ -97,6 +111,8 @@ ADMIN_KEY=uma-senha-forte node server.js
 | `IG_MEDIA_IDS` | (Opcional) IDs dos posts a verificar. Padrão: os 3 mais recentes. |
 | `ACCESS_MODE` | `livre` (padrão: qualquer um entra com o @) ou `restrito` (só com código ou comentário). |
 | `DATA_DIR` | Pasta onde fica o `db.json` (posições, cores, removidos). Padrão: `./data`. |
+
+- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`: memória permanente do mundo (veja acima). `DB_KEY` (opcional) muda o nome da chave.
 
 ## Segurança
 

@@ -11,3 +11,8 @@ services:
         generateValue: true
       - key: CODE_SECRET
         generateValue: true
+      # memória permanente do mundo (crie grátis em console.upstash.com e cole aqui no painel do Render)
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
