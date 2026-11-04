@@ -26,9 +26,9 @@ const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), pars
 function flipped(c) { const [f, x] = canvas(c.width, c.height); x.translate(c.width, 0); x.scale(-1, 1); x.drawImage(c, 0, 0); return f; }
 
 // ---------- paleta (Episódio 1)
-const P = { ink: '#140e06', f0: '#0c2120', f1: '#142c29', f2: '#1c3831', f3: '#263c35', f4: '#2a4a3d', f5: '#3c5d4a', f6: '#4e6c4a', f7: '#667c4d', f8: '#7c9b5b', f9: '#9cbf62',
-  dirt0: '#3a2618', dirt1: '#5a3a26', dirt2: '#6b4630', dirt3: '#8b5e3c', sand: '#a3794b', wood: '#7a4f2e', woodD: '#4a2f22', woodL: '#a3794b',
-  st0: '#2b3138', st1: '#4a535c', st2: '#6e7a84', st3: '#98a4ac', st4: '#c4ccd0', w1: '#2c4f7a', w2: '#3f7ab0',
+const P = { ink: '#1a120c', f0: '#0f3328', f1: '#174433', f2: '#1f5638', f3: '#2a6a3c', f4: '#357c40', f5: '#3f8f45', f6: '#4f9f4a', f7: '#66b350', f8: '#84c65a', f9: '#a6da6a',
+  dirt0: '#5a3420', dirt1: '#8a5430', dirt2: '#b0703f', dirt3: '#cf8d50', sand: '#e2aa68', wood: '#8a5530', woodD: '#55321c', woodL: '#b8814a',
+  st0: '#2e3440', st1: '#565e70', st2: '#7a8396', st3: '#a2abbc', st4: '#ccd3de', w1: '#3460c8', w2: '#4f86e6',
   cy: '#3fd0e0', cy2: '#9ff3ff', fire1: '#d0622a', fire2: '#f2a33a', fire3: '#ffd84a', fire4: '#fff3b0', wall: '#e4d0a0', wallD: '#c9a46a', skin: '#e8b48c', skinD: '#c08060' };
 
 // ---------- mundo (idêntico ao Episódio 1)
@@ -40,29 +40,37 @@ const BRIDGE = { x: 430, y: Math.round(riverY(430)) }, TOWER = { x: 290, y: 118 
 const SEAT = { x: 360, y: 668 };
 const FOUNDER_A = { x: 341, y: 646 }, FOUNDER_B = { x: 380, y: 646 };
 
+// chão no estilo pixel art: manchas de grama em tons chapados (com borda pontilhada), clareiras de terra e rio com margem de pedras
+const GRASS = ['#2a6a3c', '#357c40', '#3f8f45', '#4f9f4a', '#66b350', '#84c65a'].map(hex);
+const DIRT = ['#8a5430', '#b0703f', '#cf8d50', '#e2aa68'].map(hex);
+function grassAt(x, y, base) {
+  const n = vn(x * .03, y * .03) * .7 + vn(x * .09 + 9, y * .09) * .3, dith = ((x + y) & 1) ? .045 : -.045;
+  let k = base + Math.floor(n * 3 + dith); k = Math.max(0, Math.min(5, k));
+  return GRASS[k];
+}
 const [ground, gx] = canvas(WW, WH);
 {
-  const img = gx.createImageData(WW, WH), d = img.data;
-  const F = [P.f1, P.f2, P.f3, P.f4].map(hex), G = [P.f4, P.f5, P.f6, P.f7].map(hex), D = [P.dirt0, P.dirt1, P.dirt2, P.dirt3].map(hex), Wt = [P.w1, P.w2].map(hex), S = [P.dirt1, P.sand].map(hex);
+  const img = gx.createImageData(WW, WH), d = img.data, Wt = [P.w1, P.w2, '#2a4ea8', '#7fb0f5'].map(hex), BANK = ['#4a5060', '#6e7688', '#959eb0'].map(hex);
   for (let y = 0; y < WH; y++) for (let x = 0; x < WW; x++) {
-    const n = vn(x * .05, y * .05) * .7 + vn(x * .2, y * .2) * .3, r = h2(x, y);
-    let c = F[Math.min(3, Math.floor(n * 3.2 + r * .6))];
-    if (r > .985) c = D[1]; else if (r > .975) c = F[0];
-    const dc = Math.hypot(x - C.x, (y - C.y) * 1.05) + (vn(x * .08, y * .08) - .5) * 14;
-    if (dc < 64) { c = G[Math.min(3, Math.floor(n * 3 + r * .9))]; if (r > .993) c = hex('#f6b6d8'); else if (r > .986) c = hex('#e6efa0'); }
-    if (dc < 18) c = D[Math.min(3, 1 + Math.floor(r * 2.2))];
-    if (y > 690 && Math.abs(x - pathS(y)) < 4 + vn(y * .1, 3) * 3) c = D[1 + Math.floor(r * 2)];
-    const dr = Math.abs(y - riverY(x));
-    if (dr < 13) c = S[r > .5 ? 1 : 0];
-    if (dr < 10) c = Wt[(vn(x * .1, y * .3) > .55) ? 1 : 0];
+    const r = h2(x, y), dc = Math.hypot(x - C.x, (y - C.y) * 1.05) + (vn(x * .08, y * .08) - .5) * 14;
+    let c = grassAt(x, y, dc < 64 ? 2 : 1);
+    // manchas de terra laranja espalhadas
+    const dp = vn(x * .045 + 50, y * .045 + 20) + (vn(x * .2, y * .2) - .5) * .12;
+    if (dp > .8) c = DIRT[dp > .86 ? (dp > .9 ? 3 : 2) : 1]; else if (dp > .78 && ((x + y) & 1)) c = DIRT[0];
+    if (dc < 64 && r > .994) c = hex('#f4f0d8');
+    if (dc < 18) c = DIRT[1 + Math.floor(r * 2.2)];
+    if (y > 690 && Math.abs(x - pathS(y)) < 4 + vn(y * .1, 3) * 3) c = DIRT[1 + Math.floor(vn(x * .3, y * .3) * 2.4)];
+    const dr = Math.abs(y - riverY(x)), wob = vn(x * .15, 7) * 2;
+    if (dr < 13 + wob) c = BANK[vn(x * .4, y * .4) > .6 ? 2 : vn(x * .4, y * .4) > .3 ? 1 : 0];
+    if (dr < 10 + wob * .5) { const w = vn(x * .08 + y * .01, y * .25), e = 10 + wob * .5 - dr; c = e < 1.6 ? Wt[3] : e < 3.2 ? Wt[1] : Wt[w > .7 ? 1 : 0]; if (e >= 3.2 && w < .2 && ((x + y) & 1)) c = Wt[2]; }
     const i = (y * WW + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
   }
   gx.putImageData(img, 0, 0);
 }
 const [clearTex, ctx2] = canvas(WW, WH);
 {
-  const img = ctx2.createImageData(WW, WH), d = img.data, G = [P.f4, P.f5, P.f6, P.f7].map(hex), pink = hex('#f6b6d8');
-  for (let y = 0; y < WH; y++) for (let x = 0; x < WW; x++) { const n = vn(x * .05, y * .05), r = h2(x + 7, y); let c = G[Math.min(3, Math.floor(n * 3 + r * .9))]; if (r > .993) c = pink;
+  const img = ctx2.createImageData(WW, WH), d = img.data, cream = hex('#f4f0d8');
+  for (let y = 0; y < WH; y++) for (let x = 0; x < WW; x++) { let c = grassAt(x + 7, y, 2); if (h2(x + 7, y) > .995) c = cream;
     const i = (y * WW + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
   ctx2.putImageData(img, 0, 0);
 }
@@ -93,8 +101,8 @@ function pineTree(r, pal, seed) {
   }
   return { c, ax: cx, ay: h - 4 };
 }
-const LEAF = [[P.f3, P.f5, P.f6, P.f8], [P.f4, P.f6, P.f7, P.f9], ['#3a3a1c', '#5c5a2a', '#7a7a3a', '#9a9442'], [P.f3, P.f5, P.f7, P.f8]];
-const NEEDLE = [[P.f0, P.f2, P.f4, P.f5], [P.f1, P.f3, P.f4, P.f6]];
+const LEAF = [['#1f5a3a', '#2f7a40', '#47994a', '#74c05c'], ['#25633c', '#3a8a45', '#5aa84e', '#90d064'], ['#4a5a1e', '#6e8228', '#93a83a', '#c2d25a'], ['#1d5238', '#33793f', '#52a049', '#7cc35a']];
+const NEEDLE = [['#123d32', '#1d5a40', '#2c7448', '#47955a'], ['#174836', '#24644a', '#337d50', '#52a35e']];
 const treeSprites = [];
 for (let i = 0; i < 14; i++) treeSprites.push(roundTree(7 + (i % 4) * 2, LEAF[i % 4], i * 1.7));
 for (let i = 0; i < 10; i++) treeSprites.push(pineTree(6 + (i % 3) * 2, NEEDLE[i % 2], i));

@@ -74,7 +74,7 @@ function buildWorld(world) {
     px(x, P.ink, 522, 383, 13, 16); px(x, P.st1, 523, 384, 11, 14); [[0, 0, 1, 3], [4, 0, 1, 3], [7, 0, 1, 1], [1, 5, 3, 1], [6, 5, 2, 2], [2, 9, 3, 1]].forEach(([a, b, w, h]) => px(x, P.cy2, 524 + a, 385 + b, w, h)); }
   // árvores (as da área da vila foram derrubadas e viraram casas)
   const pathNear = (X, Y) => { const L = [[474, 498], [482, 476], [492, 456], [502, 438], [508, 425], [514, 414], [522, 404]]; for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((X - ax) * dx + (Y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(X - ax - dx * k, Y - ay - dy * k) < 15) return true; } return false; };
-  trees.forEach((t, i) => { if (t.dc < VR + 4 || pathNear(t.x, t.y + 6) || nearLandmark(t.x, t.y)) return; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay, tree: i }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5, tree: i }); TREE_POS.push({ i, x: t.x, y: t.y }); });
+  trees.forEach((t, i) => { if (t.dc < VR + 4 || (t.y - riverY(t.x) >= 0 && t.y - riverY(t.x) < 34) || pathNear(t.x, t.y + 6) || nearLandmark(t.x, t.y)) return; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay, tree: i }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5, tree: i }); TREE_POS.push({ i, x: t.x, y: t.y }); });
   if (B.serraria) { const X = B.serraria.x, Y = B.serraria.y, [wc, wq] = canvas(26, 14);
     for (let k = 0; k < 6; k++) { const r = k % 3, c2 = Math.floor(k / 3); px(wq, P.ink, 2 + r * 6 + c2 * 3, 6 - c2 * 4, 7, 7); px(wq, P.wood, 3 + r * 6 + c2 * 3, 7 - c2 * 4, 5, 5); px(wq, P.woodL, 4 + r * 6 + c2 * 3, 8 - c2 * 4, 3, 3); }
     OBJ.push({ y: Y, x: X, img: wc, dx: X - 13, dy: Y - 12 }); const [bc, bq] = canvas(9, 7); px(bq, P.ink, 0, 0, 9, 7); px(bq, P.wood, 1, 2, 7, 4); px(bq, P.woodL, 1, 1, 7, 2); OBJ.push({ y: Y + 8, x: X + 18, img: bc, dx: X + 14, dy: Y + 2 });
@@ -89,6 +89,7 @@ function buildWorld(world) {
   const [pc, pq] = canvas(4, 10); px(pq, P.ink, 0, 0, 4, 9); px(pq, P.wood, 1, 1, 2, 7); px(pq, P.woodL, 1, 0, 1, 1); PAL_IMG = pc;
   placePalisade();
   const LB = { costela: [-42, 42, -12, 0], ruinas: [4, 20, -8, 0], torre: [-13, 13, -14, 0], caverna: [-36, 36, -22, -2], buraco: [-22, 22, -16, -2], poco: [-16, 16, -14, 2], arvore: [-4, 4, -5, 0], circulo: [-6, 8, -6, 0] };
+  placeScenery(x);
   for (const l of LANDMARKS) { OBJ.push({ y: l.y, x: l.x, lm: l }); const b = LB[l.id]; if (b) blockers.push({ k: 'r', x0: l.x + b[0], x1: l.x + b[1], y0: l.y + b[2], y1: l.y + b[3] }); }
   OBJ.sort((a, b) => a.y - b.y);
 }
@@ -115,9 +116,95 @@ function paintDetails(x) {
 function paintRiver(x) {
   const r = rng(99);
   for (let X = 0; X < WW; X += 2) { const y = riverY(X);
-    if (r() < .35) for (const s of [-1, 1]) { const by = Math.round(y + s * (11 + r() * 3)); px(x, P.f6, X, by - 3, 1, 4); if (r() < .4) px(x, '#8b5e3c', X, by - 4, 1, 2); }
-    if (r() < .05) { const ly = Math.round(y + (r() - .5) * 10); px(x, '#3c5d4a', X - 1, ly, 4, 2); px(x, '#4e6c4a', X, ly, 2, 1); if (r() < .4) px(x, '#f6b6d8', X + 1, ly - 1, 1, 1); }
-    if (r() < .08) px(x, '#6fb0d8', X, Math.round(y + (r() - .5) * 12), 3, 1); }
+    // pedras arredondadas na margem (contorno escuro + topo claro)
+    if (r() < .32) for (const s of [-1, 1]) { const w = 2 + Math.floor(r() * 3), by = Math.round(y + s * (11 + r() * 2));
+      px(x, '#2a2e3a', X - 1, by - 2, w + 2, 4); px(x, P.st2, X, by - 1, w, 2); px(x, P.st3, X, by - 1, w, 1); if (r() < .3) px(x, P.f7, X, by - 2, Math.max(1, w - 1), 1); }
+    if (r() < .22) for (const s of [-1, 1]) { const by = Math.round(y + s * (14 + r() * 2)); px(x, P.f5, X, by - 3, 1, 4); px(x, P.f7, X + 1, by - 4, 1, 4); if (r() < .3) px(x, '#8b5e3c', X + 1, by - 5, 1, 2); }
+    if (r() < .045) { const ly = Math.round(y + (r() - .5) * 9); px(x, '#2f7a40', X - 1, ly, 4, 2); px(x, '#5aa84e', X, ly, 2, 1); if (r() < .5) px(x, '#f6b6d8', X + 1, ly - 1, 1, 1); }
+    if (r() < .04) { const ly = Math.round(y + (r() - .5) * 8); px(x, '#2a7a3a', X, ly - 3, 1, 4); px(x, '#3f9a48', X + 1, ly - 2, 1, 3); }
+  }
+}
+// ---- cenário no estilo pixel art: blocos de pedra laranja com musgo, muros e pilares de ruínas com hera, trilhas de lajes
+const ROCK = { o: '#3a2216', d: '#8a4a2a', m: '#b8683a', l: '#dc8f52', h: '#f2b674', moss: '#5aa84e', mossL: '#84c65a' };
+function boulderSprite(seed) {
+  const r = rng(seed), n = 2 + Math.floor(r() * 4), blobs = [];
+  for (let i = 0; i < n; i++) blobs.push({ x: (r() - .5) * 26, y: (r() - .5) * 8, rx: 6 + r() * 7, ry: 5 + r() * 5 });
+  blobs.sort((a, b) => a.y - b.y);
+  const W = 52, H = 34, [c, x] = canvas(W, H), cx = 26, by = 26;
+  x.fillStyle = 'rgba(10,30,20,.35)'; x.beginPath(); x.ellipse(cx, by + 3, 24, 5, 0, 0, 6.283); x.fill();
+  for (const b of blobs) {
+    const X = cx + b.x, Y = by + b.y - b.ry;
+    const ins = (px2, py2, g = 0) => ((px2 - X) / (b.rx + g)) ** 2 + ((py2 - Y) / (b.ry + g)) ** 2 <= 1;
+    for (let yy = Math.floor(Y - b.ry - 2); yy <= Y + b.ry + 2; yy++) for (let xx = Math.floor(X - b.rx - 2); xx <= X + b.rx + 2; xx++) {
+      if (xx < 0 || yy < 0 || xx >= W || yy >= H || !ins(xx + .5, yy + .5, 1)) continue;
+      const u = (xx - X) / b.rx, v = (yy - Y) / b.ry; let col;
+      if (!ins(xx + .5, yy + .5)) col = ROCK.o;
+      else { const l = -u * .45 - v * .9 + (((xx + yy) & 1) ? .06 : -.06); col = v < -.55 && Math.abs(u) < .7 ? (h2(xx + seed, yy) > .35 ? ROCK.moss : ROCK.mossL) : l > .55 ? ROCK.h : l > .1 ? ROCK.l : l > -.45 ? ROCK.m : ROCK.d; }
+      px(x, col, xx, yy);
+    }
+    px(x, ROCK.d, Math.round(X - b.rx * .3), Math.round(Y + b.ry * .1), Math.max(2, Math.round(b.rx * .5)), 1);
+  }
+  return { c, ax: cx, ay: by + 2 };
+}
+const RU = { o: '#22262f', d: '#4d5566', m: '#6e7789', l: '#939cae', h: '#b9c1cf', ivy: '#3f8f45', ivyL: '#6cb85a' };
+function wallSprite(len, hg, seed) {
+  const W = len + 2, H = hg + 8, [c, x] = canvas(W, H), r = rng(seed), base = H - 4;
+  x.fillStyle = 'rgba(10,30,20,.35)'; x.fillRect(2, H - 4, W - 2, 3);
+  const tops = []; for (let i = 0; i < W; i += 5) tops.push(Math.round(r() * hg * .5));
+  const topAt = X => base - hg + tops[Math.floor(X / 5)];
+  for (let X = 0; X < W; X++) { const t = topAt(X), edge = X === 0 || X === W - 1;
+    px(x, RU.o, X, t - 1, 1, base - t + 2); if (edge) continue;
+    for (let Y = t; Y < base; Y++) { const row = Math.floor((base - Y) / 4), joint = ((X + (row % 2) * 3) % 7) === 0, mortar = (base - Y) % 4 === 0;
+      px(x, joint || mortar ? RU.d : (Y === t ? RU.h : (h2(Math.floor((X + (row % 2) * 3) / 7) + seed, row) > .5 ? RU.l : RU.m)), X, Y); }
+    if (topAt(X - 1) > t && X > 0) px(x, RU.o, X, t, 1, 1); }
+  for (let i = 0; i < len / 3; i++) { const X = 1 + Math.floor(r() * (W - 2)), L = 2 + Math.floor(r() * hg * .7); for (let k = 0; k < L; k++) if (r() < .8 && base - 1 - k >= topAt(X)) px(x, k % 3 ? RU.ivy : RU.ivyL, X, base - 1 - k, 1, 1); }
+  return { c, ax: 0, ay: H - 3 };
+}
+function pillarSprite(seed) {
+  const r = rng(seed), hg = 14 + Math.floor(r() * 10), [c, x] = canvas(16, hg + 8), broken = r() < .5;
+  x.fillStyle = 'rgba(10,30,20,.35)'; x.fillRect(1, hg + 3, 15, 3);
+  px(x, RU.o, 2, broken ? 3 : 1, 12, hg + 3); px(x, RU.m, 3, broken ? 4 : 2, 10, hg + 1); px(x, RU.l, 3, broken ? 4 : 2, 4, hg + 1); px(x, RU.h, 3, broken ? 4 : 2, 10, 1);
+  for (let y = 6; y < hg; y += 5) px(x, RU.d, 3, y, 10, 1);
+  if (!broken) { px(x, RU.o, 0, 0, 16, 4); px(x, RU.l, 1, 1, 14, 2); px(x, RU.h, 1, 1, 14, 1); } else { px(x, RU.o, 2, 2, 5, 2); px(x, RU.o, 9, 1, 5, 3); }
+  // runas e hera
+  if (r() < .6) { px(x, '#22262f', 6, 8, 4, 1); px(x, '#22262f', 7, 9, 1, 4); px(x, '#22262f', 6, 13, 4, 1); }
+  for (let k = 0; k < hg; k++) if (r() < .7) px(x, k % 3 ? RU.ivy : RU.ivyL, (k % 4 < 2 ? 3 : 4) + (r() < .3 ? 8 : 0), hg + 2 - k, 1, 1);
+  px(x, RU.ivy, 2, hg + 1, 12, 2); px(x, RU.ivyL, 3, hg + 1, 3, 1);
+  return { c, ax: 8, ay: hg + 4 };
+}
+const BOULDERS = Array.from({ length: 8 }, (_, i) => boulderSprite(300 + i * 17));
+const WALLS = [wallSprite(28, 12, 5), wallSprite(36, 14, 6), wallSprite(22, 10, 7)];
+const PILLARS = Array.from({ length: 4 }, (_, i) => pillarSprite(40 + i));
+function placeScenery(x) {
+  const r = rng(4242), placed = [];
+  const free = (X, Y, rad) => {
+    if (X < 16 || X > WW - 16 || Y < 30 || Y > WH - 12) return false;
+    if (Math.hypot(X - C.x, (Y - C.y) / .95) < 392) return false;          // espaço para a cidade crescer
+    if (Math.abs(Y - riverY(X)) < 26 || nearLandmark(X, Y, 16)) return false;
+    if (Y > 690 && Math.abs(X - pathS(Y)) < 18) return false;
+    if (Math.hypot(X - BRIDGE.x, Y - BRIDGE.y) < 40) return false;
+    if (placed.some(p => Math.hypot(p.x - X, p.y - Y) < rad + p.r)) return false;
+    if (typeof NODES !== 'undefined' && NODES.some(n => Math.hypot(n.x - X, n.y - Y) < rad + 8)) return false;
+    return true;
+  };
+  const clearTrees = (X, Y, rx, ry) => { for (let i = OBJ.length - 1; i >= 0; i--) { const o = OBJ[i]; if (o.tree !== undefined && Math.abs(o.x - X) < rx && o.y > Y - ry && o.y < Y + 8) { OBJ.splice(i, 1); const bi = blockers.findIndex(b => b.tree === o.tree); if (bi >= 0) blockers.splice(bi, 1); const ti = TREE_POS.findIndex(t => t.i === o.tree); if (ti >= 0) TREE_POS.splice(ti, 1); } } };
+  // clareirinhas: terra + lajes, sem árvores, com pedras e ruínas
+  for (let k = 0, n = 0; k < 900 && n < 34; k++) {
+    const X = Math.round(r() * WW), Y = Math.round(r() * WH); if (!free(X, Y, 28)) continue; n++;
+    placed.push({ x: X, y: Y, r: 28 });
+    clearTrees(X, Y, 26, 22);
+    const kind = r();
+    if (kind < .55) { const sp = BOULDERS[Math.floor(r() * BOULDERS.length)]; OBJ.push({ y: Y, x: X, img: sp.c, dx: X - sp.ax, dy: Y - sp.ay }); blockers.push({ k: 'r', x0: X - 14, x1: X + 14, y0: Y - 7, y1: Y + 1 });
+      if (r() < .5) { const s2 = BOULDERS[Math.floor(r() * BOULDERS.length)], X2 = X + (r() < .5 ? -20 : 20), Y2 = Y + 8; OBJ.push({ y: Y2, x: X2, img: s2.c, dx: X2 - s2.ax, dy: Y2 - s2.ay }); blockers.push({ k: 'r', x0: X2 - 14, x1: X2 + 14, y0: Y2 - 7, y1: Y2 + 1 }); } }
+    else if (kind < .8) { const sp = WALLS[Math.floor(r() * WALLS.length)], w = sp.c.width; OBJ.push({ y: Y, x: X, img: sp.c, dx: X - Math.floor(w / 2), dy: Y - sp.ay }); blockers.push({ k: 'r', x0: X - w / 2, x1: X + w / 2, y0: Y - 4, y1: Y + 1 });
+      if (r() < .6) { const p2 = PILLARS[Math.floor(r() * PILLARS.length)], X2 = X + w / 2 + 8; OBJ.push({ y: Y + 4, x: X2, img: p2.c, dx: X2 - p2.ax, dy: Y + 4 - p2.ay }); blockers.push({ k: 'r', x0: X2 - 6, x1: X2 + 6, y0: Y, y1: Y + 5 }); } }
+    else { for (let i = 0; i < 2; i++) { const p2 = PILLARS[Math.floor(r() * PILLARS.length)], X2 = X + (i ? 14 : -14); OBJ.push({ y: Y, x: X2, img: p2.c, dx: X2 - p2.ax, dy: Y - p2.ay }); blockers.push({ k: 'r', x0: X2 - 6, x1: X2 + 6, y0: Y - 4, y1: Y + 1 }); }
+      // lajes entre os pilares
+      for (let j = 0; j < 4; j++) { const sx = X - 6 + (j % 2) * 7, sy = Y + 6 + Math.floor(j / 2) * 6; px(x, RU.o, sx - 1, sy - 1, 7, 5); px(x, RU.m, sx, sy, 5, 3); px(x, RU.l, sx, sy, 5, 1); } }
+    // grama mais clara em volta e florzinhas
+    for (let i = 0; i < 14; i++) { const fx = Math.round(X + (r() - .5) * 50), fy = Math.round(Y + 4 + (r() - .5) * 26); if (r() < .5) { px(x, '#f4f0d8', fx, fy, 1, 1); px(x, '#f4f0d8', fx - 1, fy + 1, 3, 1); px(x, '#ffd84a', fx, fy + 1, 1, 1); } else { px(x, P.f8, fx, fy, 1, 2); px(x, P.f9, fx + 1, fy - 1, 1, 2); } }
+  }
+  OBJ.sort((a, b) => a.y - b.y);
 }
 // ---- vida ambiente: brilho na água, vagalumes, folhas, fumaça das chaminés e sombra das nuvens
 const FIREFLIES = Array.from({ length: 70 }, (_, i) => ({ x: h2(i, 1) * WW, y: h2(i, 2) * WH, ph: h2(i, 3) * 6.283 }));
@@ -127,6 +214,13 @@ function drawAmbient(x, t, li, ti, cw, ch) {
   // chaminés soltando fumaça
   for (const id of ['casa_1', 'casa_3', 'casa_5', 'casa_7', 'casa_9']) { const b = B[id]; if (b && b.x > li - 20 && b.x < li + cw + 20) smoke(x, b.x + 5, b.y - 26, t + b.x, 4, '#c4ccd0'); }
   for (const h of BUILT) if ((h.type || 'casa') === 'casa' && (h.roof || 0) % 2 === 0 && h.x > li - 20 && h.x < li + cw + 20) smoke(x, h.x + 5, h.y - 26, t + h.x, 4, '#c4ccd0');
+  // feixes de luz caindo sobre lugares mágicos
+  for (const id of ['circulo', 'ruinas', 'arvore']) { const l = LANDMARKS.find(q => q.id === id); if (!l || l.x < li - 40 || l.x > li + cw + 40 || l.y < ti - 20 || l.y > ti + ch + 120) continue;
+    const a = .10 + .04 * Math.sin(t * 1.3 + l.x), top = l.y - 120, X = l.x, Y = l.y - 10;
+    x.globalCompositeOperation = 'lighter';
+    for (let yy = top; yy < Y; yy += 2) { const k = (yy - top) / (Y - top), w = Math.round(8 + k * 8); x.globalAlpha = a * (.3 + .7 * k); x.fillStyle = '#fff6c0'; x.fillRect(X - w, yy, w * 2, 2); x.globalAlpha = a * .6 * k; x.fillRect(X - Math.round(w * .5), yy, Math.round(w), 2); }
+    for (let i = 0; i < 6; i++) { const ph = (t * .25 + i / 6) % 1; x.globalAlpha = .7 * Math.sin(ph * Math.PI); px(x, '#fff3b0', Math.round(X + Math.sin(i * 2.1 + t) * 10), Math.round(Y - ph * 70), 1, 1); }
+    x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
   // vagalumes
   for (const f of FIREFLIES) { const X = f.x + Math.sin(t * .4 + f.ph) * 12, Y = f.y + Math.cos(t * .33 + f.ph * 2) * 8; if (X < li || X > li + cw || Y < ti || Y > ti + ch) continue; const on = (.5 + .5 * Math.sin(t * 2.4 + f.ph * 3)) * (.35 + .65 * ambient().night); if (on < .2) continue; x.globalAlpha = on; px(x, '#fff3b0', Math.round(X), Math.round(Y), 1, 1); x.globalAlpha = on * .25; px(x, '#ffd84a', Math.round(X) - 1, Math.round(Y) - 1, 3, 3); }
   x.globalAlpha = 1;
