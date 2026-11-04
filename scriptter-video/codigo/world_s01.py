@@ -368,6 +368,7 @@ for k in range(30):
     big[..., :3] *= np.array([.78, .74, .84])     # mais perto da câmera, contra a luz
     FG.append((y, x, big, sp.ax * 2, sp.ay * 2))
 FG.sort(key=lambda q: q[0])
+NO_FG = True   # sem copas caindo no início (pedido do Aless)
 
 # ---------------- câmera ----------------
 CAM0, CAM1 = np.array([66., 860.]), np.array([60., 196.])
@@ -484,7 +485,7 @@ def render(f):
     # copas em primeiro plano: a câmera passa por cima delas
     off = ease(t / 4.6) * (VH + 700)
     cov = 0.
-    for (y, x, big, ax, ay) in FG:
+    for (y, x, big, ax, ay) in ([] if NO_FG else FG):
         X = x - ax + int(1.5 * np.sin(t * 1.1 + x)); Y = y - ay + off
         if Y < VH and Y + big.shape[0] > 0:
             blit(view, big, X, Y); cov += 1
