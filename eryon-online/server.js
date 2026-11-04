@@ -30,7 +30,7 @@ function initDb() {
   db.notice ||= { on: false, title: '', text: '', every: 10 };
   db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
   db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {}; db.animals ||= []; db.nextAnimal ||= 1;
-  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; if (db.king === undefined) db.king = 'emanuel01.f'; db.rguards ||= {}; db.giant.burned ||= []; db.giant.rebuild ||= {};
+  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; db.cut ||= []; if (db.king === undefined) db.king = 'emanuel01.f'; db.rguards ||= {}; db.giant.burned ||= []; db.giant.rebuild ||= {};
   if (db.giant.state === 'battle') db.giant.state = 'scheduled', db.giant.at = Date.now() + 60000;   // reiniciou no meio da batalha: recomeça em 1 min
   for (const r of Object.values(db.users)) if (r && typeof r === 'object') { if (r.tot && typeof r.tot !== 'object') r.tot = {}; }
 }
@@ -358,9 +358,10 @@ let lunchState = null;
 const riverY = x => 212 + 16 * Math.sin(x * .021) + 7 * Math.sin(x * .057 + 1);
 const note = (c, text) => out(c.ws, { t: 'note', text });
 // árvores derrubadas: id -> hora em que voltam a crescer (5 min)
-const cutTrees = new Map();
-const cutList = () => [...cutTrees.keys()];
-setInterval(() => { const n = Date.now(); let ch = false; for (const [i, t] of cutTrees) if (t < n) { cutTrees.delete(i); ch = true; } if (ch) all({ t: 'trees', cut: cutList() }); }, 5000).unref();
+// árvores cortadas NÃO nascem de novo: ficam guardadas para sempre em db.cut
+const cutTrees = { has: i => cutSet().has(i), set: i => { if (!cutSet().has(i)) { db.cut.push(i); cutSet().add(i); save(); } } };
+function cutSet() { if (!cutSet.s || cutSet.ref !== db.cut) { db.cut ||= []; cutSet.ref = db.cut; cutSet.s = new Set(db.cut); } return cutSet.s; }
+const cutList = () => db.cut || [];
 // ---- mochila: recursos e itens
 const RECIPES = JSON.parse(fs.readFileSync(path.join(PUBLIC, 'recipes.json'), 'utf8')), RBY = Object.fromEntries(RECIPES.map(r => [r.id, r]));
 const WB = Object.fromEntries(JSON.parse(fs.readFileSync(path.join(PUBLIC, 'world.json'), 'utf8')).construcoes.map(b => [b.id, b]));
@@ -642,7 +643,7 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'cut') {
       const i = Number(m.tree), now = Date.now();
       if (!Number.isInteger(i) || i < 0 || i > 20000 || cutTrees.has(i) || now - (c.lastCut || 0) < 2000) return; c.lastCut = now;
-      cutTrees.set(i, now + 5 * 60000); all({ t: 'trees', cut: cutList() }); addWood(c, 3); track(c, 'cut');
+      cutTrees.set(i); all({ t: 'trees', cut: cutList() }); addWood(c, 3); track(c, 'cut');
     } else if (m.t === 'gather') {
       const now = Date.now(), id = String(m.id || ''), r = db.users[c.user];
       if (!r || !/^([rhf][0-9]{1,3}|[gamn][0-9])$/.test(id) || depleted.has(id) || now - (c.lastGather || 0) < 1500) return; c.lastGather = now;
@@ -799,7 +800,7 @@ wss.on('connection', (ws, req) => {
       const now = Date.now(), r = db.users[c.user]; if (!r || !r.look || r.look.cls !== 'mago' || c.room || now - (c.lastZap || 0) < 10000) return; c.lastZap = now;
       const list = (Array.isArray(m.trees) ? m.trees : []).map(Number).filter(i => Number.isInteger(i) && i >= 0 && i <= 20000 && !cutTrees.has(i)).slice(0, 8);
       const X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!Number.isFinite(X) || !Number.isFinite(Y) || Math.hypot(X - c.x, Y - c.y) > (G && Math.hypot(X - G.x, Y - G.y) < 20 ? 125 : 70)) return;
-      for (const i of list) cutTrees.set(i, now + 5 * 60000); all({ t: 'zap', id: c.id, x: X, y: Y, pts: (Array.isArray(m.pts) ? m.pts : []).slice(0, 8).map(q => [Math.round(Number(q[0]) || X), Math.round(Number(q[1]) || Y)]) }, c);
+      for (const i of list) cutTrees.set(i); all({ t: 'zap', id: c.id, x: X, y: Y, pts: (Array.isArray(m.pts) ? m.pts : []).slice(0, 8).map(q => [Math.round(Number(q[0]) || X), Math.round(Number(q[1]) || Y)]) }, c);
       if (list.length) { all({ t: 'trees', cut: cutList() }); addRes(c, 'lenha', list.length * 2); track(c, 'cut', list.length); }
       if (G && Math.hypot(X - G.x, Y - G.y) < 40) hurtGiant(c, 25, 'zap');
     } else if (m.t === 'hitGiant') {      // atacar o gigante com a arma na mão
