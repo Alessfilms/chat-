@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0c1410">
+<title>Eryon Online</title>
+<style>
+@font-face{font-family:Pix;src:url(fonts/pixelify-sans-latin-700-normal.woff2)}
+@font-face{font-family:P2P;src:url(fonts/press-start-2p-latin-400-normal.woff2)}
+:root{--ink:#140e06;--panel:#1c2a22;--edge:#c9a46a;--gold:#ffd84a;--cream:#fff3b0;--txt:#eef0ea}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:#060b0a;color:var(--txt);font-family:Pix,monospace;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+#game{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;display:block}
+.box{background:var(--panel);border:4px solid #0c1410;box-shadow:inset 0 0 0 3px var(--edge),0 6px 0 rgba(0,0,0,.5)}
+#login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at 50% 40%,#1c3831,#060b0a 70%)}
+#login .box{width:min(420px,100%);padding:26px 22px;display:flex;flex-direction:column;gap:14px}
+h1{font:400 34px/1 P2P,monospace;color:var(--gold);text-align:center;margin:4px 0 2px;text-shadow:3px 3px 0 var(--ink)}
+.sub{text-align:center;color:var(--cream);font-size:17px;margin:0 0 6px;line-height:1.35}
+label{font-size:15px;color:var(--gold);text-transform:uppercase;letter-spacing:1px}
+input{width:100%;font:700 20px Pix,monospace;padding:11px 12px;background:#0c1410;color:var(--txt);border:3px solid #3c5d4a;outline:none;-webkit-user-select:text;user-select:text}
+input:focus{border-color:var(--gold)}
+button{font:700 20px Pix,monospace;padding:12px 14px;background:var(--gold);color:var(--ink);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);cursor:pointer}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+button.sec{background:#3c5d4a;color:var(--txt)}
+.err{color:#ff8a70;min-height:1.2em;font-size:16px;text-align:center;margin:0}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.sw{width:34px;height:34px;border:3px solid #0c1410;cursor:pointer}
+.sw.on{outline:3px solid var(--gold);outline-offset:1px}
+#preview{display:block;margin:0 auto;image-rendering:pixelated;width:84px;height:102px}
+#hud{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;display:none;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}
+#hud .box{padding:8px 12px;font-size:16px;color:var(--cream);pointer-events:auto}
+#hud b{color:var(--gold);font-weight:700}
+#chatlog{position:fixed;left:10px;bottom:calc(64px + env(safe-area-inset-bottom));width:min(420px,calc(100% - 20px));display:none;flex-direction:column;gap:4px;pointer-events:none}
+#chatlog div{background:rgba(12,20,16,.72);padding:5px 8px;font-size:16px;line-height:1.25;word-wrap:break-word;border-left:3px solid var(--edge)}
+#chatlog b{color:var(--gold)}
+#chatbar{position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));display:none;gap:8px}
+#chatbar input{flex:1;min-width:0;font-size:18px;padding:10px}
+#chatbar button{padding:10px 14px;font-size:18px}
+#help{font-size:14px;color:#c4ccd0}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="login">
+  <div class="box" id="loginCard">
+    <h1>ERYON</h1>
+    <p class="sub">A cidade dos seguidores.<br>Comentou no post? Entre com o seu @ e o código que você recebeu.</p>
+    <label for="user">Seu @ do Instagram</label>
+    <input id="user" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="@seu_usuario" maxlength="31">
+    <label for="code">Código de acesso</label>
+    <input id="code" autocapitalize="characters" spellcheck="false" placeholder="ABC123" maxlength="6">
+    <button id="enter" type="button">Entrar em Eryon</button>
+    <p class="err" id="err"></p>
+  </div>
+  <div class="box" id="lookCard" hidden>
+    <h1>SEU MORADOR</h1>
+    <canvas id="preview" width="14" height="17"></canvas>
+    <label>Cabelo</label><div class="swatches" id="swHair"></div>
+    <label>Roupa</label><div class="swatches" id="swShirt"></div>
+    <label>Calça</label><div class="swatches" id="swPants"></div>
+    <button id="lookOk" type="button">Pronto</button>
+  </div>
+</div>
+
+<div id="hud"><div class="box">Online: <b id="online">1</b></div><div class="box" id="help">Teclas/WASD ou toque no mapa para andar</div></div>
+<div id="chatlog"></div>
+<div id="chatbar"><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
+
+<script src="engine.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

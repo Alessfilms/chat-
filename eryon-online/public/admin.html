@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Eryon Admin</title>
+<style>
+@font-face{font-family:Pix;src:url(fonts/pixelify-sans-latin-700-normal.woff2)}
+:root{--bg:#0c1410;--panel:#1c2a22;--edge:#c9a46a;--gold:#ffd84a;--txt:#eef0ea;--mut:#98a4ac}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.4 Pix,system-ui,sans-serif;padding:20px max(16px,env(safe-area-inset-left)) 40px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1{color:var(--gold);margin:0;font-size:28px}
+section{background:var(--panel);border:3px solid #060b0a;box-shadow:inset 0 0 0 2px var(--edge);padding:16px;display:flex;flex-direction:column;gap:10px}
+label{color:var(--gold);font-size:14px;text-transform:uppercase;letter-spacing:1px}
+input,textarea{width:100%;font:16px Pix,monospace;padding:10px;background:#060b0a;color:var(--txt);border:2px solid #3c5d4a}
+textarea{min-height:120px;resize:vertical}
+button{font:700 16px Pix,monospace;padding:10px 14px;background:var(--gold);color:#140e06;border:2px solid #140e06;cursor:pointer}
+button.sm{padding:5px 9px;font-size:14px}
+button.dan{background:#a83a32;color:#fff}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--txt);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #2a4a3d;white-space:nowrap}
+th{color:var(--mut);font-size:13px;text-transform:uppercase}
+code{background:#060b0a;padding:2px 6px;color:var(--gold);font-size:16px;letter-spacing:2px}
+.on{color:#9cbf62}.off{color:var(--mut)}
+#msg{color:#9ff3ff;min-height:1.2em;margin:0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Eryon · Painel do criador</h1>
+  <section>
+    <label for="key">Chave de admin (ADMIN_KEY)</label>
+    <div class="row"><input id="key" type="password" autocomplete="current-password" style="flex:1;min-width:200px"><button id="load">Entrar</button></div>
+  </section>
+  <section>
+    <label for="list">Cole aqui os @ de quem comentou (um por linha, ou separados por vírgula)</label>
+    <textarea id="list" placeholder="@heitor_morrone&#10;@kaguya.xs&#10;@lorhan_cristian"></textarea>
+    <div class="row"><button id="add">Liberar acesso</button><button id="copyAll" class="sm">Copiar todas as mensagens</button></div>
+    <p id="msg"></p>
+  </section>
+  <section>
+    <label>Moradores liberados (<span id="count">0</span>)</label>
+    <div class="tbl"><table><thead><tr><th>@</th><th>Código</th><th>Status</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="4">Entre com a chave para ver a lista.</td></tr></tbody></table></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let users = [];
+const site = location.origin;
+const call = (p, body) => fetch(p, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'x-admin-key': $('key').value }, body: body ? JSON.stringify(body) : undefined }).then(async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'erro'); return d; });
+const msgFor = u => `Oi @${u.username}! Você agora é morador de Eryon 🏰 Entre em ${site} com o seu @ e o código ${u.code}`;
+function render() {
+  $('count').textContent = users.length; const tb = $('rows'); tb.innerHTML = '';
+  for (const u of users) {
+    const tr = document.createElement('tr');
+    const td = t => { const d = document.createElement('td'); if (t !== undefined) d.textContent = t; tr.appendChild(d); return d; };
+    td('@' + u.username); const c = td(); const code = document.createElement('code'); code.textContent = u.code; c.appendChild(code);
+    const st = td(u.online ? 'online' : 'offline'); st.className = u.online ? 'on' : 'off';
+    const act = td(); act.className = 'row';
+    const b1 = document.createElement('button'); b1.className = 'sm'; b1.textContent = 'Copiar mensagem'; b1.onclick = () => copy(msgFor(u));
+    const b2 = document.createElement('button'); b2.className = 'sm'; b2.textContent = 'Novo código'; b2.onclick = async () => { users = (await call('/api/admin/newcode', { username: u.username })).users; render(); };
+    const b3 = document.createElement('button'); b3.className = 'sm dan'; b3.textContent = 'Remover'; b3.onclick = async () => { if (b3.dataset.sure !== '1') { b3.dataset.sure = '1'; b3.textContent = 'Confirmar?'; return; } users = (await call('/api/admin/remove', { username: u.username })).users; render(); };
+    act.append(b1, b2, b3); tb.appendChild(tr);
+  }
+}
+async function copy(text) { try { await navigator.clipboard.writeText(text); $('msg').textContent = 'Copiado!'; } catch { $('msg').textContent = text; } }
+$('load').onclick = async () => { try { users = (await call('/api/admin/list')).users; render(); $('msg').textContent = 'Conectado.'; try { sessionStorage.setItem('k', $('key').value); } catch { } } catch (e) { $('msg').textContent = e.message; } };
+$('add').onclick = async () => { try { const d = await call('/api/admin/add', { usernames: $('list').value }); users = d.users; render(); $('list').value = ''; $('msg').textContent = `${d.added.length} liberado(s).` + (d.invalid.length ? ` Inválidos: ${d.invalid.join(', ')}` : ''); } catch (e) { $('msg').textContent = e.message; } };
+$('copyAll').onclick = () => copy(users.map(msgFor).join('\n\n'));
+try { const k = sessionStorage.getItem('k'); if (k) { $('key').value = k; $('load').click(); } } catch { }
+</script>
+</body>
+</html>

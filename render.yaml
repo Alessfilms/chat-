@@ -1,0 +1,13 @@
+# Blueprint do Render (render.com): New + > Blueprint > aponte para este repositório.
+services:
+  - type: web
+    name: eryon-online
+    runtime: node
+    rootDir: eryon-online
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: ADMIN_KEY
+        generateValue: true
+      - key: CODE_SECRET
+        generateValue: true
