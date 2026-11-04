@@ -49,7 +49,7 @@ const GATE_A = Math.atan2((GATE.y - C.y) / .95, GATE.x - C.x), SOUTH_A = Math.PI
 function buildWorld(world) {
   for (const b of world.construcoes) B[b.id] = b;
   const [v, x] = canvas(WW, WH); villageLayer = v;
-  x.drawImage(ground, 0, 0);
+  x.drawImage(ground, 0, 0); ground.width = ground.height = 1;   // libera memória: o chão já foi copiado
   x.save(); x.beginPath(); x.ellipse(C.x, C.y, VR, VR * .95, 0, 0, 6.283); x.clip(); x.drawImage(clearTex, 0, 0); x.restore();
   paintDetails(x); paintRiver(x); paintNewLands(x);
   const pts = [];
@@ -322,7 +322,7 @@ const players = new Map();           // id -> {username, look, x, y, tx, ty, fac
 const keys = new Set(); let target = null;
 const cv = $('game'), ctx = cv.getContext('2d');
 let DPR = 1, S = 4;
-function resize() { DPR = Math.min(window.devicePixelRatio || 1, 3); cv.width = Math.round(innerWidth * DPR); cv.height = Math.round(innerHeight * DPR); ctx.imageSmoothingEnabled = false; baseS = Math.max(2, Math.round(Math.min(cv.width / 150, cv.height / 250))); applyZoom(); }
+function resize() { DPR = Math.min(window.devicePixelRatio || 1, matchMedia('(pointer:coarse)').matches ? 2 : 3); cv.width = Math.round(innerWidth * DPR); cv.height = Math.round(innerHeight * DPR); ctx.imageSmoothingEnabled = false; baseS = Math.max(2, Math.round(Math.min(cv.width / 150, cv.height / 250))); applyZoom(); if (window.__viewReady) sizeView(); }
 let baseS = 4, zoomMul = 1, zoomTarget = 1, zoomFocus = null, zoomSnapT = 0, pinching = false;
 // zoom contínuo e animado; quando para, encaixa numa escala inteira (pixels nítidos)
 const sMin = () => Math.max(1, cv.width / 700, cv.height / 1250);
@@ -340,8 +340,11 @@ function zoomStep(dt) {
   zoomMul += (zoomTarget - zoomMul) * (1 - Math.exp(-dt * 13)); if (Math.abs(zoomMul - zoomTarget) < .0015) zoomMul = zoomTarget; applyZoom(); keepFocus(S0);
 }
 addEventListener('resize', resize); resize();
-const [view, vx] = canvas(Math.ceil(4000 / 2) + 4, Math.ceil(4000 / 2) + 4);
-const [light, lx] = canvas(view.width, view.height);
+// telas internas só do tamanho que a tela precisa (economiza memória no celular)
+const [view, vx] = canvas(64, 64);
+const [light, lx] = canvas(64, 64);
+function sizeView() { const w = Math.min(2004, Math.ceil(cv.width / sMin()) + 6), h = Math.min(2004, Math.ceil(cv.height / sMin()) + 6); if (view.width === w && view.height === h) return; view.width = light.width = w; view.height = light.height = h; vx.imageSmoothingEnabled = lx.imageSmoothingEnabled = false; }
+window.__viewReady = true; sizeView();
 
 // ---------------------------------------------------------------- login e aparência
 function showErr(m) { $('err').textContent = m || ''; }
@@ -417,7 +420,7 @@ async function quickJoin() {
   for (let i = 0; i < 5; i++) {
     const r = await post('/api/join', { username: 'visitante' + Math.floor(1000 + Math.random() * 9000) });
     if (r.ok) { token = r.data.token; store.set('eryon_token', token); myLook = savedLook() || randLook(); await post('/api/look', { token, look: myLook }); me = r.data.username; remember(); start(); return openAvatar(true); }
-    if (r.data && r.data.error && !/já está/.test(r.data.error)) break;
+    if (r.data && r.data.error && !/já está/.test(r.data.error)) { diag('joinfail', { msg: r.data.error }); break; }
   }
   $('login').hidden = false;
 }
@@ -454,7 +457,7 @@ function connect() {
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token, perk: readPerk() }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
     if (onFeatureMsg(m)) return;
-    if (m.t === 'welcome') { setTimeout(skillLabel, 0); SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { if (!connect.told) { connect.told = 1; diag('connected'); } setTimeout(skillLabel, 0); SIGNS = m.signs || []; onEconMsg({ t: 'animals', list: m.animals || [] }); if (m.castle) setTimeout(() => onCastleMsg(m.castle), 0); setTimeout(() => startTutorial(), 1500); myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
     else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; p.fly = !!s.fly; } } }
@@ -763,9 +766,13 @@ function bubble(text, sx, sy, fs) {
 }
 
 // ---------------------------------------------------------------- início
+const diag = (k, extra) => { try { fetch('/api/diag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ k, ...extra }), keepalive: true }).catch(() => {}); } catch { } };
+let diagErrs = 0; addEventListener('error', e => { if (diagErrs++ < 3) diag('error', { msg: (e.message || 'erro') + ' @' + (e.filename || '').split('/').pop() + ':' + (e.lineno || 0) }); });
+addEventListener('unhandledrejection', e => { if (diagErrs++ < 3) diag('error', { msg: 'promise: ' + String(e.reason && (e.reason.message || e.reason)).slice(0, 150) }); });
 fetch('world.json').then(r => r.json()).then(async w => {
   buildWorld(w); indexBlockers(); buildNodes(); castleQuarry(); econNodes(); await Promise.all([document.fonts.load('700 20px Pix'), document.fonts.load('400 20px P2P')]).catch(() => {});
-  if (/[?&]cine=1/.test(location.search)) { document.body.classList.add('cine'); window.ready = true; return; }   // modo cinema (episódios): sem login nem conexão
+  if (/[?&]cine=1/.test(location.search)) { document.body.classList.add('cine'); window.ready = true; return; }
+  diag('loaded', { ms: performance.now() });   // modo cinema (episódios): sem login nem conexão
   // tela de fundo atrás do login: a fogueira de Eryon
   (function idle(n) { if (me) return; draw(n / 1000, null); requestAnimationFrame(idle); })(performance.now());
   if (token) { const r = await API('/api/me?token=' + encodeURIComponent(token)); if (r.ok) { const sl = savedLook(); if (!r.data.look && sl) { await post('/api/look', { token, look: sl }); r.data.look = sl; } return afterLogin(r.data); } store.del('eryon_token'); token = null; }

@@ -153,6 +153,9 @@ const hits = new Map();
 function limited(key, max, ms) { const now = Date.now(); let h = hits.get(key); if (!h || h.reset < now) { h = { n: 0, reset: now + ms }; hits.set(key, h); } h.n++; return h.n > max; }
 setInterval(() => { const now = Date.now(); for (const [k, h] of hits) if (h.reset < now) hits.delete(k); }, 60000).unref();
 
+// ---------------------------------------------------------------- diagnóstico (aparece no /admin)
+const DIAG = { since: Date.now(), peak: 0, peakAt: 0, joinOk: 0, join429: 0, joinFail: {}, ws429: 0, wsOpen: 0, closed: {}, loaded: 0, connected: 0, devices: {}, errors: [] };
+const devOf = ua => { ua = String(ua || ''); const ig = /Instagram/i.test(ua) ? 'Instagram ' : /FBAN|FBAV/i.test(ua) ? 'Facebook ' : ''; return ig + (/iPhone|iPad/i.test(ua) ? 'iPhone' : /Android/i.test(ua) ? 'Android' : 'Computador'); };
 // ---------------------------------------------------------------- HTTP
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.css': 'text/css; charset=utf-8', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.txt': 'text/plain; charset=utf-8', '.webp': 'image/webp' };
 const SEC = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY' };
@@ -179,18 +182,27 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/config') return send(res, 200, { open: OPEN, verify: igOn(), postUrl: IG_POST_URL, support: { url: (db.supportCfg && db.supportCfg.url) || SUPPORT_URL, pix: (db.supportCfg && db.supportCfg.pix) || PIX_KEY } });
     if (p === '/api/join' && req.method === 'POST') {
       if (!OPEN) return send(res, 403, { error: 'A entrada livre está desligada.' });
-      if (limited('join:' + ipOf(req), 20, 10 * 60000)) return send(res, 429, { error: 'Muitas tentativas. Espere alguns minutos.' });
+      if (limited('join:' + ipOf(req), 400, 10 * 60000)) { DIAG.join429++; return send(res, 429, { error: 'Muitas tentativas. Espere alguns minutos.' }); }
       const b = await body(req), u = norm(b.username);
       if (!validUser(u)) return send(res, 400, { error: 'Use só letras, números, ponto e _ (até 30).' });
+      if ([...clients].some(c => c.user === u)) DIAG.joinFail['@ já está online'] = (DIAG.joinFail['@ já está online'] || 0) + 1;
       if (db.users[u] && db.users[u].removed) return send(res, 403, { error: 'Esse @ não pode entrar em Eryon.' });
       if (RESERVED.has(u)) return send(res, 403, { reserved: true, error: 'Esse @ é de um morador dos episódios. Entre com o código que você recebeu.' });
       if ([...clients].some(c => c.user === u)) return send(res, 409, { error: 'Esse @ já está em Eryon agora. Escolha outro.' });
       let rec = db.users[u]; if (!rec) rec = db.users[u] = { v: 0, createdAt: Date.now(), open: true };
-      rec.lastLogin = Date.now(); const tok = newToken(); db.sessions[tok] = u; save();
+      rec.lastLogin = Date.now(); const tok = newToken(); db.sessions[tok] = u; save(); DIAG.joinOk++;
       return send(res, 200, { token: tok, username: u, look: rec.look || null });
     }
+    if (p === '/api/diag' && req.method === 'POST') {
+      if (limited('diag:' + ipOf(req), 20, 60000)) return send(res, 429, {});
+      const b = await body(req), dev = devOf(req.headers['user-agent']);
+      if (b.k === 'loaded') { DIAG.loaded++; DIAG.devices[dev] = (DIAG.devices[dev] || 0) + 1; }
+      else if (b.k === 'connected') DIAG.connected++;
+      else if (b.k === 'error' || b.k === 'joinfail') { DIAG.errors.push({ t: Date.now(), k: b.k, dev, msg: String(b.msg || '').slice(0, 200), ms: Math.round(Number(b.ms) || 0) }); if (DIAG.errors.length > 40) DIAG.errors.shift(); }
+      return send(res, 200, { ok: true });
+    }
     if (p === '/api/start' && req.method === 'POST') {
-      if (limited('start:' + ipOf(req), 15, 10 * 60000)) return send(res, 429, { error: 'Muitas tentativas. Espere alguns minutos.' });
+      if (limited('start:' + ipOf(req), 60, 10 * 60000)) return send(res, 429, { error: 'Muitas tentativas. Espere alguns minutos.' });
       if (!igOn()) return send(res, 503, { error: 'A verificação pelo Instagram ainda não foi configurada. Use um código de acesso.' });
       const b = await body(req), u = norm(b.username);
       if (!validUser(u)) return send(res, 400, { error: 'Esse @ não parece válido.' });
@@ -230,7 +242,7 @@ const server = http.createServer(async (req, res) => {
       if (!ADMIN_KEY) return send(res, 503, { error: 'Defina a variável ADMIN_KEY no servidor.' });
       if (limited('admin:' + ipOf(req), 60, 60000)) return send(res, 429, { error: 'Muitas requisições.' });
       if (!isAdmin(req)) return send(res, 401, { error: 'Chave de admin incorreta.' });
-      if (p === '/api/admin/list') return send(res, 200, { users: listUsers(), instagram: { on: igOn(), error: igCache.err, comments: igCache.comments.length, postUrl: IG_POST_URL }, storage: { permanent: remoteOn() && remote.ok, configured: remoteOn(), lastSave: remote.lastSave, error: remote.error, houses: db.houses.length, decor: db.decor.length } });
+      if (p === '/api/admin/list') return send(res, 200, { diag: { ...DIAG, online: clients.size }, users: listUsers(), instagram: { on: igOn(), error: igCache.err, comments: igCache.comments.length, postUrl: IG_POST_URL }, storage: { permanent: remoteOn() && remote.ok, configured: remoteOn(), lastSave: remote.lastSave, error: remote.error, houses: db.houses.length, decor: db.decor.length } });
       if (p === '/api/admin/add' && req.method === 'POST') {
         const b = await body(req), raw = Array.isArray(b.usernames) ? b.usernames : String(b.usernames || '').split(/[\s,;]+/);
         const added = [], invalid = [];
@@ -482,7 +494,8 @@ function applyPerk(u, pk) { if (!pk || typeof pk !== 'object' || pk.u !== u) ret
 const badgeOf = u => { const r = db.users[u] || {}; return isStaff(u) ? 'criador' : r.sup ? 'apoiador' : ''; };
 
 wss.on('connection', (ws, req) => {
-  if (limited('ws:' + ipOf(req), 30, 60000)) return ws.close(4029, 'muitas conexões');
+  if (limited('ws:' + ipOf(req), 400, 60000)) { DIAG.ws429++; return ws.close(4029, 'muitas conexões'); }
+  DIAG.wsOpen++; ws.isAlive = true; ws.on('pong', () => { ws.isAlive = true; });
   let c = null;
   const timer = setTimeout(() => { if (!c) ws.close(4000, 'sem login'); }, 8000);
   ws.on('message', raw => { try { onMsg(raw); } catch (e) { console.error('[erro em mensagem]', e && e.stack || e); } });
@@ -497,7 +510,7 @@ wss.on('connection', (ws, req) => {
       { const r0 = db.users[u]; if (r0 && !r0.coinStart) { r0.coinStart = 1; const i0 = invOf(r0); i0.moedas = (i0.moedas || 0) + 10; save(); } }
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
-      clients.add(c);
+      clients.add(c); if (clients.size > DIAG.peak) { DIAG.peak = clients.size; DIAG.peakAt = Date.now(); }
       out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
       all({ t: 'join', p: pub(c) }, c); sendProg(c); out(ws, { t: 'perk', perk: perkFor(u) });
       return;
@@ -688,9 +701,11 @@ wss.on('connection', (ws, req) => {
       save(); all({ t: 'look', id: c.id, look });
     }
   };
-  ws.on('close', () => { clearTimeout(timer); if (!c) return; clients.delete(c); const rec = db.users[c.user]; if (rec) { rec.x = Math.round(c.x); rec.y = Math.round(c.y); save(); } all({ t: 'leave', id: c.id }); });
+  ws.on('close', code => { DIAG.closed[code] = (DIAG.closed[code] || 0) + 1; clearTimeout(timer); if (!c) return; clients.delete(c); const rec = db.users[c.user]; if (rec) { rec.x = Math.round(c.x); rec.y = Math.round(c.y); save(); } all({ t: 'leave', id: c.id }); });
   ws.on('error', () => {});
 });
+// mantém a conexão viva (o Render derruba conexões paradas); encerra quem sumiu de vez
+setInterval(() => { for (const w of wss.clients) { if (w.isAlive === false) { w.terminate(); continue; } w.isAlive = false; try { w.ping(); } catch { } } }, 25000).unref();
 // estado 10x por segundo (só quem mudou)
 setInterval(() => {
   const ch = []; for (const c of clients) if (c.dirty) { ch.push({ id: c.id, x: Math.round(c.x * 10) / 10, y: Math.round(c.y * 10) / 10, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry, fly: !!c.fly }); c.dirty = false; }
