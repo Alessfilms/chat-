@@ -31,6 +31,7 @@ button.sec{background:#3c5d4a;color:var(--txt)}
 #preview{display:block;margin:0 auto;image-rendering:pixelated;width:84px;height:102px}
 #hud{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;display:none;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}
 #hud .box{padding:8px 12px;font-size:16px;color:var(--cream);pointer-events:auto}
+#nameErr{color:#ff8a70;font-size:14px;display:block}
 #hud b{color:var(--gold);font-weight:700}
 #chatlog{position:fixed;left:10px;bottom:calc(64px + env(safe-area-inset-bottom));width:min(420px,calc(100% - 20px));display:none;flex-direction:column;gap:4px;pointer-events:none}
 #chatlog div{background:rgba(12,20,16,.72);padding:5px 8px;font-size:16px;line-height:1.25;word-wrap:break-word;border-left:3px solid var(--edge)}
@@ -49,7 +50,7 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 <body>
 <canvas id="game"></canvas>
 
-<div id="login">
+<div id="login" hidden>
   <div class="box" id="loginCard">
     <h1>ERYON</h1>
     <p class="sub" id="sub">A cidade dos seguidores.<br>Digite o seu @ do Instagram para entrar.</p>
@@ -81,7 +82,7 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
   </div>
 </div>
 
-<div id="hud"><div class="box">Online: <b id="online">1</b></div><div class="box" id="help">Teclas/WASD ou toque no mapa para andar</div></div>
+<div id="hud"><div class="box">Online: <b id="online">1</b></div><div class="box" id="nameBox"><button id="nameBtn" type="button" class="link" style="padding:0;font-size:16px;color:#ffd84a">Usar meu @</button><span id="nameForm" hidden style="display:flex;gap:6px;align-items:center"><input id="newName" placeholder="@seu_usuario" maxlength="31" autocapitalize="none" spellcheck="false" style="width:150px;font-size:16px;padding:6px"><button id="nameOk" type="button" style="padding:6px 10px;font-size:16px">OK</button></span></div></div>
 <div id="chatlog"></div>
 <div id="chatbar"><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
 

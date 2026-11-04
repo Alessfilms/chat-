@@ -137,6 +137,29 @@ $('copyWord').onclick = async () => { try { await navigator.clipboard.writeText(
 $('back').onclick = () => { clearInterval(pollT); $('verifyCard').hidden = true; $('loginCard').hidden = false; };
 $('code').addEventListener('keydown', e => { if (e.key === 'Enter') $('enter').click(); });
 $('user').addEventListener('keydown', e => { if (e.key === 'Enter') $('enter').click(); });
+// entrada direta: o jogo abre na hora como visitante (dá para trocar para o seu @ depois)
+const randLook = () => ({ hair: HAIRS[Math.floor(Math.random() * HAIRS.length)], shirt: SHIRTS[Math.floor(Math.random() * SHIRTS.length)], pants: PANTS[Math.floor(Math.random() * PANTS.length)] });
+async function quickJoin() {
+  for (let i = 0; i < 5; i++) {
+    const r = await post('/api/join', { username: 'visitante' + Math.floor(1000 + Math.random() * 9000) });
+    if (r.ok) { token = r.data.token; store.set('eryon_token', token); myLook = randLook(); await post('/api/look', { token, look: myLook }); me = r.data.username; return start(); }
+    if (r.data && r.data.error && !/já está/.test(r.data.error)) break;
+  }
+  $('login').hidden = false;
+}
+$('nameBtn').onclick = () => { $('nameBtn').hidden = true; $('nameForm').hidden = false; $('newName').focus(); };
+$('newName').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') $('nameOk').click(); });
+$('nameOk').onclick = async () => {
+  const username = $('newName').value.trim(); if (!username) return;
+  const r = await post('/api/join', { username });
+  if (!r.ok) { sys(r.data.error || 'Não foi possível usar esse @.'); return; }
+  const old = players.get(myId); if (old) store.set('eryon_pos', JSON.stringify({ x: old.x, y: old.y }));
+  token = r.data.token; store.set('eryon_token', token); me = r.data.username;
+  if (r.data.look) myLook = r.data.look; else if (myLook) await post('/api/look', { token, look: myLook });
+  $('nameForm').hidden = true; $('nameBtn').hidden = false; $('nameBtn').textContent = '@' + me;
+  reconnectNow = true; if (ws) ws.close();
+};
+let reconnectNow = false;
 function afterLogin(d) {
   me = d.username; myLook = d.look;
   if (!myLook && !NAMED[me]) return pickLook();
@@ -161,7 +184,7 @@ function connect() {
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
     else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; } } }
     else if (m.t === 'chat') { const p = players.get(m.id); if (p) { p.say = m.text; p.sayT = performance.now(); } logChat(m); } };
-  ws.onclose = ev => { if (ev.code === 4001) { store.del('eryon_token'); location.reload(); return; } if (ev.code === 4002) { sys('Você entrou em outro aparelho.'); return; } setTimeout(connect, 2000); };
+  ws.onclose = ev => { if (ev.code === 4001) { store.del('eryon_token'); location.reload(); return; } if (ev.code === 4002) { sys('Você entrou em outro aparelho.'); return; } const wait = reconnectNow ? 50 : 2000; reconnectNow = false; setTimeout(connect, wait); };
 }
 function addPlayer(p, mine) { players.set(p.id, { ...p, tx: p.x, ty: p.y, mine: !!mine, ch: charFor(p.username, p.look) }); }
 function logChat(m) { const d = document.createElement('div'); const b = document.createElement('b'); b.textContent = '@' + m.username + ': '; d.appendChild(b); d.appendChild(document.createTextNode(m.text)); pushLog(d); }
@@ -179,6 +202,7 @@ const cam = { L: 0, T: 0 };
 // ---------------------------------------------------------------- loop
 let last = performance.now(), sendT = 0, lastSent = '';
 function start() {
+  if (me && !/^visitante\d+$/.test(me)) $('nameBtn').textContent = '@' + me;
   $('login').style.display = 'none'; $('hud').style.display = 'flex'; $('chatlog').style.display = 'flex'; $('chatbar').style.display = 'flex';
   connect(); requestAnimationFrame(loop);
 }
@@ -263,4 +287,6 @@ fetch('world.json').then(r => r.json()).then(async w => {
   // tela de fundo atrás do login: a fogueira de Eryon
   (function idle(n) { if (me) return; draw(n / 1000, null); requestAnimationFrame(idle); })(performance.now());
   if (token) { const r = await API('/api/me?token=' + encodeURIComponent(token)); if (r.ok) return afterLogin(r.data); store.del('eryon_token'); token = null; }
+  const cfg = await API('/api/config'); if (cfg.ok && cfg.data.open) return quickJoin();
+  $('login').hidden = false;
 });

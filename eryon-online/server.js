@@ -195,7 +195,7 @@ const server = http.createServer(async (req, res) => {
     if (!full.startsWith(PUBLIC + path.sep)) { res.writeHead(403); return res.end(); }
     fs.readFile(full, (e, d) => {
       if (e) { res.writeHead(404, SEC); return res.end('não encontrado'); }
-      res.writeHead(200, { 'Content-Type': TYPES[path.extname(full)] || 'application/octet-stream', 'Cache-Control': full.endsWith('.html') ? 'no-cache' : 'public, max-age=3600', ...SEC });
+      res.writeHead(200, { 'Content-Type': TYPES[path.extname(full)] || 'application/octet-stream', 'Cache-Control': full.endsWith('.woff2') ? 'public, max-age=86400' : 'no-cache', ...SEC });
       res.end(d);
     });
   } catch (e) { send(res, 400, { error: e.message }); }
