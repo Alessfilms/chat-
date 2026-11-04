@@ -437,7 +437,7 @@ const castleState = (extra = {}) => ({ t: 'castle', pedra: db.castle.pedra, lenh
 // APOIADORES, BICHINHOS, CRIADOR e PLACAS PATROCINADAS
 // =====================================================================
 const PETS = new Set(['gato', 'raposa', 'dragao', 'coruja']);
-const SUPPORT_URL = process.env.SUPPORT_URL || '', PIX_KEY = process.env.PIX_KEY || '98988907210';   // chave Pix do criador (pode trocar no /admin)
+const SUPPORT_URL = process.env.SUPPORT_URL || '', PIX_KEY = process.env.PIX_KEY || '992b99c7-65ad-426d-88bc-811003a069c2';   // chave Pix do criador (pode trocar no /admin)
 const CREATORS = new Set((process.env.CREATOR || '').split(/[\s,;]+/).map(norm).filter(Boolean));
 const isStaff = u => !!db.staff[u] || CREATORS.has(u);
 // selo assinado: fica guardado no aparelho e volta mesmo se o servidor perder a memória
