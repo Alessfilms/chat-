@@ -1,0 +1,353 @@
+{
+ "episode": 3,
+ "title": "A Primeira Guilda",
+ "audio": "narration.mp3",
+ "duration_s": 116.51,
+ "fps": 30,
+ "resolution": "1080x1920",
+ "source": "Transcrição faster-whisper (small, CTranslate2) com marcação por palavra; tempos reais do arquivo, sem edição do áudio",
+ "key_words": {
+  "576": 1.8,
+  "800": 108.66,
+  "castelo": 70.14,
+  "casas": 15.98,
+  "bares": 16.86,
+  "tavernas": 17.5,
+  "comércios": 18.46,
+  "ruas": 19.46,
+  "Eucaduu": 32.82,
+  "Yásser": 39.3,
+  "guilda": 43.0,
+  "King": 46.54,
+  "Aika": 54.82,
+  "Blue": 59.3,
+  "shaman": 63.84,
+  "guardas": 68.88,
+  "ruínas": 73.76,
+  "passagem": 79.54,
+  "online": 98.64,
+  "link": 105.22,
+  "bio": 106.98
+ },
+ "segments": [
+  {
+   "start": 0.0,
+   "end": 7.98,
+   "text": "Ontem, Eryon tinha apenas 576 moradores, mas hoje, já somos 800 habitantes!",
+   "location": "Vila de Eryon (praça e ruas) · centro (360,640)",
+   "characters": [],
+   "visual_action": "Cidade como no Ep. 2, moradores andando e trabalhando; contador 576 aparece em 1,8 s (palavra '576') e sobe até 800 entre 5,0 e 7,9 s ('800'); novos moradores chegam pelas estradas",
+   "camera": "Plano aberto lento sobre a vila, S 2,4→3,0",
+   "sfx": "Fogueira, vento, passos dos que chegam"
+  },
+  {
+   "start": 8.58,
+   "end": 10.96,
+   "text": "E olha só como nossa cidade cresceu!",
+   "location": "Vila → plano aberto",
+   "characters": [],
+   "visual_action": "A cidade vista de cima, revelando a floresta em volta",
+   "camera": "Afasta até S 1,7",
+   "sfx": "Vento"
+  },
+  {
+   "start": 11.6,
+   "end": 18.12,
+   "text": "O que antes era apenas uma clareira, hoje já tem um castelo, casas, bares, tavernas,",
+   "location": "Clareira → Castelo de Eryon (540,1440) → casas (266,614) → Taverna do Valis por fora (362,578) → por dentro → Praça da Feira/Mercador Bento (640,650)",
+   "characters": [
+    "@altanat19"
+   ],
+   "visual_action": "Passeio na ordem da fala: castelo (15,0 s), casas (16,0), bares = Taverna do Valis por fora (16,9), tavernas = interior da taverna (17,5), comércios = Praça da Feira (18,5)",
+   "camera": "Travelling até o castelo, cortes secos em cada palavra",
+   "sfx": "Whoosh, porta, burburinho da taverna, canecas, moedas"
+  },
+  {
+   "start": 18.46,
+   "end": 20.86,
+   "text": "comércios e ruas cheias de vida.",
+   "location": "Ruas da vila",
+   "characters": [],
+   "visual_action": "Ruas cheias de moradores",
+   "camera": "Travelling S 4",
+   "sfx": "Passos"
+  },
+  {
+   "start": 21.42,
+   "end": 25.82,
+   "text": "E tudo isso graças a vocês que estão construindo essa história.",
+   "location": "Vila inteira",
+   "characters": [],
+   "visual_action": "Visão geral da cidade viva",
+   "camera": "Plano aberto S 2,0→2,2",
+   "sfx": "Fogueira, vento"
+  },
+  {
+   "start": 26.46,
+   "end": 30.82,
+   "text": "Mas, com tanta gente chegando, Eryon precisava de organização.",
+   "location": "Praça central",
+   "characters": [],
+   "visual_action": "Multidão se juntando na praça",
+   "camera": "Aproxima S 4→5",
+   "sfx": "Burburinho"
+  },
+  {
+   "start": 31.44,
+   "end": 37.58,
+   "text": "Foi então que a roba Eucaduu sublinhado se apresentou para assumir a liderança da cidade.",
+   "location": "Praça central (360,672)",
+   "characters": [
+    "@eucaduu_"
+   ],
+   "visual_action": "@eucaduu_ chega à praça e se apresenta como candidato à liderança (não eleito); público em volta",
+   "camera": "Close S 10→12",
+   "sfx": "Burburinho, fogueira"
+  },
+  {
+   "start": 38.22,
+   "end": 45.04,
+   "text": "Enquanto isso, Yásser, um guerreiro espadachim, decidiu fundar a primeira guilda de aventureiros de Eryon.",
+   "location": "Em frente à Taverna do Valis (362,600) — ponto de encontro (não existe sede de guilda no mapa)",
+   "characters": [
+    "@yassermalala175"
+   ],
+   "visual_action": "Yásser ergue a espada e reúne 5 aventureiros; título 'A PRIMEIRA GUILDA DE ERYON' em 'guilda' (43,0 s)",
+   "camera": "Close S 10→11",
+   "sfx": "Espada sacada, golpes, passos"
+  },
+  {
+   "start": 45.4,
+   "end": 49.94,
+   "text": "E não demorou para King, um dos nossos aventureiros, se juntar à jornada.",
+   "location": "Taverna do Valis",
+   "characters": [
+    "@yassermalala175",
+    "@ivan_tomas794"
+   ],
+   "visual_action": "King chega pela estrada leste e se junta ao grupo (46,5 s)",
+   "camera": "Close S 10",
+   "sfx": "Passos"
+  },
+  {
+   "start": 50.48,
+   "end": 54.26,
+   "text": "Mas novos moradores misteriosos também chegaram.",
+   "location": "Saída nordeste da vila → floresta",
+   "characters": [],
+   "visual_action": "A câmera deixa a vila rumo à floresta",
+   "camera": "Pan até as ruínas, fim de tarde",
+   "sfx": "Whoosh, floresta"
+  },
+  {
+   "start": 54.82,
+   "end": 58.68,
+   "text": "Aika, uma espiã especializada em investigar segredos.",
+   "location": "Ruínas da Inscrição (520,400)",
+   "characters": [
+    "@grazzy_solive07"
+   ],
+   "visual_action": "Ayka investiga as ruínas",
+   "camera": "Close S 11",
+   "sfx": "Passos furtivos"
+  },
+  {
+   "start": 59.3,
+   "end": 63.06,
+   "text": "Blue, um necromante que decidiu proteger o cemitério.",
+   "location": "Cemitério Antigo (636,2232)",
+   "characters": [
+    "@theuxvs_"
+   ],
+   "visual_action": "Blü conjura magia entre as lápides e fantasminhas",
+   "camera": "Corte com escurecimento, close S 11→12",
+   "sfx": "Vento, sinos de magia graves"
+  },
+  {
+   "start": 63.46,
+   "end": 67.6,
+   "text": "E uma shaman, que trouxe seus conhecimentos espirituais para a cidade.",
+   "location": "Círculo de Pedras (610,880)",
+   "characters": [
+    "@mano.icee"
+   ],
+   "visual_action": "O Xamã faz um ritual no círculo",
+   "camera": "Corte, close S 11→12",
+   "sfx": "Sinos de magia, floresta"
+  },
+  {
+   "start": 68.3,
+   "end": 70.62,
+   "text": "Enquanto os guardas protegiam o castelo,",
+   "location": "Portão do Castelo de Eryon (540,1450)",
+   "characters": [
+    "@kennidymessias1"
+   ],
+   "visual_action": "O guarda patrulha o portão com outros guardas (narração: 'Enquanto os guardas protegiam o castelo')",
+   "camera": "S 6→8",
+   "sfx": "Passos, vento"
+  },
+  {
+   "start": 71.02,
+   "end": 75.7,
+   "text": "nossos exploradores continuavam investigando as ruínas encontradas na floresta,",
+   "location": "Estrada nordeste → Ruínas da Inscrição",
+   "characters": [
+    "@yassermalala175",
+    "@ivan_tomas794",
+    "@grazzy_solive07"
+   ],
+   "visual_action": "Os exploradores atravessam a floresta até as ruínas",
+   "camera": "Acompanha o grupo, S 9",
+   "sfx": "Passos, floresta"
+  },
+  {
+   "start": 76.18,
+   "end": 78.76,
+   "text": "até que descobriram algo inesperado.",
+   "location": "Ruínas",
+   "characters": [
+    "@yassermalala175",
+    "@ivan_tomas794",
+    "@grazzy_solive07"
+   ],
+   "visual_action": "O grupo para diante das ruínas",
+   "camera": "Aproxima S 9→10",
+   "sfx": "Floresta"
+  },
+  {
+   "start": 79.28,
+   "end": 82.88,
+   "text": "Uma passagem secreta, escondida há centenas de anos.",
+   "location": "Ruínas — entrada secreta ao lado (554,408): CENA NARRATIVA, não existe no mapa do jogo",
+   "characters": [],
+   "visual_action": "As trepadeiras se abrem e revelam um arco antigo com escada descendo no escuro; título 'UMA PASSAGEM SECRETA'",
+   "camera": "Aproxima S 10→13",
+   "sfx": "Pedra arrastando, folhas, brilho mágico"
+  },
+  {
+   "start": 83.52,
+   "end": 85.4,
+   "text": "Mas o que existe do outro lado?",
+   "location": "Passagem secreta",
+   "characters": [],
+   "visual_action": "A câmera mergulha na escuridão; nada é revelado",
+   "camera": "S 13→20 e escurece",
+   "sfx": "Zumbido grave"
+  },
+  {
+   "start": 86.08,
+   "end": 88.22,
+   "text": "Isso, vamos descobrir em breve.",
+   "location": "Escuridão",
+   "characters": [],
+   "visual_action": "Tela escura: 'EM BREVE...'",
+   "camera": "Escuro",
+   "sfx": "Zumbido grave"
+  },
+  {
+   "start": 88.84,
+   "end": 90.44,
+   "text": "E temos mais uma novidade.",
+   "location": "Vila",
+   "characters": [],
+   "visual_action": "Título 'NOVIDADE! ERYON ONLINE'",
+   "camera": "Clareia sobre a praça, S 6",
+   "sfx": "Whoosh, sino"
+  },
+  {
+   "start": 90.96,
+   "end": 94.44,
+   "text": "Agora você não precisa apenas assistir à história de Eryon.",
+   "location": "Vila com a INTERFACE REAL do jogo",
+   "characters": [
+    "você (jogador, sem @)"
+   ],
+   "visual_action": "Um novo morador ('você', sem @ inventado) anda e derruba uma árvore com a interface real (botões, chat, Apoiar PIX)",
+   "camera": "Zoom padrão do jogo S 6→7",
+   "sfx": "Passos, machado"
+  },
+  {
+   "start": 94.7,
+   "end": 96.62,
+   "text": "Você pode fazer parte dela.",
+   "location": "Vila com a interface real",
+   "characters": [
+    "você (jogador, sem @)"
+   ],
+   "visual_action": "Mesma sequência",
+   "camera": "S 7",
+   "sfx": "Passos"
+  },
+  {
+   "start": 97.14,
+   "end": 101.22,
+   "text": "Nosso mundo ganhou um jogo online, onde você pode explorar a cidade,",
+   "location": "Vila → ruas",
+   "characters": [
+    "você (jogador, sem @)",
+    "@pablopaesrocha",
+    "@altanat19",
+    "@kaguya.xs",
+    "@eo_preto.031"
+   ],
+   "visual_action": "Explorar a cidade: o personagem anda pelas ruas",
+   "camera": "S 7→6",
+   "sfx": "Passos"
+  },
+  {
+   "start": 101.62,
+   "end": 104.52,
+   "text": "conhecer seus habitantes e viver essa aventura.",
+   "location": "Vila",
+   "characters": [
+    "você (jogador, sem @)",
+    "@pablopaesrocha",
+    "@altanat19"
+   ],
+   "visual_action": "Conhecer os habitantes (nomes dos moradores aparecem) e dragões passam por cima (101,2 s)",
+   "camera": "S 6",
+   "sfx": "Asas, rugido distante"
+  },
+  {
+   "start": 105.04,
+   "end": 107.32,
+   "text": "O link para jogar está na nossa bio.",
+   "location": "Tela final",
+   "characters": [],
+   "visual_action": "Cartela 'ERYON · ENTRE NESTE MUNDO · JOGUE ONLINE · LINK NA BIO'",
+   "camera": "Cidade ao fundo, escurecida",
+   "sfx": "Sino, moedas"
+  },
+  {
+   "start": 107.98,
+   "end": 110.3,
+   "text": "Hoje somos 800 moradores.",
+   "location": "Visão geral da cidade e do castelo",
+   "characters": [],
+   "visual_action": "Contador '800 HABITANTES'",
+   "camera": "Plano aberto S 1,9→1,6",
+   "sfx": "Vento, fogueira"
+  },
+  {
+   "start": 110.3,
+   "end": 113.46,
+   "text": "Mas Eryon ainda tem muito para crescer.",
+   "location": "Visão geral",
+   "characters": [],
+   "visual_action": "Mesma visão",
+   "camera": "Plano aberto",
+   "sfx": "Vento"
+  },
+  {
+   "start": 113.94,
+   "end": 116.1,
+   "text": "E você? Já entrou para a nossa história?",
+   "location": "Visão geral",
+   "characters": [],
+   "visual_action": "Pergunta final; leve escurecimento no último meio segundo",
+   "camera": "Plano aberto",
+   "sfx": "Vento"
+  }
+ ]
+}

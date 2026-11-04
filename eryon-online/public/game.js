@@ -608,6 +608,7 @@ function draw(t, p) {
     x.drawImage(o.img, o.dx, o.dy);
   }
   for (const q of players.values()) if ((q.room || '') === myRoom) drawActFx(x, q, t);
+  if (window.CINE_DRAW) CINE_DRAW(x, t, room);
   if (!room) { for (const q of players.values()) if (q.fly && !q.room) drawBalloon(x, q, t); drawDragons(x, li, ti, cw, ch, p); drawRain(x, li, ti, cw, ch, t); }
   if (room && room.fire) { drawFire(x, room.fire.x, room.fire.y, t); glow(x, room.fire.x, room.fire.y - 6, 18, P.fire2, .12); }
   if (!room) { drawAmbient(x, t, li, ti, cw, ch); drawCloudShadows(x, t, li, ti, cw, ch); }
@@ -637,14 +638,17 @@ function draw(t, p) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.lineJoin = 'round';
   if (room) { ctx.font = `700 ${Math.round(fs * 1.1)}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06'; const ty = Math.max(fs * 3, Math.round((0 - T) * S) - 6); ctx.strokeText(room.name, cv.width / 2, ty); ctx.fillStyle = '#ffd84a'; ctx.fillText(room.name, cv.width / 2, ty); }
   for (const q of players.values()) {
-    if ((q.room || '') !== myRoom) continue;
+    if ((q.room || '') !== myRoom || q.noLabel) continue;
+    const la = window.CINE_LABEL ? CINE_LABEL(q) : 1; if (la <= .01) continue; ctx.globalAlpha = la;
     const sx = Math.round((q.x - L) * S), sy = Math.round((q.y - T - (q.ch.sp.big ? 22 : 17) - (q.fly ? (classOf(q) && classOf(q).id === 'fada' ? 16 : 64) : 0)) * S);
     if (sx < -200 || sx > cv.width + 200 || sy < -100 || sy > cv.height + 100) continue;
     ctx.font = `700 ${fs}px Pix, monospace`; ctx.lineWidth = Math.max(3, fs / 4); ctx.strokeStyle = '#140e06';
     const nm = (q.badge === 'criador' ? '♛ ' : q.badge === 'apoiador' ? '★ ' : '') + '@' + q.username; ctx.strokeText(nm, sx, sy); ctx.fillStyle = q.badge === 'criador' ? '#ff9a3a' : q.badge === 'apoiador' ? '#ffd84a' : q.mine ? '#fff3b0' : '#ffffff'; ctx.fillText(nm, sx, sy);
-    const role0 = q.badge === 'criador' ? 'Criador' : NAMED[q.username]?.role || classOf(q)?.name, role = (q.lv ? 'Nv ' + q.lv + (role0 ? ' · ' : '') : '') + (role0 || ''); if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
+    const role0 = q.roleText || (q.badge === 'criador' ? 'Criador' : NAMED[q.username]?.role || classOf(q)?.name), role = (q.lv ? 'Nv ' + q.lv + (role0 ? ' · ' : '') : '') + (role0 || ''); if (role) { ctx.font = `700 ${Math.round(fs * .72)}px Pix, monospace`; ctx.strokeText(role.toUpperCase(), sx, sy + fs * .8); ctx.fillStyle = '#ffd84a'; ctx.fillText(role.toUpperCase(), sx, sy + fs * .8); }
     if (q.say && now - q.sayT < 6000) bubble(q.say, sx, sy - fs * 1.2, fs);
+    ctx.globalAlpha = 1;
   }
+  ctx.globalAlpha = 1;
   if (!room) { drawSignLabels(ctx, L, T, S, fs, p); castleLabel(ctx, L, T, S, fs, p); econLabels(ctx, L, T, S, fs, p); }
 }
 // ---------------------------------------------------------------- ações e portas
@@ -761,6 +765,7 @@ function bubble(text, sx, sy, fs) {
 // ---------------------------------------------------------------- início
 fetch('world.json').then(r => r.json()).then(async w => {
   buildWorld(w); indexBlockers(); buildNodes(); castleQuarry(); econNodes(); await Promise.all([document.fonts.load('700 20px Pix'), document.fonts.load('400 20px P2P')]).catch(() => {});
+  if (/[?&]cine=1/.test(location.search)) { document.body.classList.add('cine'); window.ready = true; return; }   // modo cinema (episódios): sem login nem conexão
   // tela de fundo atrás do login: a fogueira de Eryon
   (function idle(n) { if (me) return; draw(n / 1000, null); requestAnimationFrame(idle); })(performance.now());
   if (token) { const r = await API('/api/me?token=' + encodeURIComponent(token)); if (r.ok) { const sl = savedLook(); if (!r.data.look && sl) { await post('/api/look', { token, look: sl }); r.data.look = sl; } return afterLogin(r.data); } store.del('eryon_token'); token = null; }
