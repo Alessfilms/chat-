@@ -34,7 +34,9 @@ initDb();
 // No Render grátis o disco é apagado a cada reinício. Com UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN
 // o mundo inteiro (casas, construções, decoração, mochilas, avatares) fica guardado fora do servidor.
 const zlib = require('zlib');
-const UP_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/+$/, ''), UP_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+// aceita o valor colado com aspas/parênteses/espaços ou até com "NOME=valor"
+const envClean = v => String(v || '').trim().replace(/^[A-Z_]+\s*=\s*/, '').replace(/^[\s"'`(\[{<]+|[\s"'`)\]}>;,]+$/g, '');
+const UP_URL = envClean(process.env.UPSTASH_REDIS_REST_URL).replace(/\/+$/, ''), UP_TOKEN = envClean(process.env.UPSTASH_REDIS_REST_TOKEN);
 const DB_KEY = process.env.DB_KEY || 'eryon_db';
 const remoteOn = () => !!(UP_URL && UP_TOKEN);
 const remote = { ok: false, lastSave: 0, error: '' };
