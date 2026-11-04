@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Eryon — Episódio 2</title>
+<style>
+@font-face{font-family:Pix;src:url(../vendor/fonts/pixelify-sans-latin-700-normal.woff2)}
+@font-face{font-family:P2P;src:url(../vendor/fonts/press-start-2p-latin-400-normal.woff2)}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#000}
+#c{position:absolute;left:0;top:0;width:1080px;height:1920px}
+.ov{position:absolute;pointer-events:none}
+#caption{left:60px;right:60px;top:1450px;text-align:center;font:700 58px/1.15 Pix,monospace;color:#ffd84a;text-transform:uppercase;letter-spacing:2px;
+  text-shadow:-4px -4px 0 #140e06,0 -4px 0 #140e06,4px -4px 0 #140e06,-4px 0 0 #140e06,4px 0 0 #140e06,-4px 4px 0 #140e06,0 4px 0 #140e06,4px 4px 0 #140e06,0 8px 0 #140e06}
+#caption .u{text-transform:none;color:#ffffff}
+#title{left:0;right:0;top:330px;text-align:center;font:400 104px/1 P2P,monospace;color:#ffd84a;letter-spacing:4px;
+  text-shadow:-6px -6px 0 #140e06,0 -6px 0 #140e06,6px -6px 0 #140e06,-6px 0 0 #140e06,6px 0 0 #140e06,-6px 6px 0 #140e06,0 6px 0 #140e06,6px 6px 0 #140e06,0 12px 0 #140e06}
+#title b{display:inline-block;font-weight:400}
+#title small{display:block;margin-top:34px;font:700 40px/1 Pix,monospace;letter-spacing:4px;color:#fff3b0;
+  text-shadow:-3px -3px 0 #140e06,3px -3px 0 #140e06,-3px 3px 0 #140e06,3px 3px 0 #140e06,0 6px 0 #140e06}
+#counter{left:50%;top:150px;transform:translateX(-50%);padding:14px 24px 12px 20px;background:#1c2a22;border:5px solid #0c1410;
+  box-shadow:inset 0 0 0 4px #c9a46a,0 6px 0 rgba(0,0,0,.5);font:700 38px/1 Pix,monospace;color:#fff3b0;white-space:nowrap;
+  display:flex;align-items:center;gap:14px;text-transform:uppercase}
+#counter .ic{width:28px;height:32px;background:linear-gradient(#ffd84a,#ffd84a) 8px 0/12px 12px no-repeat,linear-gradient(#ffd84a,#ffd84a) 2px 16px/24px 16px no-repeat}
+#counter .num{font:400 30px/1 P2P,monospace;color:#ffd84a;min-width:96px;text-align:right}
+.tag{transform:translate(-50%,-100%);text-align:center;white-space:nowrap;padding:5px 9px 4px;border:3px solid transparent}
+.tag .n{display:block;font:700 28px/1.1 Pix,monospace;color:#ffffff;
+  text-shadow:-2px -2px 0 #140e06,0 -2px 0 #140e06,2px -2px 0 #140e06,-2px 0 0 #140e06,2px 0 0 #140e06,-2px 2px 0 #140e06,0 2px 0 #140e06,2px 2px 0 #140e06}
+.tag .r{display:block;font:700 20px/1.2 Pix,monospace;color:#ffd84a;text-transform:uppercase;letter-spacing:1px;
+  text-shadow:-2px -2px 0 #140e06,2px -2px 0 #140e06,-2px 2px 0 #140e06,2px 2px 0 #140e06}
+.tag.hl{background:rgba(20,30,24,.78);border-color:#ffd84a;box-shadow:0 0 0 3px #140e06}
+#q{transform:translate(-50%,-100%);font:400 54px/1 P2P,monospace;color:#ffd84a;
+  text-shadow:-4px -4px 0 #140e06,4px -4px 0 #140e06,-4px 4px 0 #140e06,4px 4px 0 #140e06,0 8px 0 #140e06}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<div id="tags"></div>
+<div id="counter" class="ov"><span class="ic"></span><span class="word">População</span><span class="num">2</span></div>
+<div id="title" class="ov"></div>
+<div id="q" class="ov">?</div>
+<div id="caption" class="ov"></div>
+<script src="../engine.js"></script>
+<script src="ep2.js"></script>
+</body>
+</html>

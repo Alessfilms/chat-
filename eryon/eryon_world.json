@@ -1,0 +1,94 @@
+{
+  "mundo": "Eryon",
+  "estilo_visual": {
+    "tipo": "pixel art 2D, vista de cima (3/4), floresta escura e clareira com fogueira",
+    "resolucao_logica": [360, 640],
+    "escala_saida": 3,
+    "saida": [1080, 1920],
+    "paleta_base": ["#0c2120", "#142c29", "#1c3831", "#263c35", "#2a4a3d", "#3c5d4a", "#4e6c4a", "#667c4d", "#7c9b5b", "#9cbf62"],
+    "fontes": ["Pixelify Sans 700", "Press Start 2P"],
+    "semente_do_mapa": 42,
+    "observacao": "O mapa (chão, rio, árvores) é gerado de forma determinística pela semente 42 em engine.js. Não alterar a semente nem a ordem de geração, ou a floresta muda."
+  },
+  "mapa": {
+    "tamanho": [720, 1280],
+    "clareira_central": { "x": 360, "y": 640 },
+    "fogueira": { "x": 360, "y": 640 },
+    "rio": "y = 212 + 16*sin(x*0.021) + 7*sin(x*0.057+1)",
+    "trilha_sul": "x = 362 + 6*sin(y*0.03), a partir de y=690",
+    "ponte": { "x": 430, "y": 216 },
+    "torre_antiga": { "x": 290, "y": 118 },
+    "ruinas_nordeste": { "x": 520, "y": 400, "descricao": "ruínas cobertas de vegetação com uma pedra de inscrições desconhecidas" },
+    "caverna_oeste": { "x": 92, "y": 812 },
+    "paliçada": { "centro": [360, 640], "raio": 212, "achatamento_y": 0.95 },
+    "portao_nordeste": { "x": 482, "y": 475 }
+  },
+  "populacao": { "ep1": 2, "ep2": 576, "atual": 576 },
+  "moradores": [
+    { "id": "fundador_1", "username": null, "nome": "Morador 1", "profissao": "fundador", "desde": "ep1",
+      "aparencia": { "cabelo": "#d0622a", "camisa": "#a83a32", "camisa_sombra": "#5a2418", "calca": "#3c5f9a" }, "posicao": { "x": 341, "y": 646 }, "atividade": "sentado junto à fogueira" },
+    { "id": "fundador_2", "username": null, "nome": "Morador 2", "profissao": "fundador", "desde": "ep1",
+      "aparencia": { "cabelo": "#ffd84a", "camisa": "#3f7ab0", "camisa_sombra": "#2c4f7a", "calca": "#4a2f22" }, "posicao": { "x": 380, "y": 646 }, "atividade": "em pé junto à fogueira" },
+    { "id": "heitor", "username": "@heitor_morrone", "nome": "Heitor", "profissao": "Lenhador", "desde": "ep2",
+      "aparencia": { "cabelo": "#3a2618", "camisa": "#a83a32", "camisa_sombra": "#5a2418", "calca": "#2c4f7a", "barba": "#3a2618", "xadrez": true, "ferramenta": "machado" }, "posicao": { "x": 190, "y": 612 }, "atividade": "corta árvores e leva madeira aos construtores" },
+    { "id": "lorhan", "username": "@lorhan_cristian", "nome": "Lorhan", "profissao": "Construtor", "desde": "ep2",
+      "aparencia": { "cabelo": "#5a3a26", "camisa": "#d0622a", "camisa_sombra": "#8a3a1c", "calca": "#4a535c", "chapeu": "palha", "ferramenta": "martelo" }, "posicao": { "x": 282, "y": 608 }, "atividade": "ergue as primeiras casas" },
+    { "id": "maicon", "username": "@maicon.sg2010", "nome": "Maicon", "profissao": "Construtor", "desde": "ep2",
+      "aparencia": { "cabelo": "#1a1208", "camisa": "#3f7ab0", "camisa_sombra": "#2c4f7a", "calca": "#4a2f22", "chapeu": "bone", "ferramenta": "tábua / martelo" }, "posicao": { "x": 320, "y": 608 }, "atividade": "levanta estruturas e instala telhados" },
+    { "id": "pablo", "username": "@pablopaesrocha", "nome": "Pablo", "profissao": "Mestre ferreiro", "desde": "ep2",
+      "aparencia": { "cabelo": "#1a1208", "camisa": "#8b5e3c", "camisa_sombra": "#4a2f22", "calca": "#2b3138", "avental": "#4a2f22", "ferramenta": "martelo de forja" }, "posicao": { "x": 462, "y": 684 }, "atividade": "forja ferramentas na bigorna" },
+    { "id": "ray", "username": "@_ray_hpl", "nome": "Ray", "profissao": "Cozinheiro", "desde": "ep2",
+      "aparencia": { "cabelo": "#5a3a26", "camisa": "#e4d0a0", "camisa_sombra": "#a3794b", "calca": "#2c4f7a", "chapeu": "chef", "ferramenta": "concha" }, "posicao": { "x": 296, "y": 722 }, "atividade": "cozinha para os moradores" },
+    { "id": "paocombiscoito", "username": "@paocombiscoito", "nome": "Pão com Biscoito", "profissao": "Médico", "desde": "ep2",
+      "aparencia": { "cabelo": "#8b5e3c", "camisa": "#e4e8e0", "camisa_sombra": "#98a4ac", "calca": "#3c5d4a", "ferramenta": "frasco de ervas" }, "posicao": { "x": 410, "y": 730 }, "atividade": "cuida da saúde dos moradores na enfermaria" },
+    { "id": "valis", "username": "@altanat19", "nome": "Valis", "profissao": "Taverneiro", "desde": "ep2",
+      "aparencia": { "cabelo": "#1a1208", "camisa": "#6e4a8a", "camisa_sombra": "#3a2650", "calca": "#4a2f22", "ferramenta": "caneca" }, "posicao": { "x": 376, "y": 586 }, "atividade": "abriu a primeira taverna de Eryon" },
+    { "id": "gerald", "username": "@eo_preto.031", "nome": "Gerald D. Black", "profissao": "Guerreiro guardião", "desde": "ep2",
+      "aparencia": { "cabelo": "#1a1208", "armadura": "#4a535c", "armadura_desgaste": "#8b5e3c", "porte": "gigante", "ferramenta": "espadão" }, "posicao": { "x": 466, "y": 496 }, "atividade": "protege o portão da vila" },
+    { "id": "fenrir", "username": "@bio_leocordeiro", "nome": "Fenrir", "profissao": "Caçador (meio elfo, meio lobisomem)", "desde": "ep2",
+      "aparencia": { "cabelo": "#98a4ac", "orelhas": "lobo + élficas", "capa": "#4e6c4a", "camisa": "#4a535c", "calca": "#2e1d16", "ferramenta": "duas adagas", "magia": "natureza (aura verde)" }, "posicao": { "x": 548, "y": 570 }, "atividade": "caça e explora a floresta" },
+    { "id": "nyx", "username": "@kaguya.xs", "nome": "Nyx", "profissao": "Princesa élfica, arqueira", "desde": "ep2",
+      "aparencia": { "cabelo": "#e6efa0", "cabelo_longo": true, "orelhas": "élficas", "coroa": "#ffd84a", "camisa": "#3fd0e0", "camisa_sombra": "#2c4f7a", "calca": "#1d3550", "ferramenta": "arco", "magia": "natureza e estrelas" }, "posicao": { "x": 266, "y": 506 }, "atividade": "quer reconstruir sua civilização" }
+  ],
+  "construcoes": [
+    { "id": "fogueira_central", "tipo": "fogueira", "x": 360, "y": 640, "desde": "ep1" },
+    { "id": "casa_1", "tipo": "casa", "x": 300, "y": 600, "telhado": 0, "desde": "ep2", "nota": "no mesmo lugar da casa-fantasma do ep1" },
+    { "id": "casa_2", "tipo": "casa", "x": 418, "y": 604, "telhado": 1, "desde": "ep2" },
+    { "id": "casa_3", "tipo": "casa", "x": 236, "y": 652, "telhado": 2, "desde": "ep2" },
+    { "id": "casa_4", "tipo": "casa", "x": 252, "y": 580, "telhado": 3, "desde": "ep2" },
+    { "id": "casa_5", "tipo": "casa", "x": 306, "y": 522, "telhado": 4, "desde": "ep2" },
+    { "id": "casa_6", "tipo": "casa", "x": 452, "y": 606, "telhado": 5, "desde": "ep2" },
+    { "id": "casa_7", "tipo": "casa", "x": 522, "y": 642, "telhado": 0, "desde": "ep2" },
+    { "id": "casa_8", "tipo": "casa", "x": 420, "y": 786, "telhado": 2, "desde": "ep2" },
+    { "id": "casa_9", "tipo": "casa", "x": 300, "y": 792, "telhado": 1, "desde": "ep2" },
+    { "id": "forja", "tipo": "forja", "x": 484, "y": 676, "desde": "ep2", "responsavel": "@pablopaesrocha" },
+    { "id": "cozinha", "tipo": "cozinha comunitária", "x": 300, "y": 716, "desde": "ep2", "responsavel": "@_ray_hpl" },
+    { "id": "enfermaria", "tipo": "enfermaria", "x": 428, "y": 722, "desde": "ep2", "responsavel": "@paocombiscoito" },
+    { "id": "taverna", "tipo": "taverna", "x": 362, "y": 578, "desde": "ep2", "responsavel": "@altanat19" },
+    { "id": "armazem", "tipo": "armazém", "x": 532, "y": 708, "desde": "ep2" },
+    { "id": "plantacao_1", "tipo": "plantação", "x": 230, "y": 750, "w": 56, "h": 34, "desde": "ep2" },
+    { "id": "plantacao_2", "tipo": "plantação", "x": 500, "y": 752, "w": 50, "h": 30, "desde": "ep2" },
+    { "id": "serraria", "tipo": "pilha de madeira", "x": 208, "y": 618, "desde": "ep2", "responsavel": "@heitor_morrone" },
+    { "id": "palicada", "tipo": "paliçada", "desde": "ep2" },
+    { "id": "portao_nordeste", "tipo": "entrada protegida", "x": 482, "y": 475, "desde": "ep2", "responsavel": "@eo_preto.031" },
+    { "id": "pedra_estelar", "tipo": "menir", "x": 252, "y": 500, "desde": "ep2", "nota": "onde Nyx observa as estrelas" }
+  ],
+  "territorios_explorados": [
+    { "nome": "clareira e arredores", "x": 360, "y": 640, "raio": 300, "desde": "ep1" },
+    { "nome": "trilha nordeste até as ruínas", "x": 520, "y": 400, "raio": 90, "desde": "ep2" }
+  ],
+  "eventos": [
+    { "episodio": 1, "titulo": "O nascimento de Eryon", "resumo": "Uma clareira, uma fogueira e dois moradores. Visão do futuro: casas, ruas e lugares a explorar." },
+    { "episodio": 2, "titulo": "Os primeiros 576", "resumo": "Em menos de um dia a população chega a 576. Lenhador, construtores, ferreiro, cozinheiro, médico e taverneiro fundam a primeira vila. Gerald, Fenrir e Nyx chegam. Exploradores encontram ruínas de uma civilização desconhecida e guardam segredo." }
+  ],
+  "misterios_abertos": [
+    "Quem construiu as ruínas a nordeste, se Eryon acabou de nascer?",
+    "O que diz a inscrição na pedra das ruínas?",
+    "A civilização que Nyx quer reconstruir tem relação com as ruínas?"
+  ],
+  "estado_atual": {
+    "fase": "primeira vila",
+    "hora_do_fim_do_ep2": "entardecer",
+    "proximo_episodio": 3
+  }
+}
