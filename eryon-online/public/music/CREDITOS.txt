@@ -10,3 +10,8 @@ Obtidas via GitHub: github.com/endlessm/threadbare (Minstrel Dance, arquivo .lic
 e github.com/tunasafa/medieaval-days (assets/music, README com as licenças CC0).
 Convertidas para mono 64 kbps e com volume normalizado.
 https://creativecommons.org/publicdomain/zero/1.0/
+
+Música de batalha (toca durante o ataque do Gigante / Fera de Fogo) — também CC0 1.0:
+- batalha.mp3 — "Boss Battle Loop 1 (155 BPM)" de kanaizo   https://freesound.org/s/739177/
+- tragico.mp3 — "Tragic Ambient Main Menu" de brandon75689   https://opengameart.org/content/tragic-ambient-main-menu
+Obtidas via GitHub: github.com/endlessm/threadbare (scenes/quests/story_quests/after_the_tremor/music, arquivos .license SPDX CC0-1.0).

@@ -632,6 +632,7 @@ function draw(t, p) {
   else { lightHole(l, C.x, C.y, 46 + Math.round(Math.sin(t * 9))); if (B.forja) lightHole(l, B.forja.x, B.forja.y - 8, 24); if (B.taverna) lightHole(l, B.taverna.x, B.taverna.y - 10, 28);
     for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) lightHole(l, B[id].x, B[id].y - 6, Math.round(16 * LB)); }
   if (!room) { for (const lm of LANDMARKS) if (LM_LIGHT[lm.id]) lightHole(l, lm.x, lm.y - 10, LM_LIGHT[lm.id]); for (const h of BUILT) lightHole(l, h.x, h.y - 6, Math.round(16 * LB)); for (const d of DECOR) if (DECOR_LIGHT[d.kind]) lightHole(l, d.x, d.y - 8, DECOR_LIGHT[d.kind]); }
+  if (!room) fireLights(l, li, ti, cw, ch, t);
   if (p) lightHole(l, p.x, p.y - 6, Math.round(22 + NIGHT * 10));
   l.globalCompositeOperation = 'source-over';
   x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(light, 0, 0, cw, ch, 0, 0, cw, ch);

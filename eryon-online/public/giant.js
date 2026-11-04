@@ -96,6 +96,7 @@ function onGiantMsg(m) {
     const fogo = (m.live && m.live.kind === 'fogo') || (m.end && GIANT.lastKind === 'fogo'); if (m.live) GIANT.lastKind = m.live.kind;
     if (m.start) { giantHorn(); setTimeout(() => dragonRoar && SND.ctx && dragonRoar(.45), 900); fxToast(fogo ? 'A FERA DE FOGO APARECEU!' : 'O GIGANTE ACORDOU!', fogo ? 'Ela vem do leste queimando tudo. Defendam Eryon!' : 'Ele vem do leste. Defendam Eryon!', '#e04a3a', fogo ? '🔥' : '⚠'); }
     if (m.end) { fxToast(m.end === 'won' ? 'VITÓRIA!' : 'A cidade foi danificada', m.end === 'won' ? (fogo ? 'Eryon venceu a Fera de Fogo!' : 'Eryon venceu o Gigante de Pedra!') : 'Consertem as casas com lenha', m.end === 'won' ? '#ffd84a' : '#e04a3a', m.end === 'won' ? '♛' : '⚠'); if (m.end === 'won') fanfare(true); }
+    { const L2 = GIANT.live; setMusicMood(L2 ? (L2.phase === 'leave' ? 'tragico' : 'batalha') : m.end === 'lost' ? 'tragico' : musicMood === 'batalha' ? 'normal' : musicMood); }
     updGiantHud(); return true; }
   if (m.t === 'giantHit') { GFX.lastHitT = performance.now(); if (GIANT.live) GFX.hits.push({ x: GIANT.live.x + (Math.random() - .5) * 30, y: GIANT.live.y - 70 - Math.random() * 24, d: m.d, t0: performance.now(), big: m.d >= 20 }); if (m.kind === 'zap' && SND.ctx) thunder(); return true; }
   if (m.t === 'giantSmash') { GFX.lastSmashT = performance.now(); GFX.smash.push({ x: m.x, y: m.y, t0: performance.now() }); const p = players.get(myId);
@@ -107,12 +108,12 @@ function onGiantMsg(m) {
 // ---------- desenho dos efeitos no mundo
 function bldPos(id) { if (id.startsWith('h_')) { const h = BUILT.find(q => 'h_' + q.id === id); return h ? { x: h.x, y: h.y } : null; } return B[id] ? { x: B[id].x, y: B[id].y } : null; }
 function drawGiantWorld(x, t, li, ti, cw, ch) {
-  drawStun(x, t);
+  drawStun(x, t); drawVillageFire(x, t, li, ti, cw, ch);
   // construções danificadas: fuligem, rachaduras, fogo e fumaça
   for (const id of GIANT.damaged) { const b = bldPos(id); if (!b || b.x < li - 40 || b.x > li + cw + 40 || b.y < ti - 40 || b.y > ti + ch + 40) continue;
     x.globalAlpha = .45; x.fillStyle = '#140e06'; x.beginPath(); x.ellipse(b.x, b.y - 10, 15, 10, 0, 0, 6.283); x.fill(); x.globalAlpha = 1;
     for (const [a, c2] of [[-8, -18], [3, -14], [9, -20]]) { px(x, '#140e06', b.x + a, b.y + c2, 1, 5); px(x, '#140e06', b.x + a + 1, b.y + c2 + 5, 1, 3); }
-    smallFire(x, b.x - 5, b.y - 16, t + b.x); smallFire(x, b.x + 6, b.y - 12, t * 1.3 + b.y); smoke(x, b.x, b.y - 24, t + b.x, 5, '#4a4a4a'); glow(x, b.x, b.y - 14, 10, P.fire2, .12); }
+    smallFire(x, b.x - 5, b.y - 16, t + b.x); smallFire(x, b.x + 6, b.y - 12, t * 1.3 + b.y); if (GIANT.lastKind === 'fogo') { flame(x, b.x - 2, b.y - 20, 15, t, b.x); flame(x, b.x + 8, b.y - 17, 11, t, b.y); flame(x, b.x - 10, b.y - 12, 9, t, b.x + 5); glow(x, b.x, b.y - 18, 18, P.fire2, .16); } smoke(x, b.x, b.y - 24, t + b.x, 5, '#4a4a4a'); glow(x, b.x, b.y - 14, 10, P.fire2, .12); }
   // pancadas no chão
   for (let i = GFX.smash.length - 1; i >= 0; i--) { const s = GFX.smash[i], k = (performance.now() - s.t0) / 900; if (k > 1) { GFX.smash.splice(i, 1); continue; }
     x.globalAlpha = 1 - k; ring(x, s.x, s.y, 6 + k * 34, '#c9a46a'); ring(x, s.x, s.y, 3 + k * 22, '#e4d0a0'); x.globalAlpha = 1; burst(x, t, s.t0 / 1000, s.x, s.y - 4, 18, ['#8b5e3c', '#c9a46a', '#6e7789'], 28, .9, 30, 9); }
@@ -281,4 +282,36 @@ function drawFireAt(x, X, Y, f, face, t, flash) {
     x.globalCompositeOperation = 'lighter'; for (let i = 0; i < 46; i++) { const u = h2(i, 7), d = u * len, spread = d * .32, yy = by + d * .25 + (h2(i, 3) - .5) * spread * 2, r = 2 + u * 5, a = (1 - k / 1.1) * (1 - u * .5);
       x.globalAlpha = a * .8; disc(x, Math.round(bx + dir * d + Math.sin(t * 20 + i) * 2), Math.round(yy), Math.round(r), u < .3 ? '#fff3b0' : u < .6 ? P.fire3 : P.fire2); }
     x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
+}
+
+// ---------- o vilarejo pegando fogo (Fera de Fogo): rastro em chamas + focos que crescem conforme a cidade queima
+const FIRE_SPOTS = []; for (let i = 0; i < 46; i++) { const a = h2(i, 77) * 6.283, r = 40 + h2(77, i) * 210; FIRE_SPOTS.push({ x: Math.round(360 + Math.cos(a) * r), y: Math.round(640 + Math.sin(a) * r * .95), o: h2(i, 5) }); }
+FIRE_SPOTS.sort((a, b) => a.o - b.o);
+GFX.trail = []; GFX.trailT = 0; GFX.burn = 0;
+function fireSpot(x, X, Y, t, k, seed) {   // chão queimado + labaredas + fumaça
+  x.globalAlpha = .5 * k; x.fillStyle = '#1a0e06'; x.beginPath(); x.ellipse(X, Y, 9, 4, 0, 0, 6.283); x.fill(); x.globalAlpha = 1;
+  if (k > .15) { flame(x, X - 3, Y, Math.round(6 + 6 * k), t, seed); flame(x, X + 3, Y + 1, Math.round(4 + 7 * k), t, seed + 9); if (k > .5) flame(x, X, Y - 1, Math.round(9 * k), t, seed + 4); glow(x, X, Y - 4, 10, P.fire2, .12 * k); smoke(x, X, Y - 12, t + seed, 4, '#3a3432'); }
+}
+function drawVillageFire(x, t, li, ti, cw, ch) {
+  const L = GIANT.live, fogo = L && L.kind === 'fogo', now = performance.now();
+  // intensidade: sobe durante o ataque da fera e apaga devagar depois
+  const target = fogo ? Math.max(.15, (100 - L.city) / 100) : 0; GFX.burn += (target - GFX.burn) * .01; if (GFX.burn < .003 && !GFX.trail.length) return;
+  if (fogo && now - GFX.trailT > 350) { GFX.trailT = now; GFX.trail.push({ x: L.x + (Math.random() - .5) * 30, y: L.y + (Math.random() - .5) * 8, t0: now }); if (GFX.trail.length > 90) GFX.trail.shift(); }
+  for (let i = GFX.trail.length - 1; i >= 0; i--) { const f = GFX.trail[i], age = (now - f.t0) / 1000; if (age > 30) { GFX.trail.splice(i, 1); continue; } if (f.x < li - 20 || f.x > li + cw + 20 || f.y < ti - 20 || f.y > ti + ch + 30) continue; fireSpot(x, f.x, f.y, t, age < 1 ? age : Math.max(0, 1 - (age - 1) / 29), i * 7); }
+  const n = Math.round(FIRE_SPOTS.length * GFX.burn);
+  for (let i = 0; i < n; i++) { const s = FIRE_SPOTS[i]; if (s.x < li - 20 || s.x > li + cw + 20 || s.y < ti - 20 || s.y > ti + ch + 30) continue; fireSpot(x, s.x, s.y, t, Math.min(1, GFX.burn * 1.6), i * 13); }
+  // céu alaranjado e brasas voando quando a câmera está perto do vilarejo
+  const near = Math.max(0, 1 - Math.hypot(li + cw / 2 - 360, ti + ch / 2 - 640) / 520) * GFX.burn;
+  if (near > .01) { x.fillStyle = `rgba(255,90,20,${(.13 * near).toFixed(3)})`; x.fillRect(li, ti, cw, ch);
+    for (let i = 0; i < 40 * near + 4; i++) { const ph = (t * (.12 + h2(i, 2) * .1) + h2(i, 9)) % 1, X = li + ((h2(i, 4) * cw + ph * 60) % cw), Y = ti + ch - ph * (ch + 20); x.globalAlpha = Math.min(1, (1 - ph) * 1.4); px(x, ph < .5 ? P.fire4 : P.fire2, Math.round(X + Math.sin(t * 2 + i) * 6), Math.round(Y), 1, 1); } x.globalAlpha = 1; }
+}
+
+// as chamas iluminam a noite (furos na camada de escuridão)
+function fireLights(l, li, ti, cw, ch, t) {
+  const inV = (X, Y) => X > li - 60 && X < li + cw + 60 && Y > ti - 60 && Y < ti + ch + 60, fl = 1 + Math.sin(t * 11) * .06, L = GIANT.live;
+  if (L && L.kind === 'fogo' && inV(L.x, L.y)) lightHole(l, L.x, L.y - 30, Math.round(70 * fl));
+  if (GIANT.lastKind === 'fogo') for (const id of GIANT.damaged) { const b = bldPos(id); if (b && inV(b.x, b.y)) lightHole(l, b.x, b.y - 14, Math.round(34 * fl)); }
+  const n = Math.round(FIRE_SPOTS.length * GFX.burn), k = Math.min(1, GFX.burn * 1.6);
+  for (let i = 0; i < n; i++) { const s = FIRE_SPOTS[i]; if (inV(s.x, s.y)) lightHole(l, s.x, s.y - 4, Math.round((14 + 12 * k) * fl)); }
+  const now = performance.now(); for (const f of GFX.trail) { const age = (now - f.t0) / 1000; if (age < 24 && inV(f.x, f.y)) lightHole(l, f.x, f.y - 4, Math.round(18 * (1 - age / 24) * fl)); }
 }

@@ -258,10 +258,16 @@ function startMusic() {
   musicEl = new Audio(); musicEl.setAttribute('playsinline', ''); musicEl.preload = 'auto'; musicEl.crossOrigin = 'anonymous';
   try { const src = SND.ctx.createMediaElementSource(musicEl); src.connect(SND.music); SND.music.gain.value = .22; }
   catch { musicEl.volume = .12; }   // sem Web Audio: volume direto no elemento
-  musicEl.onended = () => nextTrack(); musicEl.onerror = () => setTimeout(nextTrack, 3000);
+  musicEl._wa = SND.music && SND.music.gain.value > .1;
+  musicEl.onended = () => { if (musicMood === 'tragico') musicMood = 'normal'; nextTrack(); }; musicEl.onerror = () => setTimeout(nextTrack, 3000);
   nextTrack();
 }
-function nextTrack() { if (!musicEl) return; musicEl.src = TRACKS[trackI++ % TRACKS.length]; musicEl.play().catch(() => {}); }
+// clima da trilha: normal (medieval), batalha (gigante/fera atacando) e trágico (cidade destruída)
+let musicMood = 'normal';
+const MOOD_VOL = { normal: .22, batalha: .3, tragico: .26 };
+function musicFade(v) { if (!musicEl) return; if (musicEl._wa) SND.music.gain.setTargetAtTime(v, SND.ctx.currentTime, .3); else musicEl.volume = Math.min(1, v * .55); }
+function nextTrack() { if (!musicEl) return; musicEl.loop = musicMood === 'batalha'; musicEl.src = musicMood === 'batalha' ? 'music/batalha.mp3' : musicMood === 'tragico' ? 'music/tragico.mp3' : TRACKS[trackI++ % TRACKS.length]; musicFade(MOOD_VOL[musicMood]); musicEl.play().catch(() => {}); }
+function setMusicMood(m) { if (m === musicMood) return; musicMood = m; if (!musicEl) return; musicFade(0); clearTimeout(setMusicMood.t); setMusicMood.t = setTimeout(nextTrack, 1300); }
 // quando volta para a aba ou toca na tela, garante que a música continua
 document.addEventListener('visibilitychange', () => { if (!document.hidden && musicEl && musicEl.paused && musicEl.src) musicEl.play().catch(() => {}); });
 function noiseHit(when, dur, freq, gain, type = 'bandpass', bus = SND.sfx) { const c = SND.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = SND.noise; s.playbackRate.value = .8 + Math.random() * .4;
