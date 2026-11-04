@@ -51,6 +51,7 @@ function buildWorld(world) {
   const [v, x] = canvas(WW, WH); villageLayer = v;
   x.drawImage(ground, 0, 0);
   x.save(); x.beginPath(); x.ellipse(C.x, C.y, VR, VR * .95, 0, 0, 6.283); x.clip(); x.drawImage(clearTex, 0, 0); x.restore();
+  paintDetails(x);
   const pts = [];
   const road = p => { for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1], d = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let s = 0; s < d; s += 2) pts.push([a[0] + (b[0] - a[0]) * s / d, a[1] + (b[1] - a[1]) * s / d]); } };
   road([[360, 622], [400, 566], [440, 520], [GATE.x, GATE.y], [496, 452], [508, 425], [520, 404]]);
@@ -89,6 +90,42 @@ function buildWorld(world) {
 }
 function drawBridgeOn(x, X) { X = Math.round(X); const Y = Math.round(riverY(X)); px(x, P.ink, X - 8, Y - 17, 17, 34); for (let i = 0; i < 16; i++) px(x, i % 2 ? P.dirt3 : P.wood, X - 7, Y - 16 + i * 2, 15, 2); px(x, P.woodD, X - 8, Y - 17, 2, 34); px(x, P.woodD, X + 7, Y - 17, 2, 34); }
 function addBridges(list) { for (const b of list) if (!BRIDGES.some(o => o.id === b.id)) { BRIDGES.push(b); drawBridgeOn(villageLayer.getContext('2d'), b.x); } }
+// ---- detalhes do chão: tufos de grama, flores, samambaias, folhas e pedrinhas
+function paintDetails(x) {
+  const r = rng(2024);
+  for (let i = 0; i < 9000; i++) {
+    const X = Math.floor(r() * WW), Y = Math.floor(r() * WH), kind = r(); if (Math.abs(Y - riverY(X)) < 15) continue;
+    const dc = Math.hypot(X - C.x, (Y - C.y) / .95), open = dc < VR - 4;
+    if (open) {
+      if (kind < .55) { const c1 = r() < .5 ? P.f7 : P.f8; px(x, c1, X, Y, 1, 2); px(x, c1, X + 1, Y - 1, 1, 3); px(x, P.f5, X + 2, Y, 1, 2); }
+      else if (kind < .72) { const fc = ['#f6b6d8', '#fff3b0', '#9ff3ff', '#eef0ea', '#d0622a'][Math.floor(r() * 5)]; px(x, P.f6, X, Y + 1, 1, 2); px(x, fc, X - 1, Y, 3, 1); px(x, fc, X, Y - 1, 1, 3); px(x, '#ffd84a', X, Y, 1, 1); }
+      else if (kind < .8) { px(x, P.st2, X, Y, 2, 1); px(x, P.st3, X, Y - 1, 1, 1); }
+    } else {
+      if (kind < .3) { const c1 = r() < .5 ? P.f4 : P.f5; for (let k = -2; k <= 2; k++) px(x, c1, X + k, Y - 2 + Math.abs(k), 1, 2); px(x, P.f6, X, Y - 3, 1, 3); }
+      else if (kind < .5) { px(x, ['#5c5a2a', '#6b4630', '#8a3a1c', '#7a7a3a'][Math.floor(r() * 4)], X, Y, 2, 1); }
+      else if (kind < .56) { px(x, P.st1, X, Y, 3, 2); px(x, P.st2, X, Y, 2, 1); }
+      else if (kind < .6) { px(x, '#d0622a', X, Y - 1, 3, 1); px(x, '#a83a32', X, Y - 2, 3, 1); px(x, '#eef0ea', X + 1, Y - 2, 1, 1); px(x, '#e4d0a0', X + 1, Y, 1, 1); }   // cogumelos
+    }
+  }
+}
+// ---- vida ambiente: brilho na água, vagalumes, folhas, fumaça das chaminés e sombra das nuvens
+const FIREFLIES = Array.from({ length: 70 }, (_, i) => ({ x: h2(i, 1) * WW, y: h2(i, 2) * WH, ph: h2(i, 3) * 6.283 }));
+function drawAmbient(x, t, li, ti, cw, ch) {
+  // brilho do rio
+  for (let X = Math.max(0, li - 2); X < Math.min(WW, li + cw + 2); X += 3) { const k = Math.sin(X * .7 + t * 3.1) + Math.sin(X * .23 - t * 1.7); if (k > 1.35) { const Y = Math.round(riverY(X) + Math.sin(X * 1.3 + t) * 5); px(x, '#bfe6f5', X, Y, 2, 1); } }
+  // chaminés soltando fumaça
+  for (const id of ['casa_1', 'casa_3', 'casa_5', 'casa_7', 'casa_9']) { const b = B[id]; if (b && b.x > li - 20 && b.x < li + cw + 20) smoke(x, b.x + 5, b.y - 26, t + b.x, 4, '#c4ccd0'); }
+  for (const h of BUILT) if ((h.type || 'casa') === 'casa' && (h.roof || 0) % 2 === 0 && h.x > li - 20 && h.x < li + cw + 20) smoke(x, h.x + 5, h.y - 26, t + h.x, 4, '#c4ccd0');
+  // vagalumes
+  for (const f of FIREFLIES) { const X = f.x + Math.sin(t * .4 + f.ph) * 12, Y = f.y + Math.cos(t * .33 + f.ph * 2) * 8; if (X < li || X > li + cw || Y < ti || Y > ti + ch) continue; const on = .5 + .5 * Math.sin(t * 2.4 + f.ph * 3); if (on < .25) continue; x.globalAlpha = on; px(x, '#fff3b0', Math.round(X), Math.round(Y), 1, 1); x.globalAlpha = on * .25; px(x, '#ffd84a', Math.round(X) - 1, Math.round(Y) - 1, 3, 3); }
+  x.globalAlpha = 1;
+  // folhas caindo
+  for (let i = 0; i < 14; i++) { const ph = (t * .08 + i / 14) % 1, X = li + ((i * 97 + t * 6) % cw), Y = ti + ph * ch; px(x, i % 3 ? '#9a9442' : '#d0622a', Math.round(X + Math.sin(ph * 12 + i) * 6), Math.round(Y), 2, 1); }
+}
+function drawCloudShadows(x, t, li, ti, cw, ch) {
+  x.fillStyle = 'rgba(4,10,14,.10)';
+  for (let i = 0; i < 5; i++) { const X = ((i * 211 + t * 7) % (WW + 300)) - 150, Y = (i * 337) % WH; if (X + 120 < li || X - 120 > li + cw || Y + 60 < ti || Y - 60 > ti + ch) continue; x.beginPath(); x.ellipse(X, Y, 110, 46, .2, 0, 6.283); x.ellipse(X + 60, Y + 20, 70, 32, 0, 0, 6.283); x.fill(); }
+}
 // paliçada que cresce com a cidade
 function placePalisade() {
   for (let i = OBJ.length - 1; i >= 0; i--) if (OBJ[i].pal) OBJ.splice(i, 1);
@@ -154,7 +191,7 @@ $('enter').onclick = async () => {
     const code = $('code').value; if (!code) { $('enter').disabled = false; return showErr('Digite o código.'); }
     const r = await post('/api/login', { username, code }); $('enter').disabled = false;
     if (!r.ok) return showErr(r.data.error || 'Não foi possível entrar.');
-    token = r.data.token; store.set('eryon_token', token); return afterLogin(r.data);
+    token = r.data.token; store.set('eryon_token', token); store.set('eryon_name', r.data.username); return afterLogin(r.data);
   }
   if (openOn) {                                      // entrada livre
     const j = await post('/api/join', { username }); $('enter').disabled = false;
@@ -181,10 +218,24 @@ $('code').addEventListener('keydown', e => { if (e.key === 'Enter') $('enter').c
 $('user').addEventListener('keydown', e => { if (e.key === 'Enter') $('enter').click(); });
 // entrada direta: o jogo abre na hora como visitante (dá para trocar para o seu @ depois)
 const randLook = () => ({ hair: HAIRS[Math.floor(Math.random() * HAIRS.length)], shirt: SHIRTS[Math.floor(Math.random() * SHIRTS.length)], pants: PANTS[Math.floor(Math.random() * PANTS.length)] });
+// lembra o @ e o avatar neste aparelho: mesmo que o servidor reinicie, a pessoa volta igual
+function remember() { if (me) store.set('eryon_name', me); if (myLook) store.set('eryon_look', JSON.stringify(myLook)); }
+function savedLook() { try { return JSON.parse(store.get('eryon_look') || 'null'); } catch { return null; } }
+async function rejoin() {
+  const name = store.get('eryon_name'); if (!name) return false;
+  for (let i = 0; i < 3; i++) {
+    const r = await post('/api/join', { username: name });
+    if (r.ok) { token = r.data.token; store.set('eryon_token', token); me = r.data.username; myLook = r.data.look || savedLook(); if (myLook && !r.data.look) await post('/api/look', { token, look: myLook }); remember(); start(); return true; }
+    if (r.data && r.data.reserved) { $('user').value = name; showCode(true); $('login').hidden = false; return true; }
+    if (!(r.data && /já está/.test(r.data.error || ''))) break; await new Promise(z => setTimeout(z, 3000));   // a conexão antiga ainda está fechando
+  }
+  return false;
+}
 async function quickJoin() {
+  if (await rejoin()) return;
   for (let i = 0; i < 5; i++) {
     const r = await post('/api/join', { username: 'visitante' + Math.floor(1000 + Math.random() * 9000) });
-    if (r.ok) { token = r.data.token; store.set('eryon_token', token); myLook = randLook(); await post('/api/look', { token, look: myLook }); me = r.data.username; start(); return openAvatar(true); }
+    if (r.ok) { token = r.data.token; store.set('eryon_token', token); myLook = savedLook() || randLook(); await post('/api/look', { token, look: myLook }); me = r.data.username; remember(); start(); return openAvatar(true); }
     if (r.data && r.data.error && !/já está/.test(r.data.error)) break;
   }
   $('login').hidden = false;
@@ -198,12 +249,12 @@ $('nameOk').onclick = async () => {
   const old = players.get(myId); if (old) store.set('eryon_pos', JSON.stringify({ x: old.x, y: old.y }));
   token = r.data.token; store.set('eryon_token', token); me = r.data.username;
   if (r.data.look) myLook = r.data.look; else if (myLook) await post('/api/look', { token, look: myLook });
-  $('nameForm').hidden = true; $('nameBtn').hidden = false; $('nameBtn').textContent = '@' + me;
+  $('nameForm').hidden = true; $('nameBtn').hidden = false; $('menu').hidden = true; remember(); sys('Agora você é @' + me);
   reconnectNow = true; if (ws) ws.close();
 };
 let reconnectNow = false;
 function afterLogin(d) {
-  me = d.username; myLook = d.look;
+  me = d.username; myLook = d.look; remember();
   if (!myLook && !NAMED[me]) return pickLook();
   start();
 }
@@ -236,7 +287,7 @@ function connect() {
     else if (m.t === 'lunch') onLunch(m);
     else if (m.t === 'note') sys(m.text);
     else if (m.t === 'wood') { wood = m.n; showWood(); }
-    else if (m.t === 'look') { const p = players.get(m.id); if (p) { p.look = m.look; p.ch = charFor(p.username, m.look); if (p.mine) { myLook = m.look; skillLabel(); } } }
+    else if (m.t === 'look') { const p = players.get(m.id); if (p) { p.look = m.look; p.ch = charFor(p.username, m.look); if (p.mine) { myLook = m.look; remember(); skillLabel(); } } }
     else if (m.t === 'chat') { const p = players.get(m.id); if (p) { p.say = m.text; p.sayT = performance.now(); } logChat(m); } };
   ws.onclose = ev => { if (ev.code === 4001) { store.del('eryon_token'); location.reload(); return; } if (ev.code === 4002) { sys('Você entrou em outro aparelho.'); return; } const wait = reconnectNow ? 50 : 2000; reconnectNow = false; setTimeout(connect, wait); };
 }
@@ -350,6 +401,7 @@ function draw(t, p) {
   }
   for (const q of players.values()) if ((q.room || '') === myRoom) drawActFx(x, q, t);
   if (room && room.fire) { drawFire(x, room.fire.x, room.fire.y, t); glow(x, room.fire.x, room.fire.y - 6, 18, P.fire2, .12); }
+  if (!room) { drawAmbient(x, t, li, ti, cw, ch); drawCloudShadows(x, t, li, ti, cw, ch); }
   if (!room && B.forja) { x.globalAlpha = .6 + .4 * h2(Math.floor(t * 10), 2); px(x, P.fire1, B.forja.x - 7, B.forja.y - 10, 12, 8); px(x, P.fire3, B.forja.x - 5, B.forja.y - 8, 8, 5); x.globalAlpha = 1; smoke(x, B.forja.x + 11, B.forja.y - 30, t, 6); }
   if (target) { x.globalAlpha = .7; ring(x, target.x, target.y, 3 + (Math.floor(t * 4) % 2), P.fire3); x.globalAlpha = 1; }
   // luz
@@ -363,7 +415,7 @@ function draw(t, p) {
   l.globalCompositeOperation = 'source-over';
   x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(light, 0, 0, cw, ch, 0, 0, cw, ch);
   if (room && room.dark) { x.translate(-li, -ti); for (const [gx2, gy2, gc] of room.glows) glow(x, gx2, gy2, 10, gc, .14); x.setTransform(1, 0, 0, 1, 0, 0); }
-  if (!room && fogKey) drawFog(x, li, ti, cw, ch);
+  // mundo aberto (sem névoa)
   // saída ampliada
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#060b0a'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(view, 0, 0, cw, ch, Math.round(-(L - li) * S), Math.round(-(T - ti) * S), cw * S, ch * S);
@@ -401,7 +453,7 @@ function updateContext(p, t) {
     if (!c) { let best = 13, bt = null; for (const tr of TREE_POS) { if (CUT.has(tr.i)) continue; const d = Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2); if (d < best) { best = d; bt = tr; } } if (bt) c = { kind: 'chop', label: 'Derrubar árvore', tree: bt.i, tx: bt.x }; }
   }
   const key = c ? c.kind + c.label + (c.tree ?? '') + (c.node ?? '') + (c.id ?? '') : '';
-  if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + '  [E]'; }
+  if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + (TOUCH ? '' : '  [E]'); }
 }
 function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; const c = ctxAct;
   if (c.kind === 'enter') { sfx.door(true); const r = roomOf(c.room); p.room = c.room; p.x = r.spawn.x; p.y = r.spawn.y; target = null; follow(); sendNow(p); return; }
@@ -433,7 +485,8 @@ function actSound(kind) {
 }
 function exitRoom(p) { sfx.door(false); const r = roomOf(p.room); p.room = ''; p.x = r.outside.x; p.y = r.outside.y; target = null; follow(); sendNow(p); }
 function doSkill() { const p = players.get(myId); const c = classOf(p); doAct(c ? c.skill : 'magic'); }
-function skillLabel() { const p = players.get(myId), c = classOf(p); $('magicBtn').textContent = (c ? c.skillName : 'Magia') + '  [Q]'; }
+function skillLabel() { const p = players.get(myId), c = classOf(p); $('magicBtn').textContent = (c ? c.skillName : 'Magia') + (TOUCH ? '' : '  [Q]'); }
+const TOUCH = matchMedia('(hover:none) and (pointer:coarse)').matches;
 // casas construídas pelos jogadores
 function setBuilt(list) { BUILT = Array.isArray(list) ? list : []; for (const k in ROOM_CACHE) if (k.startsWith('h_')) delete ROOM_CACHE[k];
   DOORS = doorsOutside().concat(BUILT.map(h => { const T = BTYPES[h.type] || BTYPES.casa; return { room: 'h_' + h.id, x: h.x + 1, y: h.y + 3, label: h.type === 'prefeitura' ? 'Entrar na Prefeitura' : `Entrar: ${T.name} de @${h.owner}` }; })); growCity(); }
@@ -446,13 +499,13 @@ function canBuildAt(p) {
   return true;
 }
 function sendNow(p) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: false, room: p.room || '' })); }
-function showWood() { $('wood').textContent = `${INV.lenha || 0} · ${INV.pedra || 0} · ${INV.ervas || 0}`; }
+function showWood() { $('wood').textContent = `Lenha ${INV.lenha || 0} · Pedra ${INV.pedra || 0} · Ervas ${INV.ervas || 0}`; }
 $('actBtn').onclick = () => { sndStart(); doContext(); };
 $('magicBtn').onclick = () => { sndStart(); doSkill(); };
-$('muteBtn').onclick = () => { sndStart(); const m = toggleMute(); $('muteBtn').innerHTML = m ? MUTE_OFF : MUTE_ON; $('muteBtn').title = m ? 'Ligar som' : 'Desligar som'; };
+$('muteBtn').onclick = () => { sndStart(); const m = toggleMute(); $('muteBtn').innerHTML = (m ? MUTE_OFF : MUTE_ON) + (m ? ' Som desligado' : ' Som ligado'); $('muteBtn').title = m ? 'Ligar som' : 'Desligar som'; };
 const MUTE_ON = '<svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 4h2v3H1zM3 3h1v5H3zM4 2h1v7H4zM5 1h1v9H5zM7 4h1v3H7zM8 3h1v1H8zM8 7h1v1H8zM9 2h1v1H9zM9 8h1v1H9zM10 3h1v5h-1z"/></svg>';
 const MUTE_OFF = '<svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 4h2v3H1zM3 3h1v5H3zM4 2h1v7H4zM5 1h1v9H5z"/><path fill="#ff8a70" d="M7 3h1v1H7zM8 4h1v1H8zM9 5h1v1H9zM10 6h1v1h-1zM10 3h1v1h-1zM9 4h1v1H9zM8 6h1v1H8zM7 7h1v1H7z"/></svg>';
-$('muteBtn').innerHTML = SND.muted ? MUTE_OFF : MUTE_ON;
+$('muteBtn').innerHTML = (SND.muted ? MUTE_OFF : MUTE_ON) + (SND.muted ? ' Som desligado' : ' Som ligado');
 function bubble(text, sx, sy, fs) {
   ctx.font = `700 ${fs}px Pix, monospace`; const maxW = Math.min(cv.width * .6, fs * 16);
   const words = text.split(' '), lines = []; let cur = '';
@@ -468,7 +521,7 @@ fetch('world.json').then(r => r.json()).then(async w => {
   buildWorld(w); indexBlockers(); buildNodes(); await document.fonts.load('700 20px Pix');
   // tela de fundo atrás do login: a fogueira de Eryon
   (function idle(n) { if (me) return; draw(n / 1000, null); requestAnimationFrame(idle); })(performance.now());
-  if (token) { const r = await API('/api/me?token=' + encodeURIComponent(token)); if (r.ok) return afterLogin(r.data); store.del('eryon_token'); token = null; }
+  if (token) { const r = await API('/api/me?token=' + encodeURIComponent(token)); if (r.ok) { const sl = savedLook(); if (!r.data.look && sl) { await post('/api/look', { token, look: sl }); r.data.look = sl; } return afterLogin(r.data); } store.del('eryon_token'); token = null; }
   const cfg = await API('/api/config'); if (cfg.ok && cfg.data.open) return quickJoin();
   $('login').hidden = false;
 });
@@ -506,7 +559,7 @@ function avLoop() { if ($('avatar').hidden) return; const c = $('avPrev'), x = c
   x.drawImage(fr.c, -7, -14); requestAnimationFrame(avLoop); }
 $('avatarBtn').onclick = () => openAvatar(false);
 $('avSkip').onclick = () => { $('avatar').hidden = true; };
-$('avSave').onclick = async () => { myLook = { ...draft }; $('avatar').hidden = true; const r = await post('/api/look', { token, look: myLook }); if (r.ok) { myLook = r.data.look; const p = players.get(myId); if (p) { p.look = myLook; p.ch = charFor(p.username, myLook); } skillLabel(); } };
+$('avSave').onclick = async () => { myLook = { ...draft }; remember(); $('avatar').hidden = true; const r = await post('/api/look', { token, look: myLook }); if (r.ok) { myLook = r.data.look; const p = players.get(myId); if (p) { p.look = myLook; p.ch = charFor(p.username, myLook); } skillLabel(); } };
 
 // ---------------------------------------------------------------- carregar lenha e almoço
 $('woodBox').onclick = () => openPanel('bag');
@@ -528,7 +581,6 @@ $('mapClose').onclick = () => { $('mapPanel').hidden = true; };
 function drawMap() {
   const c = $('mapCv'), x = c.getContext('2d'), k = c.width / WW; x.imageSmoothingEnabled = false;
   x.drawImage(villageLayer, 0, 0, c.width, c.height); x.globalAlpha = .55; for (const o of OBJ) if (o.tree !== undefined && !CUT.has(o.tree)) { x.fillStyle = '#1c3831'; x.fillRect(o.x * k - 1, o.y * k - 2, 3, 3); } x.globalAlpha = 1;
-  x.drawImage(fogC, 0, 0, c.width, c.height);
   x.font = '700 11px Pix, monospace'; x.textAlign = 'center';
   for (const l of LANDMARKS) if (FOUND.has(l.id)) { x.fillStyle = '#140e06'; x.fillRect(l.x * k - 3, l.y * k - 3, 7, 7); x.fillStyle = '#ffd84a'; x.fillRect(l.x * k - 2, l.y * k - 2, 5, 5); x.lineWidth = 3; x.strokeStyle = '#140e06'; x.strokeText(l.name, l.x * k, l.y * k - 6); x.fillStyle = '#fff3b0'; x.fillText(l.name, l.x * k, l.y * k - 6); }
   const p = players.get(myId); if (p && !p.room) { x.fillStyle = '#9ff3ff'; x.fillRect(p.x * k - 2, p.y * k - 2, 5, 5); }
@@ -547,3 +599,14 @@ $('chatToggle').onclick = () => { chatHidden = !chatHidden; try { localStorage.s
 applyChat();
 // iPhone/iPad: o som só liga dentro de um toque completo (touchend/click)
 for (const ev of ['touchend', 'click', 'keydown']) addEventListener(ev, () => sndStart(), { passive: true });
+
+// ---------------------------------------------------------------- menu ☰ (tudo que não precisa ficar na tela)
+function renderMe() {
+  const p = players.get(myId); $('meName').textContent = '@' + (me || 'visitante'); const c = classOf(p); $('meRole').textContent = NAMED[me]?.role || (c ? c.name : 'Morador');
+  $('wood').textContent = `Lenha ${INV.lenha || 0} · Pedra ${INV.pedra || 0} · Ervas ${INV.ervas || 0}`;
+  const cv2 = $('meCv'), q2 = cv2.getContext('2d'); q2.imageSmoothingEnabled = false; q2.clearRect(0, 0, 16, 18); if (p) q2.drawImage(p.ch.frame({ legs: 'stand', arm: 'down', tool: (p.look && p.look.equipTool) || (c || {}).tool || null, eyes: 0, br: 0 }).c, -7, -14);
+  $('nameBtn').textContent = me && !/^visitante\d+$/.test(me) ? 'Trocar meu @' : 'Usar meu @';
+}
+$('menuBtn').onclick = () => { const open = $('menu').hidden; closePanels(); $('menu').hidden = !open; $('menuBtn').setAttribute('aria-expanded', open); if (open) { renderMe(); $('nameForm').hidden = true; $('nameBtn').hidden = false; } };
+$('menuClose').onclick = () => { $('menu').hidden = true; $('menuBtn').setAttribute('aria-expanded', 'false'); };
+for (const id of ['avatarBtn', 'woodBox', 'craftBtn', 'foundBtn']) $(id).addEventListener('click', () => { $('menu').hidden = true; }, true);

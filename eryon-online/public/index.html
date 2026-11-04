@@ -93,6 +93,28 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 .row2{display:flex;gap:10px}.row2>*{flex:1;text-align:center}
 .btnlink{font:700 20px Pix,monospace;padding:12px 14px;background:var(--gold);color:var(--ink);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);text-decoration:none}
 @keyframes blink{50%{opacity:.4}} #vstatus.wait{animation:blink 1.4s steps(2) infinite}
+
+/* ---- HUD enxuto (celular primeiro) ---- */
+.hudl{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.pill{pointer-events:auto;display:inline-flex;align-items:center;gap:7px;font:700 16px Pix,monospace;color:var(--cream);background:rgba(20,30,24,.82);border:3px solid #0c1410;box-shadow:inset 0 0 0 2px var(--edge);padding:7px 11px;cursor:pointer;line-height:1}
+.pill b{color:var(--gold)}
+.dot{width:8px;height:8px;background:#9cbf62;box-shadow:0 0 0 2px #0c1410;display:inline-block}
+.menubox{gap:14px}
+.me{display:flex;gap:12px;align-items:center;background:#0c1410;border:2px solid #2a4a3d;padding:10px}
+.me canvas{width:48px;height:54px;image-rendering:pixelated}
+.me b{display:block;color:var(--gold);font-size:18px}.me span{display:block;font-size:14px;color:#c4ccd0}
+.res3{margin-top:4px;color:#e6efa0!important}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mbtn{font:700 17px Pix,monospace;padding:14px 10px;background:#1c2a22;color:var(--txt);border:3px solid #0c1410;box-shadow:inset 0 0 0 2px #3c5d4a}
+.mbtn b{color:var(--gold)}
+.nform{display:flex;gap:8px}.nform input{flex:1;font-size:16px;padding:10px}
+.keys{font-size:13px!important;color:#6e7a84!important}
+#actbar .act{font:700 17px Pix,monospace;border:3px solid #0c1410;padding:11px 15px;line-height:1.15;max-width:60vw;white-space:normal}
+#actbar .main{background:var(--gold);color:var(--ink);box-shadow:0 4px 0 #0c1410}
+#actbar .skill{background:rgba(20,30,24,.88);color:var(--cream);box-shadow:inset 0 0 0 2px var(--edge)}
+#camctl .pill{width:44px;height:44px;justify-content:center;padding:0;font-size:22px}
+@media (hover:none) and (pointer:coarse){ #camctl .zbtn{display:none} .keys{display:none} }
+@media (max-width:520px){ #chatlog{width:calc(100% - 20px)} #chatlog div{font-size:14px;padding:4px 7px} #chatlog div:nth-last-child(n+4){display:none} #actbar .act{font-size:15px;padding:10px 12px} }
 </style>
 </head>
 <body>
@@ -130,15 +152,32 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
   </div>
 </div>
 
-<div id="hud"><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><div style="display:flex;gap:6px"><button class="box hudbtn" id="onlineBtn" type="button">Online: <b id="online">1</b> ▾</button><button class="box hudbtn" id="foundBtn" type="button" title="Mapa e descobertas">Mapa <b id="foundN">0/8</b></button></div><div id="plist" class="box" hidden></div></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><div class="box" id="nameBox"><button id="nameBtn" type="button" class="link" style="padding:0;font-size:16px;color:#ffd84a">Usar meu @</button><span id="nameForm" hidden style="display:flex;gap:6px;align-items:center"><input id="newName" placeholder="@seu_usuario" maxlength="31" autocapitalize="none" spellcheck="false" style="width:150px;font-size:16px;padding:6px"><button id="nameOk" type="button" style="padding:6px 10px;font-size:16px">OK</button></span></div><button class="box hudbtn" id="avatarBtn" type="button">Meu avatar</button><div style="display:flex;gap:6px"><button class="box hudbtn" id="woodBox" type="button" title="Mochila: lenha · pedra · ervas" style="padding:6px 10px">Mochila <b id="wood">0 · 0 · 0</b></button><button class="box hudbtn" id="muteBtn" type="button" title="Desligar som" style="padding:6px 8px;line-height:0"></button></div></div></div>
+<div id="hud">
+  <div class="hudl"><button class="pill" id="onlineBtn" type="button" aria-label="Quem está online"><i class="dot"></i><b id="online">1</b></button><div id="plist" class="box" hidden></div></div>
+  <button class="pill" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M1 2h8v1H1zM1 5h8v1H1zM1 8h8v1H1z"/></svg></button>
+</div>
+<div id="menu" class="panel" hidden><div class="box pbox menubox">
+  <div class="phead"><h2>Eryon</h2><button id="menuClose" type="button" class="sec">Fechar</button></div>
+  <div class="me"><canvas id="meCv" width="16" height="18"></canvas><div><b id="meName">@visitante</b><span id="meRole">Morador</span><span id="meRes" class="res3"><span id="wood">0 · 0 · 0</span></span></div></div>
+  <div class="mgrid">
+    <button id="avatarBtn" type="button" class="mbtn">Meu avatar</button>
+    <button id="woodBox" type="button" class="mbtn">Mochila</button>
+    <button id="craftBtn" type="button" class="mbtn">Criar</button>
+    <button id="foundBtn" type="button" class="mbtn">Mapa <b id="foundN">0/8</b></button>
+    <button id="muteBtn" type="button" class="mbtn" title="Som"></button>
+    <button id="nameBtn" type="button" class="mbtn">Usar meu @</button>
+  </div>
+  <span id="nameForm" hidden class="nform"><input id="newName" placeholder="@seu_usuario" maxlength="31" autocapitalize="none" spellcheck="false"><button id="nameOk" type="button">OK</button></span>
+  <p class="hint keys">Teclado: setas/WASD andar · E ação · Q habilidade · C criar · I mochila · M mapa</p>
+</div></div>
+<div id="camctl"><button id="recenter" type="button" class="pill" hidden title="Voltar para o meu personagem">◎</button><button id="zin" type="button" class="pill zbtn" title="Aproximar">+</button><button id="zout" type="button" class="pill zbtn" title="Afastar">−</button></div>
+<div id="actbar"><button id="actBtn" type="button" class="act main" hidden>Ação</button><button id="magicBtn" type="button" class="act skill">Habilidade</button></div>
 <div id="toast" class="box" hidden><span id="toastText">Almoço!</span><div class="row2"><button id="toastGo" type="button">Ir para o almoço</button><button id="toastNo" type="button" class="sec">Agora não</button></div></div>
 <div id="disc" hidden><small>DESCOBERTA</small><b id="discName"></b></div>
 <div id="mapPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Mapa de Eryon</h2><button id="mapClose" type="button" class="sec">Fechar</button></div><canvas id="mapCv" width="270" height="480"></canvas><ul id="mapList"></ul><p class="hint">O escuro é o mundo desconhecido. Ande por ele para descobrir os lugares.</p></div></div>
 <div id="buildPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Construir</h2><button id="buildClose" type="button" class="sec">Fechar</button></div><p class="hint" id="buildHint"></p><div id="buildList"></div></div></div>
-<div id="actbar"><button id="actBtn" type="button" class="box hudbtn act" hidden>Ação</button><button id="magicBtn" type="button" class="box hudbtn act">Habilidade  [Q]</button><button id="craftBtn" type="button" class="box hudbtn act">Criar  [C]</button></div>
 <div id="bag" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Mochila</h2><button id="bagClose" type="button" class="sec">Fechar</button></div><div id="bagRes" class="resrow"></div><button id="carryBtn" type="button" class="sec">Carregar lenha no ombro</button><div id="bagItems"></div></div></div>
 <div id="craft" class="panel" hidden><div class="box pbox"><div class="phead"><h2 id="craftTitle">Criar</h2><button id="craftClose" type="button" class="sec">Fechar</button></div><p class="hint">Junte lenha (árvores e serraria), pedra (rochas) e ervas (moitas) pelo mapa.</p><div id="craftList"></div></div></div>
-<div id="camctl"><button id="recenter" type="button" class="box hudbtn" hidden title="Voltar para o meu personagem">◎</button><button id="zin" type="button" class="box hudbtn" title="Aproximar">+</button><button id="zout" type="button" class="box hudbtn" title="Afastar">−</button></div>
 <div id="avatar" hidden><div class="box avbox">
   <h1>SEU AVATAR</h1>
   <canvas id="avPrev" width="16" height="18"></canvas>
@@ -161,9 +200,9 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
 <div id="chatbar"><button id="chatToggle" type="button" class="sec" aria-pressed="false" aria-label="Tela cheia" title="Tela cheia: deixa só o campo de mensagem"></button><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
 
 <script src="engine.js?v=12"></script>
-<script src="life.js?v=13"></script>
-<script src="craft.js?v=12"></script>
-<script src="explore.js?v=12"></script>
-<script src="game.js?v=13"></script>
+<script src="life.js?v=14"></script>
+<script src="craft.js?v=14"></script>
+<script src="explore.js?v=14"></script>
+<script src="game.js?v=14"></script>
 </body>
 </html>
