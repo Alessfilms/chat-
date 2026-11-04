@@ -167,7 +167,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/look' && req.method === 'POST') {
       const b = await body(req), u = userBySession(b.token);
       if (!u || !db.users[u]) return send(res, 401, { error: 'sessão expirada' });
-      db.users[u].look = cleanLook(b.look); save();
+      const old = db.users[u].look || {}; db.users[u].look = { ...cleanLook(b.look), ...(old.equip ? { equip: old.equip, equipTool: old.equipTool } : {}) }; save();
       for (const c of clients) if (c.user === u) all({ t: 'look', id: c.id, look: db.users[u].look });
       return send(res, 200, { ok: true, look: db.users[u].look });
     }
@@ -186,8 +186,14 @@ const server = http.createServer(async (req, res) => {
       }
       if (p === '/api/admin/remove' && req.method === 'POST') {
         const b = await body(req), u = norm(b.username);
-        db.users[u] = { removed: true, v: ((db.users[u] && db.users[u].v) || 0) + 1 }; db.houses = (db.houses || []).filter(h => h.owner !== u); all({ t: 'houses', list: db.houses }); for (const t in db.sessions) if (db.sessions[t] === u) delete db.sessions[t];
+        db.users[u] = { removed: true, v: ((db.users[u] && db.users[u].v) || 0) + 1 }; db.houses = (db.houses || []).filter(h => h.owner !== u); all({ t: 'houses', list: db.houses }); db.decor = (db.decor || []).filter(d => d.owner !== u); all({ t: 'decor', list: db.decor }); for (const t in db.sessions) if (db.sessions[t] === u) delete db.sessions[t];
         for (const c of clients) if (c.user === u) c.ws.close(4001, 'removido'); save(); return send(res, 200, { users: listUsers() });
+      }
+      if (p === '/api/admin/give' && req.method === 'POST') {
+        const b = await body(req), u = norm(b.username), r = db.users[u]; if (!r || r.removed) return send(res, 404, { error: 'Esse @ ainda não entrou em Eryon.' });
+        const inv = invOf(r); for (const k of ['lenha', 'pedra', 'ervas']) { const n = Math.max(0, Math.min(999, Math.floor(Number(b[k]) || 0))); inv[k] = (inv[k] || 0) + n; } save();
+        for (const c of clients) if (c.user === u) { sendInv(c); note(c, 'Você recebeu recursos do criador de Eryon!'); }
+        return send(res, 200, { ok: true, inv });
       }
       if (p === '/api/admin/newcode' && req.method === 'POST') {
         const b = await body(req), u = norm(b.username); if (!db.users[u]) return send(res, 404, { error: 'não encontrado' });
@@ -217,8 +223,11 @@ const wss = new WebSocketServer({ server, maxPayload: 4096 });
 const out = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
 const all = (m, except) => { const s = JSON.stringify(m); for (const c of clients) if (c !== except && c.ws.readyState === 1) c.ws.send(s); };
 const pub = c => ({ id: c.id, username: c.user, look: db.users[c.user]?.look || null, x: c.x, y: c.y, face: c.face, moving: c.moving, room: c.room || '', carry: !!c.carry });
-const ROOM_OK = /^(|taverna|casa_[1-9]|h_[0-9]{1,6})$/;
-const ACTS = new Set(['eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
+const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', cost: { lenha: 14, pedra: 4 } }, mercado: { name: 'Mercado', cost: { lenha: 12, pedra: 4, ervas: 2 } }, hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 } },
+  escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 } };
+const ROOM_OK = /^(|taverna|gruta|abismo|casa_[1-9]|h_[0-9]{1,6})$/;
+const LANDMARK_NAMES = { costela: 'a Costela de Dragão', ruinas: 'as Ruínas da Inscrição', torre: 'a Torre Antiga', caverna: 'a Caverna Escondida', buraco: 'o Buraco Misterioso', circulo: 'o Círculo de Pedras', arvore: 'a Árvore Ancestral', poco: 'o Poço da Lua' };
+const ACTS = new Set(['mine', 'gather', 'eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
 db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
 let lunchState = null;
 const riverY = x => 212 + 16 * Math.sin(x * .021) + 7 * Math.sin(x * .057 + 1);
@@ -227,7 +236,17 @@ const note = (c, text) => out(c.ws, { t: 'note', text });
 const cutTrees = new Map();
 const cutList = () => [...cutTrees.keys()];
 setInterval(() => { const n = Date.now(); let ch = false; for (const [i, t] of cutTrees) if (t < n) { cutTrees.delete(i); ch = true; } if (ch) all({ t: 'trees', cut: cutList() }); }, 5000).unref();
-function addWood(c, n) { const r = db.users[c.user]; if (!r) return; if (n > 0 && r.look && r.look.cls === 'lenhador') n *= 2; r.wood = Math.min(99999, (r.wood || 0) + n); save(); out(c.ws, { t: 'wood', n: r.wood }); }
+// ---- mochila: recursos e itens
+const RECIPES = JSON.parse(fs.readFileSync(path.join(PUBLIC, 'recipes.json'), 'utf8')), RBY = Object.fromEntries(RECIPES.map(r => [r.id, r]));
+const WB = Object.fromEntries(JSON.parse(fs.readFileSync(path.join(PUBLIC, 'world.json'), 'utf8')).construcoes.map(b => [b.id, b]));
+function invOf(r) { if (!r.inv) { r.inv = { lenha: r.wood || 0, pedra: 0, ervas: 0 }; delete r.wood; } return r.inv; }
+const sendInv = c => { const r = db.users[c.user]; if (r) out(c.ws, { t: 'inv', inv: invOf(r) }); };
+function addRes(c, k, n) { const r = db.users[c.user]; if (!r) return; const inv = invOf(r); inv[k] = Math.max(0, Math.min(99999, (inv[k] || 0) + n)); save(); sendInv(c); }
+function addWood(c, n) { const r = db.users[c.user]; if (!r) return; if (n > 0 && r.look && r.look.cls === 'lenhador') n *= 2; if (n > 0 && invOf(r).machado) n += 2; addRes(c, 'lenha', n); }
+function pay(r, cost) { const inv = invOf(r); for (const [k, v] of Object.entries(cost)) if ((inv[k] || 0) < v) return false; for (const [k, v] of Object.entries(cost)) inv[k] -= v; return true; }
+const depleted = new Map();      // id do recurso (r12 / h3) -> volta a nascer em
+db.decor ||= []; db.nextDecor ||= 1;
+setInterval(() => { const n = Date.now(); let ch = false; for (const [i, t] of depleted) if (t < n) { depleted.delete(i); ch = true; } if (ch) all({ t: 'nodes', dep: [...depleted.keys()] }); }, 5000).unref();
 
 wss.on('connection', (ws, req) => {
   if (limited('ws:' + ipOf(req), 30, 60000)) return ws.close(4029, 'muitas conexões');
@@ -243,7 +262,7 @@ wss.on('connection', (ws, req) => {
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c);
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), wood: rec.wood || 0, houses: db.houses, bridges: db.bridges, lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
       all({ t: 'join', p: pub(c) }, c);
       return;
     }
@@ -265,13 +284,54 @@ wss.on('connection', (ws, req) => {
       const i = Number(m.tree), now = Date.now();
       if (!Number.isInteger(i) || i < 0 || i > 5000 || cutTrees.has(i) || now - (c.lastCut || 0) < 2000) return; c.lastCut = now;
       cutTrees.set(i, now + 5 * 60000); all({ t: 'trees', cut: cutList() }); addWood(c, 3);
+    } else if (m.t === 'gather') {
+      const now = Date.now(), id = String(m.id || ''), r = db.users[c.user];
+      if (!r || !/^([rh][0-9]{1,3}|[gamn][0-9])$/.test(id) || depleted.has(id) || now - (c.lastGather || 0) < 1500) return; c.lastGather = now;
+      const stone = id[0] === 'r' || id[0] === 'g' || id[0] === 'a';
+      depleted.set(id, now + (stone ? 6 : 3) * 60000); all({ t: 'nodes', dep: [...depleted.keys()] });
+      if (stone) addRes(c, 'pedra', (id[0] === 'r' ? 2 : 3) + (invOf(r).picareta ? 1 : 0)); else addRes(c, 'ervas', id[0] === 'h' ? 2 : 3);
+    } else if (m.t === 'discover') {
+      const r = db.users[c.user], id = String(m.id || ''); if (!r || !LANDMARK_NAMES[id]) return;
+      r.found ||= []; if (r.found.includes(id)) return; r.found.push(id); db.firsts ||= {};
+      const first = !db.firsts[id]; if (first) db.firsts[id] = c.user; save();
+      all({ t: 'chat', id: c.id, username: c.user, text: `descobriu ${LANDMARK_NAMES[id]}!` + (first ? ' (primeira pessoa de Eryon!)' : ''), ts: Date.now() });
+    } else if (m.t === 'craft') {
+      const rc = RBY[m.id], r = db.users[c.user], now = Date.now(); if (!rc || !r || now - (c.lastCraft || 0) < 1200) return; c.lastCraft = now;
+      if (!r.look || r.look.cls !== rc.cls) return note(c, 'Só o ' + rc.cls + ' sabe criar isso.');
+      if (rc.where) { const b = WB[rc.where === 'forja' ? 'forja' : 'cozinha']; if (c.room || !b || Math.hypot(c.x - b.x, c.y - b.y) > (rc.where === 'forja' ? 55 : 46)) return note(c, rc.where === 'forja' ? 'Vá até a forja para forjar.' : 'Vá até a cozinha para cozinhar.'); }
+      if (!pay(r, rc.cost)) { sendInv(c); return note(c, 'Faltam recursos.'); }
+      const inv = invOf(r); inv[rc.id] = Math.min(999, (inv[rc.id] || 0) + (rc.make || 1)); save(); sendInv(c);
+      note(c, `Você criou: ${rc.name}${rc.make ? ' ×' + rc.make : ''}`);
+    } else if (m.t === 'use') {
+      const rc = RBY[m.id], r = db.users[c.user]; if (!rc || !r || rc.type !== 'food' || !(invOf(r)[rc.id] > 0)) return;
+      invOf(r)[rc.id]--; save(); sendInv(c); all({ t: 'act', id: c.id, kind: rc.id === 'pocao' ? 'heal' : 'drink' }, c);
+    } else if (m.t === 'equip') {
+      const r = db.users[c.user]; if (!r) return; const look = r.look || (r.look = {});
+      if (m.id === null) { delete look.equip; delete look.equipTool; }
+      else { const rc = RBY[m.id]; if (!rc || rc.type !== 'equip' || !(invOf(r)[rc.id] > 0)) return; look.equip = rc.id; look.equipTool = rc.tool; }
+      save(); all({ t: 'look', id: c.id, look });
+    } else if (m.t === 'give') {
+      const rc = RBY[m.id], r = db.users[c.user], to = [...clients].find(o => o.id === Number(m.to)); if (!rc || !r || !to || to === c || !(invOf(r)[rc.id] > 0)) return;
+      if ((to.room || '') !== (c.room || '') || Math.hypot(to.x - c.x, to.y - c.y) > 60) return note(c, 'Chegue mais perto da pessoa.');
+      const r2 = db.users[to.user]; if (!r2) return; invOf(r)[rc.id]--; const inv2 = invOf(r2); inv2[rc.id] = (inv2[rc.id] || 0) + 1;
+      if (r.look && r.look.equip === rc.id && !invOf(r)[rc.id]) { delete r.look.equip; delete r.look.equipTool; all({ t: 'look', id: c.id, look: r.look }); }
+      save(); sendInv(c); sendInv(to); note(to, `@${c.user} te deu: ${rc.name}`); note(c, `Você deu ${rc.name} para @${to.user}`);
+    } else if (m.t === 'place') {
+      const rc = RBY[m.id], r = db.users[c.user], X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!rc || !r || rc.type !== 'decor' || c.room || !(invOf(r)[rc.id] > 0)) return;
+      if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
+      if (db.decor.filter(d => d.owner === c.user).length >= 30) return note(c, 'Você já colocou 30 objetos. Recolha algum antes.');
+      invOf(r)[rc.id]--; db.decor.push({ id: db.nextDecor++, kind: rc.id, x: X, y: Y, owner: c.user }); save(); sendInv(c); all({ t: 'decor', list: db.decor });
+    } else if (m.t === 'pickup') {
+      const i = db.decor.findIndex(d => d.id === Number(m.id)); if (i < 0) return; const d = db.decor[i], r = db.users[c.user];
+      if (!r || d.owner !== c.user || Math.hypot(d.x - c.x, d.y - c.y) > 40) return;
+      db.decor.splice(i, 1); const inv = invOf(r); inv[d.kind] = (inv[d.kind] || 0) + 1; save(); sendInv(c); all({ t: 'decor', list: db.decor });
     } else if (m.t === 'bridge') {
       const now = Date.now(), r = db.users[c.user], X = Math.round(Number(m.x));
       if (!r || now - (c.lastBuild || 0) < 3000 || !Number.isFinite(X) || c.room) return; c.lastBuild = now;
-      if ((r.wood || 0) < 15) return note(c, 'Você precisa de 15 lenhas para construir uma ponte.');
+      const bcost = r.look && r.look.cls === 'construtor' ? 10 : 15; if ((invOf(r).lenha || 0) < bcost) return note(c, `Você precisa de ${bcost} lenhas para construir uma ponte.`);
       if (X < 12 || X > WORLD.w - 12 || Math.abs(X - 430) < 30 || db.bridges.some(b => Math.abs(b.x - X) < 30)) return note(c, 'Já existe uma ponte perto daqui.');
       if (Math.abs(c.y - riverY(X)) > 45 || Math.abs(c.x - X) > 45) return note(c, 'Chegue mais perto do rio.');
-      r.wood -= 15; out(c.ws, { t: 'wood', n: r.wood });
+      invOf(r).lenha -= bcost; sendInv(c);
       db.bridges.push({ id: db.nextBridge++, x: X, owner: c.user, t: now }); save();
       all({ t: 'bridges', list: db.bridges }); all({ t: 'chat', id: c.id, username: c.user, text: 'construiu uma ponte sobre o rio!', ts: now });
     } else if (m.t === 'lunch') {
@@ -279,15 +339,17 @@ wss.on('connection', (ws, req) => {
       lunchState = { username: c.user, until: now + 120000 };
       all({ t: 'lunch', username: c.user, left: 120000 });
     } else if (m.t === 'build') {
-      const now = Date.now(), r = db.users[c.user], X = Math.round(Number(m.x)), Y = Math.round(Number(m.y));
+      const now = Date.now(), r = db.users[c.user], X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)), type = BT[m.type] ? m.type : 'casa';
       if (!r || now - (c.lastBuild || 0) < 3000 || !Number.isFinite(X) || !Number.isFinite(Y) || c.room) return; c.lastBuild = now;
-      if ((r.wood || 0) < 10) return note(c, 'Você precisa de 10 lenhas para construir uma casa.');
-      if (db.houses.filter(h => h.owner === c.user).length >= 3) return note(c, 'Cada morador pode ter até 3 casas.');
+      const cost = { ...BT[type].cost }; if (r.look && r.look.cls === 'construtor') for (const k in cost) cost[k] = Math.ceil(cost[k] * .6);
+      if (BT[type].limit && db.houses.some(h => h.type === type)) return note(c, `Eryon já tem ${BT[type].name.toLowerCase()}.`);
+      if (db.houses.filter(h => h.owner === c.user).length >= 5) return note(c, 'Cada morador pode ter até 5 construções.');
       if (X < 20 || X > WORLD.w - 20 || Y < 30 || Y > WORLD.h - 10 || Math.hypot(X - 360, Y - 640) < 40) return note(c, 'Não dá para construir aqui.');
-      if (db.houses.some(h => Math.abs(h.x - X) < 30 && Math.abs(h.y - Y) < 30)) return note(c, 'Muito perto de outra casa.');
-      r.wood -= 10; out(c.ws, { t: 'wood', n: r.wood });
-      db.houses.push({ id: db.nextHouse++, x: X, y: Y, owner: c.user, roof: crypto.randomInt(6), t: now }); save();
-      all({ t: 'houses', list: db.houses }); all({ t: 'chat', id: c.id, username: c.user, text: 'construiu uma casa nova em Eryon!', ts: now });
+      if (Math.hypot(X - c.x, Y - c.y) > 60) return note(c, 'Chegue mais perto do lugar.');
+      if (db.houses.some(h => Math.abs(h.x - X) < 36 && Math.abs(h.y - Y) < 30)) return note(c, 'Muito perto de outra construção.');
+      if (!pay(r, cost)) { sendInv(c); return note(c, 'Faltam recursos para ' + BT[type].name + '.'); } sendInv(c);
+      db.houses.push({ id: db.nextHouse++, type, x: X, y: Y, owner: c.user, roof: crypto.randomInt(6), t: now }); save();
+      all({ t: 'houses', list: db.houses }); all({ t: 'chat', id: c.id, username: c.user, text: type === 'casa' ? 'construiu uma casa nova em Eryon!' : `construiu ${type === 'prefeitura' ? 'a Prefeitura' : 'um(a) ' + BT[type].name} em Eryon!`, ts: now });
     } else if (m.t === 'chat') {
       const now = Date.now(); if (now - c.lastChat < 1200) return; c.lastChat = now;
       const text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);

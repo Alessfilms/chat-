@@ -45,6 +45,11 @@ code{background:#060b0a;padding:2px 6px;color:var(--gold);font-size:16px;letter-
     <p id="msg"></p>
   </section>
   <section>
+    <label for="gUser">Dar recursos para um @ (presentes e eventos)</label>
+    <div class="row"><input id="gUser" placeholder="@usuario" style="flex:1;min-width:140px"><input id="gL" type="number" min="0" max="999" value="20" style="width:80px" aria-label="Lenha"><input id="gP" type="number" min="0" max="999" value="10" style="width:80px" aria-label="Pedra"><input id="gE" type="number" min="0" max="999" value="5" style="width:80px" aria-label="Ervas"><button id="gBtn">Dar</button></div>
+    <p class="hint" style="margin:0;color:#98a4ac;font-size:14px">Lenha · Pedra · Ervas</p>
+  </section>
+  <section>
     <label>Moradores liberados (<span id="count">0</span>)</label>
     <div class="tbl"><table><thead><tr><th>@</th><th>Código</th><th>Status</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="4">Entre com a chave para ver a lista.</td></tr></tbody></table></div>
   </section>
@@ -72,6 +77,7 @@ function render() {
 async function copy(text) { try { await navigator.clipboard.writeText(text); $('msg').textContent = 'Copiado!'; } catch { $('msg').textContent = text; } }
 $('load').onclick = async () => { try { const d = await call('/api/admin/list'); users = d.users; render(); const ig = d.instagram || {}; $('ig').textContent = !ig.on ? 'Desligada: configure IG_ACCESS_TOKEN no Render (veja o README). Enquanto isso, use os códigos abaixo.' : ig.error ? 'Ligada, mas com erro: ' + ig.error : `Ligada. Comentários lidos: ${ig.comments}. Post: ${ig.postUrl || 'últimos 3 posts'}`; $('msg').textContent = 'Conectado.'; try { sessionStorage.setItem('k', $('key').value); } catch { } } catch (e) { $('msg').textContent = e.message; } };
 $('add').onclick = async () => { try { const d = await call('/api/admin/add', { usernames: $('list').value }); users = d.users; render(); $('list').value = ''; $('msg').textContent = `${d.added.length} liberado(s).` + (d.invalid.length ? ` Inválidos: ${d.invalid.join(', ')}` : ''); } catch (e) { $('msg').textContent = e.message; } };
+$('gBtn').onclick = async () => { try { await call('/api/admin/give', { username: $('gUser').value, lenha: $('gL').value, pedra: $('gP').value, ervas: $('gE').value }); $('msg').textContent = 'Recursos enviados!'; } catch (e) { $('msg').textContent = e.message; } };
 $('copyAll').onclick = () => copy(users.map(msgFor).join('\n\n'));
 try { const k = sessionStorage.getItem('k'); if (k) { $('key').value = k; $('load').click(); } } catch { }
 </script>

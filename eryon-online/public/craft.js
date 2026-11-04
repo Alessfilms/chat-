@@ -1,0 +1,166 @@
+// =====================================================================
+// ERYON ONLINE — recursos, mochila, criação por classe e objetos no mapa
+// (carregado depois de life.js e antes de game.js)
+// =====================================================================
+let RECIPES = [], RBY = {};
+fetch('recipes.json').then(r => r.json()).then(l => { RECIPES = l; RBY = Object.fromEntries(l.map(r => [r.id, r])); });
+let INV = { lenha: 0, pedra: 0, ervas: 0 };
+const RES = [['lenha', 'Lenha'], ['pedra', 'Pedra'], ['ervas', 'Ervas']];
+
+// ---------------------------------------------------------------- rochas e moitas de ervas (posições fixas, iguais para todos)
+const NODES = [], DEPL = new Set();
+function buildNodes() {
+  const r = rng(777);
+  let tries = 0;
+  while (NODES.filter(n => n.kind === 'rock').length < 45 && tries++ < 4000) {
+    const x = 20 + r() * (WW - 40), y = 40 + r() * (WH - 80), dc = Math.hypot(x - C.x, (y - C.y) * 1.05);
+    if (dc < 225 || blocked(x, y) || blocked(x + 6, y) || blocked(x - 6, y) || Math.abs(y - riverY(x)) < 20) continue;
+    if (NODES.some(n => Math.hypot(n.x - x, n.y - y) < 30)) continue;
+    NODES.push({ id: 'r' + NODES.length, kind: 'rock', x: Math.round(x), y: Math.round(y), s: Math.floor(r() * 3) });
+  }
+  tries = 0; let hi = 0;
+  while (hi < 50 && tries++ < 4000) {
+    const x = 20 + r() * (WW - 40), y = 40 + r() * (WH - 80), dc = Math.hypot(x - C.x, (y - C.y) * 1.05);
+    if (dc < 90 || blocked(x, y) || Math.abs(y - riverY(x)) < 16) continue;
+    if (NODES.some(n => Math.hypot(n.x - x, n.y - y) < 26)) continue;
+    NODES.push({ id: 'h' + hi++, kind: 'herb', x: Math.round(x), y: Math.round(y), s: Math.floor(r() * 3) });
+  }
+}
+function drawNode(x, n) {
+  const gone = DEPL.has(n.id), X = n.x, Y = n.y;
+  if (n.kind === 'rock') {
+    if (gone) { px(x, P.ink, X - 4, Y - 3, 9, 4); px(x, P.st1, X - 3, Y - 2, 7, 2); return; }
+    const w = 7 + n.s * 2; x.fillStyle = 'rgba(5,15,12,.5)'; x.fillRect(X - w + 2, Y - 1, w * 2, 3);
+    disc(x, X, Y - 5, w - 1, P.ink); disc(x, X, Y - 5, w - 2, P.st2); disc(x, X - 2, Y - 7, Math.max(2, w - 5), P.st3); px(x, P.st4, X - 3, Y - 9, 2, 1); px(x, P.st1, X + 1, Y - 3, w - 3, 1);
+  } else {
+    if (gone) { px(x, P.f5, X - 1, Y - 3, 1, 3); px(x, P.f6, X + 1, Y - 2, 1, 2); return; }
+    disc(x, X, Y - 4, 5, P.ink); disc(x, X, Y - 4, 4, P.f6); disc(x, X - 1, Y - 5, 2, P.f8);
+    const fc = ['#f6b6d8', '#fff3b0', '#9ff3ff'][n.s]; px(x, fc, X - 3, Y - 6, 1, 1); px(x, fc, X + 2, Y - 7, 1, 1); px(x, fc, X + 1, Y - 3, 1, 1);
+  }
+}
+
+// ---------------------------------------------------------------- objetos colocados pelos jogadores
+let DECOR = [];
+const DECOR_SPR = {};
+function decorSprite(k) {
+  if (DECOR_SPR[k]) return DECOR_SPR[k];
+  const S2 = { cerca: [16, 10], banco: [16, 9], lanterna: [8, 18], fogueira: [14, 8], tabuas: [16, 10], canteiro: [16, 10], cristal: [10, 14], runa: [10, 14], alvo: [12, 14], estandarte: [9, 18], boneco: [11, 16], palco: [24, 12], barril: [10, 11] }[k] || [8, 8];
+  const [c, x] = canvas(S2[0], S2[1]), W = S2[0], H = S2[1];
+  const box = (X, Y, w, h, col) => { px(x, P.ink, X - 1, Y - 1, w + 2, h + 2); px(x, col, X, Y, w, h); };
+  if (k === 'cerca') { box(1, 1, 2, 8, P.wood); box(13, 1, 2, 8, P.wood); box(1, 3, 14, 1, P.woodL); box(1, 6, 14, 1, P.woodL); }
+  if (k === 'banco') { box(1, 2, 14, 2, P.woodL); box(2, 5, 2, 3, P.wood); box(12, 5, 2, 3, P.wood); }
+  if (k === 'lanterna') { box(3, 4, 2, 13, P.woodD); box(2, 1, 4, 4, P.st1); px(x, P.fire3, 3, 2, 2, 2); }
+  if (k === 'fogueira') { for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283; px(x, i % 2 ? P.st2 : P.st3, Math.round(7 + Math.cos(a) * 5) - 1, Math.round(5 + Math.sin(a) * 2), 2, 2); } px(x, P.woodD, 3, 5, 8, 1); }
+  if (k === 'tabuas') { for (let i = 0; i < 3; i++) box(1 + i, 6 - i * 2, 13, 2, i % 2 ? P.woodL : P.wood); }
+  if (k === 'canteiro') { box(1, 3, 14, 6, P.dirt1); for (let i = 0; i < 6; i++) { px(x, P.f8, 2 + i * 2, 1 + (i % 2), 1, 4); if (i % 2) px(x, '#f6b6d8', 2 + i * 2, 1, 1, 1); } }
+  if (k === 'cristal') { box(3, 2, 4, 9, P.cy); px(x, P.cy2, 4, 2, 1, 7); px(x, P.ink, 2, 12, 6, 1); px(x, P.st2, 2, 11, 6, 2); }
+  if (k === 'runa') { box(2, 1, 6, 12, P.st2); px(x, P.st3, 2, 1, 2, 12); for (const [a, b2] of [[4, 3], [5, 5], [4, 7], [6, 9]]) px(x, P.cy2, a, b2, 1, 1); }
+  if (k === 'alvo') { box(5, 9, 1, 5, P.wood); disc(x, 6, 6, 5, P.ink); disc(x, 6, 6, 4, '#eef0ea'); disc(x, 6, 6, 3, '#a83a32'); disc(x, 6, 6, 1, '#eef0ea'); }
+  if (k === 'estandarte') { box(1, 1, 1, 16, P.woodD); box(3, 2, 5, 8, '#a83a32'); px(x, P.fire3, 4, 4, 3, 1); px(x, P.fire3, 5, 6, 1, 2); }
+  if (k === 'boneco') { box(5, 2, 1, 13, P.woodD); box(2, 5, 7, 1, P.woodD); box(3, 6, 5, 6, '#c9a46a'); box(4, 1, 3, 3, '#e4d0a0'); }
+  if (k === 'palco') { box(1, 3, 22, 7, P.wood); px(x, P.woodL, 1, 3, 22, 2); for (let i = 2; i < 22; i += 4) px(x, P.woodD, i, 5, 1, 5); }
+  if (k === 'barril') { box(1, 1, 8, 9, P.wood); px(x, '#2b3138', 1, 3, 8, 1); px(x, '#2b3138', 1, 7, 8, 1); px(x, P.woodL, 2, 1, 2, 9); }
+  return DECOR_SPR[k] = { c, ax: Math.floor(W / 2), ay: H - 1 };
+}
+const DECOR_BLOCK = { banco: 7, barril: 4, boneco: 3, alvo: 3, runa: 4, cristal: 3, palco: 11, tabuas: 7, cerca: 7, fogueira: 6, lanterna: 2, estandarte: 1, canteiro: 7 };
+function decorBlocked(x, y) { for (const d of DECOR) { const w = DECOR_BLOCK[d.kind] || 3; if (x > d.x - w && x < d.x + w && y > d.y - 4 && y < d.y + 1) return true; } return false; }
+function drawDecor(x, d, t) {
+  const s = decorSprite(d.kind); x.drawImage(s.c, d.x - s.ax, d.y - s.ay);
+  if (d.kind === 'fogueira') drawFire(x, d.x, d.y - 1, t, .7);
+  if (d.kind === 'cristal') glow(x, d.x, d.y - 8, 8, P.cy, .12 + .06 * Math.sin(t * 3 + d.id));
+  if (d.kind === 'lanterna') glow(x, d.x, d.y - 15, 7, P.fire3, .14);
+}
+const DECOR_LIGHT = { fogueira: 30, lanterna: 22, cristal: 18 };
+
+// ---------------------------------------------------------------- painéis: mochila e criação
+const near = (b, p, r) => b && Math.hypot(p.x - b.x, p.y - b.y) < r;
+function wherOk(rc, p) { if (!rc.where) return true; if (p.room) return false; return rc.where === 'forja' ? near(B.forja, p, 45) : rc.where === 'cozinha' ? near(B.cozinha, p, 36) : true; }
+const costText = c => Object.entries(c).map(([k, v]) => `${v} ${k}`).join(' + ');
+function hasCost(c) { return Object.entries(c).every(([k, v]) => (INV[k] || 0) >= v); }
+function nearestPlayer(p, r = 32) { let best = r, who = null; for (const q of players.values()) { if (q.mine || (q.room || '') !== (p.room || '')) continue; const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < best) { best = d; who = q; } } return who; }
+function renderBag() {
+  const p = players.get(myId); if (!p) return;
+  $('bagRes').innerHTML = RES.map(([k, n]) => `<div class="res"><b>${INV[k] || 0}</b><span>${n}</span></div>`).join('');
+  const list = $('bagItems'); list.innerHTML = '';
+  const items = Object.entries(INV).filter(([k, v]) => RBY[k] && v > 0);
+  if (!items.length) { list.innerHTML = '<p class="hint">Sua mochila está vazia. Junte lenha, pedra e ervas e crie itens no botão "Criar".</p>'; }
+  const mate = nearestPlayer(p), eq = p.look && p.look.equip;
+  for (const [k, v] of items) {
+    const rc = RBY[k], row = document.createElement('div'); row.className = 'item';
+    const t = document.createElement('div'); t.innerHTML = `<b></b><span></span>`; t.querySelector('b').textContent = `${rc.name} × ${v}`; t.querySelector('span').textContent = rc.desc || '';
+    row.appendChild(t); const acts = document.createElement('div'); acts.className = 'row2';
+    const btn = (label, fn, dis) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.disabled = !!dis; b.onclick = fn; acts.appendChild(b); };
+    if (rc.type === 'food') btn('Usar', () => { send({ t: 'use', id: k }); doAct(k === 'pocao' ? 'heal' : 'drink'); closePanels(); });
+    if (rc.type === 'equip') btn(eq === k ? 'Guardar' : 'Equipar', () => { send({ t: 'equip', id: eq === k ? null : k }); closePanels(); });
+    if (rc.type === 'decor') btn('Colocar aqui', () => { if (p.room) return sys('Coloque objetos do lado de fora.'); send({ t: 'place', id: k, x: Math.round(p.x + (p.face || 1) * 10), y: Math.round(p.y + 2) }); closePanels(); }, p.room);
+    if (rc.type === 'tool') { const s = document.createElement('span'); s.className = 'tag'; s.textContent = 'ativo'; acts.appendChild(s); }
+    btn(mate ? `Dar p/ @${mate.username}` : 'Dar (chegue perto de alguém)', () => { if (mate) { send({ t: 'give', id: k, to: mate.id }); closePanels(); } }, !mate);
+    row.appendChild(acts); list.appendChild(row);
+  }
+  $('carryBtn').textContent = p.carry ? 'Guardar a lenha do ombro' : 'Carregar lenha no ombro';
+}
+function renderCraft() {
+  const p = players.get(myId); if (!p) return; const c = classOf(p), list = $('craftList'); list.innerHTML = '';
+  $('craftTitle').textContent = c ? `Criar · ${c.name}` : 'Criar';
+  if (!c) { list.innerHTML = '<p class="hint">Escolha um personagem em "Meu avatar" para criar coisas. Cada personagem cria itens diferentes.</p>'; return; }
+  for (const rc of RECIPES.filter(r => r.cls === c.id)) {
+    const row = document.createElement('div'); row.className = 'item'; const t = document.createElement('div'); t.innerHTML = '<b></b><span></span><em></em>';
+    t.querySelector('b').textContent = rc.name + (rc.make ? ` (×${rc.make})` : ''); t.querySelector('span').textContent = rc.desc || '';
+    const okW = wherOk(rc, p), okC = hasCost(rc.cost);
+    t.querySelector('em').textContent = 'Custa: ' + costText(rc.cost) + (rc.where ? ` · só ${rc.where === 'forja' ? 'perto da forja' : 'na cozinha'}` : '');
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = !okC ? 'Falta recurso' : !okW ? (rc.where === 'forja' ? 'Vá até a forja' : 'Vá até a cozinha') : 'Criar';
+    b.disabled = !(okW && okC); b.onclick = () => { send({ t: 'craft', id: rc.id }); doAct(c.skill === 'chop' ? 'split' : c.skill === 'magic' ? 'magic' : c.skill); closePanels(); };
+    row.append(t, b); list.appendChild(row);
+  }
+}
+function openPanel(id) { const was = !$(id).hidden; closePanels(); if (was) return; $(id).hidden = false; if (id === 'bag') renderBag(); else renderCraft(); }
+function closePanels() { $('bag').hidden = true; $('craft').hidden = true; if ($('buildPanel')) $('buildPanel').hidden = true; if ($('mapPanel')) $('mapPanel').hidden = true; }
+function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+function setInv(inv) { INV = { lenha: 0, pedra: 0, ervas: 0, ...inv }; wood = INV.lenha || 0; showWood(); if (!$('bag').hidden) renderBag(); if (!$('craft').hidden) renderCraft(); }
+
+// ---------------------------------------------------------------- tipos de construção da cidade
+const BTYPES = {
+  casa: { name: 'Casa', cost: { lenha: 10 }, w: 26, desc: 'Sua casa em Eryon.' },
+  bar: { name: 'Bar', cost: { lenha: 14, pedra: 4 }, w: 34, walls: '#8b5e3c', wallsD: '#6b4630', roof: ['#a83a32', '#5a2418'], sign: 'mug', desc: 'Para beber e conversar.' },
+  mercado: { name: 'Mercado', cost: { lenha: 12, pedra: 4, ervas: 2 }, w: 32, walls: '#e4d0a0', wallsD: '#c9a46a', roof: ['#eef0ea', '#a83a32'], stripes: true, sign: 'crate', desc: 'Onde se troca de tudo.' },
+  hospital: { name: 'Hospital', cost: { lenha: 12, pedra: 8, ervas: 4 }, w: 36, walls: '#eef0ea', wallsD: '#c4ccd0', roof: ['#3c5d4a', '#1c3831'], sign: 'leaf', desc: 'Cuida dos moradores.' },
+  escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 }, w: 34, walls: '#e4d0a0', wallsD: '#c9a46a', roof: ['#3c5f9a', '#1d3550'], sign: 'book', desc: 'Para aprender os segredos de Eryon.' },
+  banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 }, w: 34, walls: '#c4ccd0', wallsD: '#98a4ac', roof: ['#4a535c', '#2b3138'], sign: 'coin', columns: true, desc: 'Guarda as riquezas da cidade.' },
+  prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, w: 46, walls: '#c4ccd0', wallsD: '#98a4ac', roof: ['#6e4a8a', '#3a2650'], sign: 'flag', columns: true, tower: true, limit: 1, desc: 'Só existe uma. O coração da cidade.' },
+};
+const B_SPR = {};
+function buildingSprite(type, roofIdx) {
+  if (type === 'casa' || !BTYPES[type]) return HOUSE_SPR[roofIdx || 0];
+  if (B_SPR[type]) return B_SPR[type];
+  const T = BTYPES[type], w = T.w, wallH = 16, roofH = 13, top = T.tower ? 14 : 0, H = top + roofH + wallH + 3, [c, x] = canvas(w + 4, H);
+  const y0 = top + roofH - 2;
+  x.fillStyle = 'rgba(5,15,12,.55)'; x.fillRect(4, H - 4, w, 4);
+  px(x, P.ink, 2, y0, w - 2, wallH + 1); px(x, T.walls, 3, y0 + 1, w - 4, wallH - 1); px(x, T.wallsD, w - 3, y0 + 1, 2, wallH - 1);
+  if (T.columns) for (let cx2 = 5; cx2 < w - 4; cx2 += 7) { px(x, '#eef0ea', cx2, y0 + 2, 2, wallH - 3); px(x, P.st2, cx2 + 1, y0 + 2, 1, wallH - 3); }
+  const dx = Math.floor(w / 2) - 3; px(x, P.ink, dx, y0 + wallH - 9, 8, 9); px(x, type === 'bar' ? '#2a1a0c' : P.woodD, dx + 1, y0 + wallH - 8, 6, 8); px(x, P.fire3, dx + 5, y0 + wallH - 4, 1, 1);
+  for (const wx of [5, w - 10]) { px(x, P.ink, wx - 1, y0 + 3, 6, 5); px(x, P.fire3, wx, y0 + 4, 4, 3); px(x, P.fire4, wx, y0 + 4, 1, 1); }
+  px(x, P.ink, 0, top, w + 2, roofH); for (let y = 1; y < roofH - 1; y++) px(x, T.stripes ? (Math.floor(y / 2) % 2 ? T.roof[0] : T.roof[1]) : (y % 3 === 0 ? T.roof[1] : T.roof[0]), 1, top + y, w, 1);
+  if (T.stripes) for (let k = 1; k < w; k += 4) px(x, T.roof[1], k, top + roofH - 1, 2, 2);
+  px(x, 'rgba(255,255,255,.2)', 1, top + 1, w, 1);
+  if (T.tower) { const tx = Math.floor(w / 2) - 5; px(x, P.ink, tx, 2, 11, top + 2); px(x, T.walls, tx + 1, 3, 9, top); disc(x, tx + 5, 8, 3, P.ink); disc(x, tx + 5, 8, 2, '#eef0ea'); px(x, P.ink, tx + 5, 6, 1, 3); px(x, P.woodD, tx + 10, 0, 1, 8); px(x, '#a83a32', tx + 11, 0, 5, 4); px(x, P.fire3, tx + 12, 1, 2, 1); }
+  // placa
+  const sx = Math.floor(w / 2) - 4, sy = y0 - 3; px(x, P.ink, sx, sy, 9, 7); px(x, P.woodL, sx + 1, sy + 1, 7, 5);
+  const ic = { mug: [[2, 1, 3, 3, P.fire4], [5, 2, 1, 1, P.ink]], crate: [[2, 1, 4, 3, P.dirt3], [2, 2, 4, 1, P.woodD]], leaf: [[3, 1, 2, 3, '#4e6c4a'], [2, 2, 4, 1, '#9cbf62']], book: [[2, 1, 4, 3, '#3c5f9a'], [4, 1, 1, 3, '#eef0ea']], coin: [[2, 1, 3, 3, P.fire3], [3, 2, 1, 1, P.fire2]], flag: [[2, 1, 4, 2, '#a83a32'], [2, 3, 1, 1, P.woodD]] }[T.sign] || [];
+  for (const [a, b2, ww, hh, col] of ic) px(x, col, sx + 1 + a, sy + b2, ww, hh);
+  return B_SPR[type] = c;
+}
+const costOf = (type, cls) => { const c = { ...BTYPES[type].cost }; if (cls === 'construtor') for (const k in c) c[k] = Math.ceil(c[k] * .6); return c; };
+function renderBuild() {
+  const p = players.get(myId); if (!p) return; const cls = (classOf(p) || {}).id, list = $('buildList'); list.innerHTML = '';
+  const mine = BUILT.filter(h => h.owner === me).length;
+  $('buildHint').textContent = `Você tem ${mine}/5 construções.` + (cls === 'construtor' ? ' Construtor paga 40% menos.' : '');
+  for (const [id, T] of Object.entries(BTYPES)) {
+    const cost = costOf(id, cls), taken = T.limit && BUILT.some(h => h.type === id), ok = hasCost(cost) && !taken && mine < 5;
+    const row = document.createElement('div'); row.className = 'item brow';
+    const cv2 = document.createElement('canvas'); const spr = buildingSprite(id, 0); cv2.width = spr.width; cv2.height = spr.height; cv2.className = 'bimg'; const q2 = cv2.getContext('2d'); q2.imageSmoothingEnabled = false; q2.drawImage(spr, 0, 0);
+    const t = document.createElement('div'); t.innerHTML = '<b></b><span></span><em></em>'; t.querySelector('b').textContent = T.name; t.querySelector('span').textContent = T.desc; t.querySelector('em').textContent = 'Custa: ' + costText(cost) + (T.limit ? ' · única na cidade' : '');
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = taken ? 'Já existe' : mine >= 5 ? 'Limite atingido' : ok ? 'Construir aqui' : 'Falta recurso'; b.disabled = !ok;
+    b.onclick = () => { send({ t: 'build', type: id, x: Math.round(p.x) + 1, y: Math.round(p.y) - 6 }); doAct('build'); $('buildPanel').hidden = true; };
+    row.append(cv2, t, b); list.appendChild(row);
+  }
+}

@@ -58,13 +58,16 @@ function houseRoom(id, bb) {
   const block = [[0, 0, w, 26], [3, 22, 35, 56], [52, 52, 77, 70], [96, 22, 124, 40], [109, 72, 123, 86], [0, 0, 3, h], [127, 0, w, h]];
   return { id, name: 'Casa', w, h, img: c, spawn: { x: 65, y: 86 }, door: { x: 65, y: 93 }, fire: null, block, spots: [], outside: { x: b.x - 1, y: b.y + 6 } };
 }
-function roomOf(id) { if (!ROOM_CACHE[id]) { if (id === 'taverna') ROOM_CACHE[id] = tavernRoom(); else if (id.startsWith('h_')) { const h = BUILT.find(q => 'h_' + q.id === id) || { x: 360, y: 700, roof: 0 }; const r = houseRoom(id, { x: h.x, y: h.y, telhado: h.roof }); r.name = 'Casa de @' + (h.owner || 'alguém'); ROOM_CACHE[id] = r; } else ROOM_CACHE[id] = houseRoom(id); } return ROOM_CACHE[id]; }
+function roomOf(id) { if (!ROOM_CACHE[id]) { if (id === 'taverna') ROOM_CACHE[id] = tavernRoom(); else if (id === 'gruta' || id === 'abismo') ROOM_CACHE[id] = caveRoom(id); else if (id.startsWith('h_')) { const h = BUILT.find(q => 'h_' + q.id === id) || { x: 360, y: 700, roof: 0 }; const T = BTYPES[h.type] || BTYPES.casa;
+      const r = h.type === 'bar' ? { ...tavernRoom(), id, outside: { x: h.x + 1, y: h.y + 6 } } : houseRoom(id, { x: h.x, y: h.y, telhado: h.roof }); r.outside = { x: h.x + 1, y: h.y + 6 };
+      r.name = h.type === 'prefeitura' ? 'Prefeitura de Eryon' : `${T.name} de @${h.owner || 'alguém'}`; ROOM_CACHE[id] = r; } else ROOM_CACHE[id] = houseRoom(id); } return ROOM_CACHE[id]; }
 function roomBlocked(id, x, y) { const r = roomOf(id); if (x < 4 || x > r.w - 4 || y < 10 || y > r.h - 3) return true; return rectsBlock(r.block, x, y); }
 // portas no mapa de fora
 function doorsOutside() {
   const d = [];
   if (B.taverna) d.push({ room: 'taverna', x: B.taverna.x, y: B.taverna.y + 3, label: 'Entrar na taverna' });
   for (let i = 1; i <= 9; i++) { const b = B['casa_' + i]; if (b) d.push({ room: 'casa_' + i, x: b.x - 1, y: b.y + 3, label: 'Entrar na casa' }); }
+  for (const l of LANDMARKS) if (l.hole) d.push({ room: l.hole, x: l.x, y: l.y + (l.id === 'buraco' ? 4 : 8), label: l.holeLabel });
   return d;
 }
 
@@ -85,7 +88,7 @@ const CLASS_BY = Object.fromEntries(CLASSES.map(c => [c.id, c]));
 const classOf = q => CLASS_BY[q && q.look && q.look.cls] || null;
 
 // ---------------------------------------------------------------- ações
-const ACT_DUR = { eat: 2.2, bridge: 2.4,  chop: 2.4, split: 1.8, drink: 2.2, magic: 1.6, sword: 1.2, arrow: 1.2, hammer: 2.0, build: 2.0, cook: 2.4, heal: 2.0, lute: 2.8, serve: 2.0 };
+const ACT_DUR = { mine: 2.0, gather: 1.6, eat: 2.2, bridge: 2.4,  chop: 2.4, split: 1.8, drink: 2.2, magic: 1.6, sword: 1.2, arrow: 1.2, hammer: 2.0, build: 2.0, cook: 2.4, heal: 2.0, lute: 2.8, serve: 2.0 };
 function poseFor(q, t) {
   const a = q.act;
   if (a && t < a.end) {
@@ -93,6 +96,8 @@ function poseFor(q, t) {
     if (a.kind === 'chop' || a.kind === 'split') return { legs: 'stand', arm: (u % .56) < .32 ? 'up' : 'low', tool: 'axe', eyes: 0, br: 0 };
     if (a.kind === 'drink') return { legs: 'stand', arm: (u % 1.1) < .55 ? 'up' : 'fwd', tool: 'mug', eyes: 0, br: 0 };
     if (a.kind === 'magic') return { legs: 'stand', arm: 'up', tool: null, eyes: 0, br: Math.floor(u * 8) % 2 };
+    if (a.kind === 'mine') return { legs: 'stand', arm: (u % .5) < .3 ? 'up' : 'low', tool: 'bighammer', eyes: 0, br: 0 };
+    if (a.kind === 'gather') return { legs: 'sit', arm: (u % .6) < .3 ? 'low' : 'fwd', tool: null, eyes: 0, br: 0 };
     if (a.kind === 'sword') return { legs: 'stand', arm: (u % .4) < .2 ? 'up' : 'low', tool: 'sword', eyes: 0, br: 0 };
     if (a.kind === 'arrow') return { legs: 'stand', arm: 'bow', tool: 'bow', eyes: 1, br: 0 };
     if (a.kind === 'hammer') return { legs: 'stand', arm: (u % .5) < .3 ? 'up' : 'low', tool: 'bighammer', eyes: 0, br: 0 };
@@ -102,7 +107,7 @@ function poseFor(q, t) {
     if (a.kind === 'lute') return { legs: 'stand', arm: 'fwd', tool: 'lute', eyes: 0, br: Math.floor(u * 3.3) % 2 };
     if (a.kind === 'serve') return { legs: 'stand', arm: (u % 1) < .5 ? 'up' : 'fwd', tool: 'mug', eyes: 0, br: 0 };
   }
-  const tool = (classOf(q) || {}).tool || null;
+  const tool = (q.look && q.look.equipTool) || (classOf(q) || {}).tool || null;
   if (q.carry) { const f2 = Math.floor(t * 6 + (q.ph || 0)) % 2; return { legs: q.moving ? (f2 ? 'w1' : 'w2') : 'stand', arm: 'carry', tool: 'log', eyes: 0, br: 0 }; }
   const f = Math.floor(t * 6 + (q.ph || 0)) % 2;
   return q.moving ? { legs: f ? 'w1' : 'w2', arm: 'down', tool, eyes: 0, br: 0 } : { legs: 'stand', arm: 'down', tool, eyes: 0, br: Math.floor(t * 1.3 + (q.ph || 0)) % 2 };
@@ -118,6 +123,8 @@ function drawActFx(x, q, t) {
   const F = q.face || 1;
   if (a.kind === 'sword' && u < 1.3) { const k = (u % .4) / .4; x.globalAlpha = 1 - k; for (let i = 0; i < 9; i++) { const ang = -1.2 + i * .3 + k * .6; px(x, i % 2 ? '#ffffff' : P.st4, Math.round(q.x + F * (6 + Math.cos(ang) * 9)), Math.round(q.y - 8 + Math.sin(ang) * 8), 2, 1); } x.globalAlpha = 1; }
   if (a.kind === 'arrow' && u > .45 && u < 1.6) { const k = clamp((u - .45) / .7), ax = Math.round(q.x + F * (8 + k * 80)), ay = Math.round(q.y - 9 + k * k * 4); px(x, P.wood, ax - F * 5, ay, 6, 1); px(x, P.st4, ax + (F > 0 ? 1 : -2), ay - 1, 2, 3); px(x, '#eef0ea', ax - F * 6, ay - 1, 2, 3); if (k >= 1) burst(x, t, a.t0 + 1.15, ax, ay, 8, [P.woodL, P.sand], 6, .4, 10, q.ph + 3); }
+  if (a.kind === 'mine') { const hit = Math.floor(u / .5); for (let k = 0; k <= hit && k < 4; k++) burst(x, t, a.t0 + k * .5 + .3, fx, fy + 2, 10, [P.st3, P.st4, P.st2], 10, .45, 16, q.ph * 17 + k); }
+  if (a.kind === 'gather') burst(x, t, a.t0 + .6, fx, fy + 3, 12, [P.f8, P.f9, '#f6b6d8'], 9, .6, -4, q.ph * 5 + Math.floor(a.t0));
   if (a.kind === 'hammer' || a.kind === 'build') { const per = a.kind === 'hammer' ? .5 : .4; const hit = Math.floor(u / per); for (let k = 0; k <= hit && k < 6; k++) burst(x, t, a.t0 + k * per + per * .6, fx, fy + 2, a.kind === 'hammer' ? 12 : 6, a.kind === 'hammer' ? [P.fire3, P.fire4, P.fire2] : [P.woodL, P.sand], 10, .4, 14, q.ph * 13 + k); }
   if (a.kind === 'cook') { for (let i = 0; i < 6; i++) { const ph = (u * .8 + i / 6) % 1; x.globalAlpha = .7 * (1 - ph) * clamp(a.end - t + 1); px(x, '#eef0ea', Math.round(fx + Math.sin(ph * 6 + i) * 3), Math.round(fy - 4 - ph * 16), 2, 2); } x.globalAlpha = 1; }
   if (a.kind === 'heal') { const k = clamp(u / 2); x.globalAlpha = 1 - k; ring(x, q.x, q.y - 3, 6 + k * 26, '#9cbf62'); x.globalAlpha = 1;
@@ -130,10 +137,24 @@ function drawActFx(x, q, t) {
 // ---------------------------------------------------------------- som (gerado no navegador, sem arquivos)
 const SND = { ctx: null, master: null, music: null, sfx: null, fire: null, muted: false, noise: null, nextBeat: 0, beat: 0, note: 4 };
 try { SND.muted = localStorage.getItem('eryon_mute') === '1'; } catch { }
+// "desbloqueio" do iPhone: um <audio> silencioso tocando coloca o som no modo reprodução,
+// assim o Web Audio toca mesmo com a chave de silencioso ligada
+let unlockEl = null;
+function silentWavUrl() { const sr = 8000, n = sr / 2, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => [...s].forEach((ch, i) => v.setUint8(o + i, ch.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' })); }
+function iosUnlock() {
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { }
+  if (!unlockEl) { unlockEl = new Audio(silentWavUrl()); unlockEl.loop = true; unlockEl.setAttribute('playsinline', ''); unlockEl.volume = 0.01; }
+  if (unlockEl.paused) unlockEl.play().catch(() => {});
+}
 function sndStart() {
-  if (SND.ctx) { if (SND.ctx.state === 'suspended') SND.ctx.resume(); return; }
+  iosUnlock();
+  if (SND.ctx) { if (SND.ctx.state !== 'running') SND.ctx.resume().catch(() => {}); return; }
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-  const c = SND.ctx = new AC();
+  const c = SND.ctx = new AC(); c.resume().catch(() => {});
+  // toca um buffer vazio dentro do toque: exigência antiga do Safari
+  try { const b0 = c.createBuffer(1, 1, 22050), s0 = c.createBufferSource(); s0.buffer = b0; s0.connect(c.destination); s0.start(0); } catch { }
   SND.master = c.createGain(); SND.master.gain.value = SND.muted ? 0 : 1; SND.master.connect(c.destination);
   SND.music = c.createGain(); SND.music.gain.value = .05; SND.music.connect(SND.master);
   SND.sfx = c.createGain(); SND.sfx.gain.value = .35; SND.sfx.connect(SND.master);
@@ -169,7 +190,7 @@ function noiseHit(when, dur, freq, gain, type = 'bandpass', bus = SND.sfx) { con
 // amostras reais (CC0 / domínio público — ver sfx/CREDITOS.txt)
 const SAMPLES = {}, SAMPLE_NAMES = ['fire', 'chop', 'wood_hit', 'plank', 'creak', 'door_open', 'door_close', 'sword_draw', 'slash', 'anvil_0', 'anvil_1', 'pot', 'coins', 'whoosh',
   'step_grass_0', 'step_grass_1', 'step_grass_2', 'step_grass_3', 'step_wood_0', 'step_wood_1', 'step_wood_2'];
-function loadSamples() { for (const n of SAMPLE_NAMES) fetch('sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => SND.ctx.decodeAudioData(b)).then(buf => { SAMPLES[n] = buf; if (n === 'fire') startFireLoop(); }).catch(() => {}); }
+function loadSamples() { for (const n of SAMPLE_NAMES) fetch('sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => new Promise((ok, bad) => SND.ctx.decodeAudioData(b, ok, bad))).then(buf => { SAMPLES[n] = buf; if (n === 'fire') startFireLoop(); }).catch(() => {}); }
 function play(n, gain = 1, rate = 1, when = 0) { if (!SND.ctx || !SAMPLES[n]) return; const s = SND.ctx.createBufferSource(), g = SND.ctx.createGain(); s.buffer = SAMPLES[n]; s.playbackRate.value = rate * (.94 + Math.random() * .12); g.gain.value = gain; s.connect(g); g.connect(SND.sfx); s.start(SND.ctx.currentTime + when); }
 function startFireLoop() { const s = SND.ctx.createBufferSource(); s.buffer = SAMPLES.fire; s.loop = true; s.connect(SND.fire); s.start(); }
 function crackleLoop() { loadSamples(); }

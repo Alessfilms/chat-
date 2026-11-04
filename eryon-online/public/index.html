@@ -43,6 +43,21 @@ button.sec{background:#3c5d4a;color:var(--txt)}
 #actbar{position:fixed;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 76px);bottom:calc(66px + env(safe-area-inset-bottom));display:none;gap:8px;z-index:2}
 #actbar .act{font-size:17px;padding:10px 14px;white-space:normal;line-height:1.15;max-width:58vw}
 #actBtn{background:#ffd84a!important;color:#140e06!important}
+#disc{position:fixed;left:50%;top:32%;transform:translate(-50%,-50%);z-index:7;text-align:center;pointer-events:none;display:flex;flex-direction:column;gap:6px}
+#disc small{font:400 14px P2P,monospace;color:#9ff3ff;letter-spacing:3px;text-shadow:2px 2px 0 #140e06}
+#disc b{font:400 clamp(20px,6vw,34px)/1.2 P2P,monospace;color:var(--gold);text-shadow:3px 3px 0 #140e06,-2px -2px 0 #140e06}
+#disc.anim{animation:discIn 4.2s steps(12) forwards}@keyframes discIn{0%{opacity:0;transform:translate(-50%,-30%)}12%{opacity:1;transform:translate(-50%,-50%)}80%{opacity:1}100%{opacity:0}}
+#mapCv{width:min(100%,270px);align-self:center;image-rendering:pixelated;border:3px solid #3c5d4a}
+#mapList{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:15px;color:#6e7a84}#mapList li.f{color:var(--gold)}
+.brow{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}.brow button{grid-column:1/-1}.bimg{height:56px;image-rendering:pixelated}
+.panel{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(6,11,10,.75)}
+.pbox{width:min(460px,100%);max-height:100%;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.phead{display:flex;justify-content:space-between;align-items:center;gap:8px}.phead h2{margin:0;color:var(--gold);font:400 18px/1.2 P2P,monospace}
+.phead button{font-size:15px;padding:7px 10px}
+.resrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.res{background:#0c1410;border:2px solid #3c5d4a;padding:8px;text-align:center}.res b{display:block;color:var(--gold);font-size:24px}.res span{font-size:14px;color:#c4ccd0}
+.item{display:flex;flex-direction:column;gap:6px;padding:10px;background:#0c1410;border:2px solid #2a4a3d}.item b{color:var(--gold)}.item span,.item em{display:block;font-size:14px;color:#c4ccd0;font-style:normal}.item em{color:#9cbf62}
+.item button{font-size:15px;padding:8px 10px}.item button:disabled{opacity:.45}.item .row2{flex-wrap:wrap}.tag{color:#9cbf62;font-size:14px;align-self:center}
+.hint{margin:0;font-size:15px;color:#c4ccd0;line-height:1.35}
 #camctl{position:fixed;right:10px;bottom:calc(76px + env(safe-area-inset-bottom));display:none;flex-direction:column;gap:8px;z-index:2}
 #camctl .hudbtn{width:46px;height:46px;padding:0;font-size:24px;line-height:1}
 #avatar{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(6,11,10,.8)}
@@ -67,6 +82,8 @@ button.sec{background:#3c5d4a;color:var(--txt)}
 #chatlog{position:fixed;left:10px;bottom:calc(122px + env(safe-area-inset-bottom));width:min(420px,calc(100% - 20px));display:none;flex-direction:column;gap:4px;pointer-events:none}
 #chatlog div{background:rgba(12,20,16,.72);padding:5px 8px;font-size:16px;line-height:1.25;word-wrap:break-word;border-left:3px solid var(--edge)}
 #chatlog b{color:var(--gold)}
+body.clean #chatlog,body.clean #hud,body.clean #camctl,body.clean #actbar{display:none!important}
+#chatToggle{padding:6px 9px!important;line-height:0;flex:0 0 auto}
 #chatbar{position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));display:none;gap:8px}
 #chatbar input{flex:1;min-width:0;font-size:18px;padding:10px}
 #chatbar button{padding:10px 14px;font-size:18px}
@@ -113,9 +130,14 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
   </div>
 </div>
 
-<div id="hud"><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><button class="box hudbtn" id="onlineBtn" type="button">Online: <b id="online">1</b> ▾</button><div id="plist" class="box" hidden></div></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><div class="box" id="nameBox"><button id="nameBtn" type="button" class="link" style="padding:0;font-size:16px;color:#ffd84a">Usar meu @</button><span id="nameForm" hidden style="display:flex;gap:6px;align-items:center"><input id="newName" placeholder="@seu_usuario" maxlength="31" autocapitalize="none" spellcheck="false" style="width:150px;font-size:16px;padding:6px"><button id="nameOk" type="button" style="padding:6px 10px;font-size:16px">OK</button></span></div><button class="box hudbtn" id="avatarBtn" type="button">Meu avatar</button><div style="display:flex;gap:6px"><button class="box hudbtn" id="woodBox" type="button" title="Carregar lenha no ombro" style="padding:6px 10px">Lenha: <b id="wood">0</b></button><button class="box hudbtn" id="muteBtn" type="button" title="Desligar som" style="padding:6px 8px;line-height:0"></button></div></div></div>
+<div id="hud"><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><div style="display:flex;gap:6px"><button class="box hudbtn" id="onlineBtn" type="button">Online: <b id="online">1</b> ▾</button><button class="box hudbtn" id="foundBtn" type="button" title="Mapa e descobertas">Mapa <b id="foundN">0/8</b></button></div><div id="plist" class="box" hidden></div></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><div class="box" id="nameBox"><button id="nameBtn" type="button" class="link" style="padding:0;font-size:16px;color:#ffd84a">Usar meu @</button><span id="nameForm" hidden style="display:flex;gap:6px;align-items:center"><input id="newName" placeholder="@seu_usuario" maxlength="31" autocapitalize="none" spellcheck="false" style="width:150px;font-size:16px;padding:6px"><button id="nameOk" type="button" style="padding:6px 10px;font-size:16px">OK</button></span></div><button class="box hudbtn" id="avatarBtn" type="button">Meu avatar</button><div style="display:flex;gap:6px"><button class="box hudbtn" id="woodBox" type="button" title="Mochila: lenha · pedra · ervas" style="padding:6px 10px">Mochila <b id="wood">0 · 0 · 0</b></button><button class="box hudbtn" id="muteBtn" type="button" title="Desligar som" style="padding:6px 8px;line-height:0"></button></div></div></div>
 <div id="toast" class="box" hidden><span id="toastText">Almoço!</span><div class="row2"><button id="toastGo" type="button">Ir para o almoço</button><button id="toastNo" type="button" class="sec">Agora não</button></div></div>
-<div id="actbar"><button id="actBtn" type="button" class="box hudbtn act" hidden>Ação</button><button id="magicBtn" type="button" class="box hudbtn act">Habilidade  [Q]</button></div>
+<div id="disc" hidden><small>DESCOBERTA</small><b id="discName"></b></div>
+<div id="mapPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Mapa de Eryon</h2><button id="mapClose" type="button" class="sec">Fechar</button></div><canvas id="mapCv" width="270" height="480"></canvas><ul id="mapList"></ul><p class="hint">O escuro é o mundo desconhecido. Ande por ele para descobrir os lugares.</p></div></div>
+<div id="buildPanel" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Construir</h2><button id="buildClose" type="button" class="sec">Fechar</button></div><p class="hint" id="buildHint"></p><div id="buildList"></div></div></div>
+<div id="actbar"><button id="actBtn" type="button" class="box hudbtn act" hidden>Ação</button><button id="magicBtn" type="button" class="box hudbtn act">Habilidade  [Q]</button><button id="craftBtn" type="button" class="box hudbtn act">Criar  [C]</button></div>
+<div id="bag" class="panel" hidden><div class="box pbox"><div class="phead"><h2>Mochila</h2><button id="bagClose" type="button" class="sec">Fechar</button></div><div id="bagRes" class="resrow"></div><button id="carryBtn" type="button" class="sec">Carregar lenha no ombro</button><div id="bagItems"></div></div></div>
+<div id="craft" class="panel" hidden><div class="box pbox"><div class="phead"><h2 id="craftTitle">Criar</h2><button id="craftClose" type="button" class="sec">Fechar</button></div><p class="hint">Junte lenha (árvores e serraria), pedra (rochas) e ervas (moitas) pelo mapa.</p><div id="craftList"></div></div></div>
 <div id="camctl"><button id="recenter" type="button" class="box hudbtn" hidden title="Voltar para o meu personagem">◎</button><button id="zin" type="button" class="box hudbtn" title="Aproximar">+</button><button id="zout" type="button" class="box hudbtn" title="Afastar">−</button></div>
 <div id="avatar" hidden><div class="box avbox">
   <h1>SEU AVATAR</h1>
@@ -136,10 +158,12 @@ button.link{background:none;border:none;box-shadow:none;color:#c4ccd0;font-size:
   <div class="row2"><button id="avSkip" type="button" class="sec">Pular</button><button id="avSave" type="button">Salvar</button></div>
 </div></div>
 <div id="chatlog"></div>
-<div id="chatbar"><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
+<div id="chatbar"><button id="chatToggle" type="button" class="sec" aria-pressed="false" aria-label="Tela cheia" title="Tela cheia: deixa só o campo de mensagem"></button><input id="msg" maxlength="120" placeholder="Fale com Eryon…" autocomplete="off"><button id="sendBtn" type="button">Falar</button></div>
 
-<script src="engine.js?v=9"></script>
-<script src="life.js?v=9"></script>
-<script src="game.js?v=9"></script>
+<script src="engine.js?v=12"></script>
+<script src="life.js?v=13"></script>
+<script src="craft.js?v=12"></script>
+<script src="explore.js?v=12"></script>
+<script src="game.js?v=13"></script>
 </body>
 </html>

@@ -43,7 +43,8 @@ let B = {}, villageLayer = null, OBJ = [], blockers = [];
 const TREE_POS = [], CUT = new Set();
 let BUILT = [], BRIDGES = [], lunch = null;
 let DOORS = [], wood = 0;
-const VR = 214, PAL_R = 212, GATE = { x: 482, y: 475 };
+const VR = 214, GATE = { x: 482, y: 475 };
+let PAL_R = 212, PAL_IMG = null; const URBAN = new Set();
 const GATE_A = Math.atan2((GATE.y - C.y) / .95, GATE.x - C.x), SOUTH_A = Math.PI / 2;
 function buildWorld(world) {
   for (const b of world.construcoes) B[b.id] = b;
@@ -68,7 +69,7 @@ function buildWorld(world) {
     px(x, P.ink, 522, 383, 13, 16); px(x, P.st1, 523, 384, 11, 14); [[0, 0, 1, 3], [4, 0, 1, 3], [7, 0, 1, 1], [1, 5, 3, 1], [6, 5, 2, 2], [2, 9, 3, 1]].forEach(([a, b, w, h]) => px(x, P.cy2, 524 + a, 385 + b, w, h)); }
   // árvores (as da área da vila foram derrubadas e viraram casas)
   const pathNear = (X, Y) => { const L = [[474, 498], [482, 476], [492, 456], [502, 438], [508, 425], [514, 414], [522, 404]]; for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((X - ax) * dx + (Y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(X - ax - dx * k, Y - ay - dy * k) < 15) return true; } return false; };
-  trees.forEach((t, i) => { if (t.dc < VR + 4 || pathNear(t.x, t.y + 6)) return; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay, tree: i }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5, tree: i }); TREE_POS.push({ i, x: t.x, y: t.y }); });
+  trees.forEach((t, i) => { if (t.dc < VR + 4 || pathNear(t.x, t.y + 6) || nearLandmark(t.x, t.y)) return; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay, tree: i }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5, tree: i }); TREE_POS.push({ i, x: t.x, y: t.y }); });
   if (B.serraria) { const X = B.serraria.x, Y = B.serraria.y, [wc, wq] = canvas(26, 14);
     for (let k = 0; k < 6; k++) { const r = k % 3, c2 = Math.floor(k / 3); px(wq, P.ink, 2 + r * 6 + c2 * 3, 6 - c2 * 4, 7, 7); px(wq, P.wood, 3 + r * 6 + c2 * 3, 7 - c2 * 4, 5, 5); px(wq, P.woodL, 4 + r * 6 + c2 * 3, 8 - c2 * 4, 3, 3); }
     OBJ.push({ y: Y, x: X, img: wc, dx: X - 13, dy: Y - 12 }); const [bc, bq] = canvas(9, 7); px(bq, P.ink, 0, 0, 9, 7); px(bq, P.wood, 1, 2, 7, 4); px(bq, P.woodL, 1, 1, 7, 2); OBJ.push({ y: Y + 8, x: X + 18, img: bc, dx: X + 14, dy: Y + 2 });
@@ -80,13 +81,33 @@ function buildWorld(world) {
   OBJ.push({ y: 628, x: 360, img: (() => { const [c, q] = canvas(23, 6); px(q, P.ink, 0, 0, 23, 6); px(q, P.woodD, 1, 1, 21, 4); px(q, P.wood, 1, 1, 21, 1); return c; })(), dx: 349, dy: 622 });
   blockers.push({ k: 'r', x0: 349, x1: 372, y0: 622, y1: 628 }, { k: 'c', x: C.x, y: C.y, r: 7 });
   // paliçada com portões
-  const [pc, pq] = canvas(4, 10); px(pq, P.ink, 0, 0, 4, 9); px(pq, P.wood, 1, 1, 2, 7); px(pq, P.woodL, 1, 0, 1, 1);
-  for (let i = 0; i < 150; i++) { const a = -Math.PI + i / 150 * 6.283; if (Math.abs(Math.atan2(Math.sin(a - GATE_A), Math.cos(a - GATE_A))) < .07 || Math.abs(Math.atan2(Math.sin(a - SOUTH_A), Math.cos(a - SOUTH_A))) < .05) continue;
-    const X = Math.round(C.x + Math.cos(a) * PAL_R), Y = Math.round(C.y + Math.sin(a) * PAL_R * .95); OBJ.push({ y: Y, x: X, img: pc, dx: X - 1, dy: Y - 8 }); }
+  const [pc, pq] = canvas(4, 10); px(pq, P.ink, 0, 0, 4, 9); px(pq, P.wood, 1, 1, 2, 7); px(pq, P.woodL, 1, 0, 1, 1); PAL_IMG = pc;
+  placePalisade();
+  const LB = { costela: [-42, 42, -12, 0], ruinas: [4, 20, -8, 0], torre: [-13, 13, -14, 0], caverna: [-36, 36, -22, -2], buraco: [-22, 22, -16, -2], poco: [-16, 16, -14, 2], arvore: [-4, 4, -5, 0], circulo: [-6, 8, -6, 0] };
+  for (const l of LANDMARKS) { OBJ.push({ y: l.y, x: l.x, lm: l }); const b = LB[l.id]; if (b) blockers.push({ k: 'r', x0: l.x + b[0], x1: l.x + b[1], y0: l.y + b[2], y1: l.y + b[3] }); }
   OBJ.sort((a, b) => a.y - b.y);
 }
 function drawBridgeOn(x, X) { X = Math.round(X); const Y = Math.round(riverY(X)); px(x, P.ink, X - 8, Y - 17, 17, 34); for (let i = 0; i < 16; i++) px(x, i % 2 ? P.dirt3 : P.wood, X - 7, Y - 16 + i * 2, 15, 2); px(x, P.woodD, X - 8, Y - 17, 2, 34); px(x, P.woodD, X + 7, Y - 17, 2, 34); }
 function addBridges(list) { for (const b of list) if (!BRIDGES.some(o => o.id === b.id)) { BRIDGES.push(b); drawBridgeOn(villageLayer.getContext('2d'), b.x); } }
+// paliçada que cresce com a cidade
+function placePalisade() {
+  for (let i = OBJ.length - 1; i >= 0; i--) if (OBJ[i].pal) OBJ.splice(i, 1);
+  const n = Math.round(150 * PAL_R / 212), gw = .07 * 212 / PAL_R, sw = .05 * 212 / PAL_R;
+  for (let i = 0; i < n; i++) { const a = -Math.PI + i / n * 6.283; if (Math.abs(Math.atan2(Math.sin(a - GATE_A), Math.cos(a - GATE_A))) < gw || Math.abs(Math.atan2(Math.sin(a - SOUTH_A), Math.cos(a - SOUTH_A))) < sw) continue;
+    const X = Math.round(C.x + Math.cos(a) * PAL_R), Y = Math.round(C.y + Math.sin(a) * PAL_R * .95); if (Math.abs(Y - riverY(X)) < 14) continue; OBJ.push({ y: Y, x: X, img: PAL_IMG, dx: X - 1, dy: Y - 8, pal: true }); }
+  OBJ.sort((a, b) => a.y - b.y);
+}
+function growCity() {
+  const want = Math.min(380, 212 + Math.floor(BUILT.length / 2) * 14); if (want <= PAL_R || !villageLayer) return;
+  const old = PAL_R; PAL_R = want; const x = villageLayer.getContext('2d');
+  x.save(); x.beginPath(); x.ellipse(C.x, C.y, PAL_R - 4, (PAL_R - 4) * .95, 0, 0, 6.283); x.ellipse(C.x, C.y, old - 4, (old - 4) * .95, 0, 0, 6.283); x.clip('evenodd');
+  const tmp = document.createElement('canvas'); tmp.width = WW; tmp.height = WH; const tx = tmp.getContext('2d'); tx.drawImage(clearTex, 0, 0);
+  tx.globalCompositeOperation = 'destination-out'; for (let X = 0; X < WW; X += 2) { const y = riverY(X); tx.fillRect(X, y - 16, 2, 32); } x.drawImage(tmp, 0, 0); x.restore();
+  for (const b of BRIDGES) drawBridgeOn(x, b.x); drawBridgeOn(x, BRIDGE.x);
+  for (const o of OBJ) if (o.tree !== undefined) { const dc = Math.hypot(o.x - C.x, (o.y - C.y) / .95); if (dc < PAL_R - 10) URBAN.add(o.tree); }
+  placePalisade();
+  if (old !== 212) sys(`Eryon cresceu! A paliçada foi ampliada.`);
+}
 // colisão
 const treeGrid = new Map();
 function indexBlockers() { for (const b of blockers) { const key = b.k === 'c' ? Math.floor(b.x / 32) + ',' + Math.floor(b.y / 32) : 'r'; if (!treeGrid.has(key)) treeGrid.set(key, []); treeGrid.get(key).push(b); } }
@@ -94,11 +115,13 @@ function blocked(x, y) {
   if (x < 4 || y < 10 || x > WW - 4 || y > WH - 4) return true;
   if (Math.abs(y - riverY(x)) < 10 && Math.abs(x - BRIDGE.x) > 7 && !BRIDGES.some(b => Math.abs(x - b.x) <= 7)) return true;
   const dx = x - C.x, dy = (y - C.y) / .95, r = Math.hypot(dx, dy);
-  if (r > PAL_R - 3 && r < PAL_R + 3) { const a = Math.atan2(dy, dx); if (Math.abs(Math.atan2(Math.sin(a - GATE_A), Math.cos(a - GATE_A))) > .07 && Math.abs(Math.atan2(Math.sin(a - SOUTH_A), Math.cos(a - SOUTH_A))) > .05) return true; }
+  if (r > PAL_R - 3 && r < PAL_R + 3 && Math.abs(y - riverY(x)) >= 14) { const a = Math.atan2(dy, dx); if (Math.abs(Math.atan2(Math.sin(a - GATE_A), Math.cos(a - GATE_A))) > .07 && Math.abs(Math.atan2(Math.sin(a - SOUTH_A), Math.cos(a - SOUTH_A))) > .05) return true; }
   for (const b of treeGrid.get('r') || []) if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return true;
-  for (const h of BUILT) if (x > h.x - 13 && x < h.x + 13 && y > h.y - 10 && y < h.y) return true;
+  for (const h of BUILT) { const hw = ((BTYPES[h.type] || BTYPES.casa).w) / 2; if (x > h.x - hw && x < h.x + hw && y > h.y - 10 && y < h.y) return true; }
+  if (decorBlocked(x, y)) return true;
+  for (const n of NODES) if (n.kind === 'rock' && !DEPL.has(n.id) && Math.hypot(x - n.x, (y - n.y + 2) * 1.6) < 6 + n.s) return true;
   const gx0 = Math.floor(x / 32), gy0 = Math.floor(y / 32);
-  for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const b of treeGrid.get((gx0 + a) + ',' + (gy0 + c)) || []) if (!(b.tree !== undefined && CUT.has(b.tree)) && Math.hypot(x - b.x, (y - b.y) * 1.4) < b.r) return true;
+  for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const b of treeGrid.get((gx0 + a) + ',' + (gy0 + c)) || []) if (!(b.tree !== undefined && (CUT.has(b.tree) || URBAN.has(b.tree))) && Math.hypot(x - b.x, (y - b.y) * 1.4) < b.r) return true;
   return false;
 }
 
@@ -198,7 +221,7 @@ function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token }));
   ws.onmessage = ev => { const m = JSON.parse(ev.data);
-    if (m.t === 'welcome') { myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); wood = m.wood || 0; showWood(); setBuilt(m.houses || []); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
+    if (m.t === 'welcome') { myId = m.id; players.clear(); CUT.clear(); (m.cut || []).forEach(i => CUT.add(i)); setInv(m.inv || {}); DEPL.clear(); (m.dep || []).forEach(i => DEPL.add(i)); DECOR = m.decor || []; setBuilt(m.houses || []); FOUND = new Set(m.found || []); updFound(); addBridges(m.bridges || []); if (m.lunch) lunch = { ...m.lunch, until: Date.now() + m.lunch.left }; addPlayer(m.me, true); m.players.forEach(p => addPlayer(p)); $('chatlog').innerHTML = ''; m.chat.forEach(logChat); $('online').textContent = m.players.length + 1; }
     else if (m.t === 'join') { addPlayer(m.p); if (!$('plist').hidden) renderList(); sys(`@${m.p.username} chegou em Eryon`); }
     else if (m.t === 'leave') { const p = players.get(m.id); if (p) sys(`@${p.username} saiu`); players.delete(m.id); }
     else if (m.t === 'state') { $('online').textContent = m.online; for (const s of m.p) { if (s.id === myId) continue; const p = players.get(s.id); if (p) { if ((p.room || '') !== (s.room || '')) { p.x = s.x; p.y = s.y; } p.tx = s.x; p.ty = s.y; p.face = s.face; p.moving = s.moving; p.room = s.room || ''; p.carry = !!s.carry; } } }
@@ -206,10 +229,14 @@ function connect() {
     else if (m.t === 'trees') { CUT.clear(); m.cut.forEach(i => CUT.add(i)); }
     else if (m.t === 'houses') setBuilt(m.list);
     else if (m.t === 'bridges') addBridges(m.list);
+    else if (m.t === 'inv') setInv(m.inv);
+    else if (m.t === 'found') { FOUND = new Set(m.list || []); updFound(); }
+    else if (m.t === 'nodes') { DEPL.clear(); m.dep.forEach(i => DEPL.add(i)); }
+    else if (m.t === 'decor') DECOR = m.list || [];
     else if (m.t === 'lunch') onLunch(m);
     else if (m.t === 'note') sys(m.text);
     else if (m.t === 'wood') { wood = m.n; showWood(); }
-    else if (m.t === 'look') { const p = players.get(m.id); if (p) { p.look = m.look; p.ch = charFor(p.username, m.look); if (p.mine) myLook = m.look; } }
+    else if (m.t === 'look') { const p = players.get(m.id); if (p) { p.look = m.look; p.ch = charFor(p.username, m.look); if (p.mine) { myLook = m.look; skillLabel(); } } }
     else if (m.t === 'chat') { const p = players.get(m.id); if (p) { p.say = m.text; p.sayT = performance.now(); } logChat(m); } };
   ws.onclose = ev => { if (ev.code === 4001) { store.del('eryon_token'); location.reload(); return; } if (ev.code === 4002) { sys('Você entrou em outro aparelho.'); return; } const wait = reconnectNow ? 50 : 2000; reconnectNow = false; setTimeout(connect, wait); };
 }
@@ -222,7 +249,7 @@ $('sendBtn').onclick = sendChat; $('msg').addEventListener('keydown', e => { if 
 
 // ---------------------------------------------------------------- controles
 addEventListener('keydown', e => { sndStart(); if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; if (e.key === 'Enter') { $('msg').focus(); e.preventDefault(); return; }
-  const k = e.key.toLowerCase(); if (k === 'e' || k === ' ') { e.preventDefault(); doContext(); return; } if (k === 'q') { doSkill(); return; }
+  const k = e.key.toLowerCase(); if (k === 'e' || k === ' ') { e.preventDefault(); doContext(); return; } if (k === 'q') { doSkill(); return; } if (k === 'c') { openPanel('craft'); return; } if (k === 'i') { openPanel('bag'); return; } if (k === 'm') { $('foundBtn').click(); return; } if (k === 'escape') { closePanels(); return; }
   keys.add(k); target = null; if (cam.mode !== 'follow') follow(); });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 const cam = { L: 0, T: 0, mode: 'follow', x: C.x, y: C.y, watch: null };
@@ -248,11 +275,11 @@ function renderList() { const l = $('plist'); l.innerHTML = ''; const arr = [...
     b.onclick = () => { if (q.mine) follow(); else { cam.mode = 'watch'; cam.watch = q.id; showRecenter(); } $('plist').hidden = true; }; l.appendChild(b); } }
 
 // ---------------------------------------------------------------- loop
-let last = performance.now(), sendT = 0, lastSent = '', stepT = 0;
+let last = performance.now(), sendT = 0, lastSent = '', stepT = 0, revT = 1;
 function start() {
   if (me && !/^visitante\d+$/.test(me)) $('nameBtn').textContent = '@' + me;
   $('login').style.display = 'none'; $('hud').style.display = 'flex'; $('camctl').style.display = 'flex'; $('chatlog').style.display = 'flex'; $('chatbar').style.display = 'flex';
-  DOORS = doorsOutside(); $('actbar').style.display = 'flex'; skillLabel(); connect(); requestAnimationFrame(loop);
+  DOORS = doorsOutside(); $('actbar').style.display = 'flex'; skillLabel(); fogInit(me); updFound(); connect(); requestAnimationFrame(loop);
 }
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
@@ -272,6 +299,7 @@ function loop(now) {
     if (p.room && moved && iy > 0) { const r = roomOf(p.room); if (p.y > r.door.y + 1 && Math.abs(p.x - r.door.x) < 10) exitRoom(p); }
     if (moved) { stepT += dt; if (stepT > .34) { stepT = 0; sfx.step(!!p.room); } } else stepT = .3;
     updateContext(p, t);
+    if (!p.room && fogKey) { revT += dt; if (revT > .25) { revT = 0; revealAt(p.x, p.y, 72); checkDiscover(p); } }
     setFireLevel(p.room ? (p.room === 'taverna' ? .7 : 0) : 1 - Math.hypot(p.x - C.x, p.y - C.y) / 110);
     if ((ix || iy) && !moved) target = null;
     p.moving = moved; if (ix) p.face = ix < 0 ? -1 : 1;
@@ -302,16 +330,21 @@ function draw(t, p) {
     list.push({ y: C.y + 1, fire: true });
   }
   for (const q of players.values()) if ((q.room || '') === myRoom) list.push({ y: q.y, pl: q });
+  if (!room) { for (const n of NODES) if (n.x > li - 20 && n.x < li + cw + 20 && n.y > ti - 10 && n.y < ti + ch + 20) list.push({ y: n.y, node: n }); for (const d of DECOR) if (d.x > li - 30 && d.x < li + cw + 30 && d.y > ti - 10 && d.y < ti + ch + 30) list.push({ y: d.y, decor: d }); }
   if (!room) for (const h of BUILT) if (h.x > li - 40 && h.x < li + cw + 40 && h.y > ti - 10 && h.y < ti + ch + 40) list.push({ y: h.y, built: h });
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
     if (o.fire) { drawFire(x, C.x, C.y + 1, t); continue; }
     if (o.pl) { const q = o.pl; drawCharAt(x, q.ch, q.x, q.y, poseFor(q, t), q.face || 1); continue; }
-    if (o.built) { const h = o.built, spr = HOUSE_SPR[h.roof || 0], k = clamp((Date.now() - h.t) / 3000), X = h.x - 15, Y = h.y - 26;
+    if (o.lm) { drawLandmark(x, o.lm, t); continue; }
+    if (o.node) { drawNode(x, o.node); continue; }
+    if (o.decor) { drawDecor(x, o.decor, t); continue; }
+    if (o.built) { const h = o.built, spr = buildingSprite(h.type || 'casa', h.roof || 0), k = clamp((Date.now() - h.t) / 3000), X = h.x - Math.floor(spr.width / 2) + 2, Y = h.y - spr.height + 3;
       if (k < .35) { const hh = Math.max(1, Math.round(FRAME_SPR.height * k / .35)); x.drawImage(FRAME_SPR, 0, FRAME_SPR.height - hh, FRAME_SPR.width, hh, X, Y + FRAME_SPR.height - hh, FRAME_SPR.width, hh); }
       else { if (k < 1) x.drawImage(FRAME_SPR, X, Y); const hh = Math.max(1, Math.round(spr.height * Math.min(1, (k - .35) / .65))); x.drawImage(spr, 0, spr.height - hh, spr.width, hh, X, Y + spr.height - hh, spr.width, hh); }
       if (k < 1) burst(x, t, t - (Date.now() - h.t) / 1000 + 2.9, h.x, h.y - 2, 24, [P.st3, P.st4, P.wallD], 22, .9, 10, h.id * 7);
       continue; }
+    if (o.tree !== undefined && URBAN.has(o.tree)) continue;
     if (o.tree !== undefined && CUT.has(o.tree)) { px(x, P.ink, o.x - 3, o.y - 4, 7, 5); px(x, P.wood, o.x - 2, o.y - 3, 5, 3); px(x, P.woodL, o.x - 2, o.y - 3, 5, 1); continue; }
     x.drawImage(o.img, o.dx, o.dy);
   }
@@ -321,14 +354,16 @@ function draw(t, p) {
   if (target) { x.globalAlpha = .7; ring(x, target.x, target.y, 3 + (Math.floor(t * 4) % 2), P.fire3); x.globalAlpha = 1; }
   // luz
   const l = lx; l.setTransform(1, 0, 0, 1, 0, 0); l.globalCompositeOperation = 'source-over'; l.clearRect(0, 0, cw, ch);
-  l.fillStyle = room ? 'rgba(20,10,4,.28)' : 'rgba(6,14,22,.32)'; l.fillRect(0, 0, cw, ch); l.translate(-li, -ti); l.globalCompositeOperation = 'destination-out';
-  if (room) { if (room.fire) lightHole(l, room.fire.x, room.fire.y, 60); lightHole(l, room.w / 2, room.h / 2, Math.max(room.w, room.h) * .45); }
+  l.fillStyle = room ? (room.dark ? 'rgba(2,4,8,.62)' : 'rgba(20,10,4,.28)') : 'rgba(6,14,22,.32)'; l.fillRect(0, 0, cw, ch); l.translate(-li, -ti); l.globalCompositeOperation = 'destination-out';
+  if (room) { if (room.fire) lightHole(l, room.fire.x, room.fire.y, 60); if (room.dark) { for (const [gx2, gy2] of room.glows) lightHole(l, gx2, gy2, 22); } else lightHole(l, room.w / 2, room.h / 2, Math.max(room.w, room.h) * .45); }
   else { lightHole(l, C.x, C.y, 46 + Math.round(Math.sin(t * 9))); if (B.forja) lightHole(l, B.forja.x, B.forja.y - 8, 24); if (B.taverna) lightHole(l, B.taverna.x, B.taverna.y - 10, 28);
     for (const id of ['casa_1', 'casa_2', 'casa_3', 'casa_4', 'casa_5', 'casa_6', 'casa_7', 'casa_8', 'casa_9']) if (B[id]) lightHole(l, B[id].x, B[id].y - 8, 14); }
-  if (!room) for (const h of BUILT) lightHole(l, h.x, h.y - 8, 14);
+  if (!room) { for (const lm of LANDMARKS) if (LM_LIGHT[lm.id]) lightHole(l, lm.x, lm.y - 10, LM_LIGHT[lm.id]); for (const h of BUILT) lightHole(l, h.x, h.y - 8, 14); for (const d of DECOR) if (DECOR_LIGHT[d.kind]) lightHole(l, d.x, d.y - 8, DECOR_LIGHT[d.kind]); }
   if (p) lightHole(l, p.x, p.y - 6, 22);
   l.globalCompositeOperation = 'source-over';
   x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(light, 0, 0, cw, ch, 0, 0, cw, ch);
+  if (room && room.dark) { x.translate(-li, -ti); for (const [gx2, gy2, gc] of room.glows) glow(x, gx2, gy2, 10, gc, .14); x.setTransform(1, 0, 0, 1, 0, 0); }
+  if (!room && fogKey) drawFog(x, li, ti, cw, ch);
   // saída ampliada
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#060b0a'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(view, 0, 0, cw, ch, Math.round(-(L - li) * S), Math.round(-(T - ti) * S), cw * S, ch * S);
@@ -352,7 +387,7 @@ function updateContext(p, t) {
   let c = null;
   if (p.room) {
     const r = roomOf(p.room);
-    for (const s of r.spots) if (Math.abs(p.x - s.x) < s.rx && Math.abs(p.y - s.y) < s.ry) c = { kind: s.kind, label: s.label };
+    for (const s of r.spots) if (Math.abs(p.x - s.x) < s.rx && Math.abs(p.y - s.y) < s.ry) c = s.node && DEPL.has(s.node) ? { kind: 'none', label: 'Volta a crescer logo' } : { kind: s.kind, label: s.label, node: s.node };
     if (!c) c = { kind: 'exit', label: 'Sair' };
   } else {
     for (const d of DOORS) if (Math.hypot(p.x - d.x, p.y - d.y) < 10) c = { kind: 'enter', label: d.label, room: d.room };
@@ -360,19 +395,25 @@ function updateContext(p, t) {
     const kit = B.cozinha, nearKit = kit && Math.hypot(p.x - kit.x, p.y - (kit.y + 8)) < 24, lunchOn = lunch && Date.now() < lunch.until;
     if (!c && nearKit) c = lunchOn ? { kind: 'eat', label: 'Comer o almoço' } : { kind: 'lunch', label: 'Cozinhar e chamar para o almoço' };
     if (!c) { const dr = Math.abs(p.y - riverY(p.x)); if (dr > 9 && dr < 20 && Math.abs(p.x - BRIDGE.x) > 30 && !BRIDGES.some(b => Math.abs(p.x - b.x) < 30)) c = wood >= 15 ? { kind: 'bridge', label: 'Construir ponte (15 lenha)' } : { kind: 'none', label: 'Ponte: junte 15 lenhas' }; }
-    if (!c && wood >= 10 && canBuildAt(p)) c = { kind: 'house', label: 'Construir casa (10 lenha)' };
+    if (!c) { let best = 14, bn = null; for (const n of NODES) { if (DEPL.has(n.id)) continue; const d = Math.hypot(p.x - n.x, (p.y - n.y) * 1.2); if (d < best) { best = d; bn = n; } } if (bn) c = bn.kind === 'rock' ? { kind: 'mine', label: 'Quebrar pedra', node: bn.id, tx: bn.x } : { kind: 'herb', label: 'Colher ervas', node: bn.id, tx: bn.x }; }
+    if (!c) { const d = DECOR.find(d => d.owner === me && Math.hypot(p.x - d.x, p.y - d.y) < 14); if (d) c = { kind: 'pickup', label: 'Recolher ' + ((RBY[d.kind] || {}).name || 'objeto'), id: d.id }; }
+    if (!c && canBuildAt(p)) c = { kind: 'buildmenu', label: 'Construir aqui…' };
     if (!c) { let best = 13, bt = null; for (const tr of TREE_POS) { if (CUT.has(tr.i)) continue; const d = Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2); if (d < best) { best = d; bt = tr; } } if (bt) c = { kind: 'chop', label: 'Derrubar árvore', tree: bt.i, tx: bt.x }; }
   }
-  const key = c ? c.kind + c.label + (c.tree ?? '') : '';
+  const key = c ? c.kind + c.label + (c.tree ?? '') + (c.node ?? '') + (c.id ?? '') : '';
   if (key !== (ctxAct ? ctxAct.key : '')) { ctxAct = c ? { ...c, key } : null; $('actBtn').hidden = !c; if (c) $('actBtn').textContent = c.label + '  [E]'; }
 }
 function doContext() { const p = players.get(myId); if (!p || !ctxAct) return; const c = ctxAct;
   if (c.kind === 'enter') { sfx.door(true); const r = roomOf(c.room); p.room = c.room; p.x = r.spawn.x; p.y = r.spawn.y; target = null; follow(); sendNow(p); return; }
   if (c.kind === 'exit') return exitRoom(p);
   if (c.kind === 'none') return;
+  if (c.kind === 'cmine' || c.kind === 'cherb') { const kind = c.kind === 'cmine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
+  if (c.kind === 'mine' || c.kind === 'herb') { p.face = c.tx < p.x ? -1 : 1; const kind = c.kind === 'mine' ? 'mine' : 'gather', node = c.node; doAct(kind); setTimeout(() => send({ t: 'gather', id: node }), ACT_DUR[kind] * 1000); return; }
+  if (c.kind === 'pickup') { send({ t: 'pickup', id: c.id }); return; }
   if (c.kind === 'bridge') { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'bridge', x: Math.round(p.x) })); doAct('build'); return; }
   if (c.kind === 'lunch') { doAct('cook'); if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'lunch' })); return; }
   if (c.kind === 'eat') { doAct('drink'); return; }
+  if (c.kind === 'buildmenu') { closePanels(); $('buildPanel').hidden = false; renderBuild(); return; }
   if (c.kind === 'house') { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'build', x: Math.round(p.x) + 1, y: Math.round(p.y) - 6 })); doAct('build'); return; }
   if (c.kind === 'chop' && c.tx !== undefined) p.face = c.tx < p.x ? -1 : 1;
   doAct(c.kind, c.tree);
@@ -387,23 +428,25 @@ function actSound(kind) {
   const rep = (fn, n, first, gap) => { for (let k = 0; k < n; k++) setTimeout(fn, first + k * gap); };
   if (kind === 'chop') rep(sfx.chop, 4, 320, 560); else if (kind === 'split') rep(sfx.split, 3, 320, 560); else if (kind === 'drink') sfx.drink(); else if (kind === 'magic') sfx.magic();
   else if (kind === 'sword') sfx.sword(); else if (kind === 'arrow') sfx.arrow(); else if (kind === 'hammer') rep(sfx.anvil, 4, 300, 500); else if (kind === 'build') rep(sfx.build, 5, 220, 400);
+  else if (kind === 'mine') rep(() => play(pick('anvil_', 2), .45, .6), 4, 300, 500); else if (kind === 'gather') rep(() => sfx.step(false), 3, 200, 400);
   else if (kind === 'cook') sfx.pot(); else if (kind === 'heal') sfx.heal(); else if (kind === 'lute') sfx.lute(); else if (kind === 'serve') sfx.coins();
 }
 function exitRoom(p) { sfx.door(false); const r = roomOf(p.room); p.room = ''; p.x = r.outside.x; p.y = r.outside.y; target = null; follow(); sendNow(p); }
 function doSkill() { const p = players.get(myId); const c = classOf(p); doAct(c ? c.skill : 'magic'); }
 function skillLabel() { const p = players.get(myId), c = classOf(p); $('magicBtn').textContent = (c ? c.skillName : 'Magia') + '  [Q]'; }
 // casas construídas pelos jogadores
-function setBuilt(list) { BUILT = Array.isArray(list) ? list : []; DOORS = doorsOutside().concat(BUILT.map(h => ({ room: 'h_' + h.id, x: h.x - 1, y: h.y + 3, label: 'Entrar na casa de @' + h.owner }))); }
+function setBuilt(list) { BUILT = Array.isArray(list) ? list : []; for (const k in ROOM_CACHE) if (k.startsWith('h_')) delete ROOM_CACHE[k];
+  DOORS = doorsOutside().concat(BUILT.map(h => { const T = BTYPES[h.type] || BTYPES.casa; return { room: 'h_' + h.id, x: h.x + 1, y: h.y + 3, label: h.type === 'prefeitura' ? 'Entrar na Prefeitura' : `Entrar: ${T.name} de @${h.owner}` }; })); growCity(); }
 function canBuildAt(p) {
   const X = p.x + 1, Y = p.y - 6; if (Math.hypot(X - C.x, Y - C.y) < 40) return false;
-  for (let dx = -14; dx <= 14; dx += 7) for (let dy = -12; dy <= 0; dy += 6) if (blocked(X + dx, Y + dy)) return false;
-  for (const d of DOORS) if (Math.abs(d.x - X) < 30 && Math.abs(d.y - Y) < 30) return false;
+  for (let dx = -22; dx <= 22; dx += 7) for (let dy = -12; dy <= 0; dy += 6) if (blocked(X + dx, Y + dy)) return false;
+  for (const d of DOORS) if (Math.abs(d.x - X) < 40 && Math.abs(d.y - Y) < 30) return false;
   for (const b of Object.values(B)) if (b && b.x !== undefined && Math.abs(b.x - X) < (b.w ? b.w / 2 + 16 : 32) && Math.abs(b.y - Y) < (b.h ? b.h / 2 + 16 : 28)) return false;
   if (Math.abs(Y - riverY(X)) < 24) return false;
   return true;
 }
 function sendNow(p) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'move', x: p.x, y: p.y, face: p.face, moving: false, room: p.room || '' })); }
-function showWood() { $('wood').textContent = wood; }
+function showWood() { $('wood').textContent = `${INV.lenha || 0} · ${INV.pedra || 0} · ${INV.ervas || 0}`; }
 $('actBtn').onclick = () => { sndStart(); doContext(); };
 $('magicBtn').onclick = () => { sndStart(); doSkill(); };
 $('muteBtn').onclick = () => { sndStart(); const m = toggleMute(); $('muteBtn').innerHTML = m ? MUTE_OFF : MUTE_ON; $('muteBtn').title = m ? 'Ligar som' : 'Desligar som'; };
@@ -422,7 +465,7 @@ function bubble(text, sx, sy, fs) {
 
 // ---------------------------------------------------------------- início
 fetch('world.json').then(r => r.json()).then(async w => {
-  buildWorld(w); indexBlockers(); await document.fonts.load('700 20px Pix');
+  buildWorld(w); indexBlockers(); buildNodes(); await document.fonts.load('700 20px Pix');
   // tela de fundo atrás do login: a fogueira de Eryon
   (function idle(n) { if (me) return; draw(n / 1000, null); requestAnimationFrame(idle); })(performance.now());
   if (token) { const r = await API('/api/me?token=' + encodeURIComponent(token)); if (r.ok) return afterLogin(r.data); store.del('eryon_token'); token = null; }
@@ -466,7 +509,10 @@ $('avSkip').onclick = () => { $('avatar').hidden = true; };
 $('avSave').onclick = async () => { myLook = { ...draft }; $('avatar').hidden = true; const r = await post('/api/look', { token, look: myLook }); if (r.ok) { myLook = r.data.look; const p = players.get(myId); if (p) { p.look = myLook; p.ch = charFor(p.username, myLook); } skillLabel(); } };
 
 // ---------------------------------------------------------------- carregar lenha e almoço
-$('woodBox').onclick = () => { const p = players.get(myId); if (!p) return; if (!p.carry && wood < 1) return sys('Você ainda não tem lenha. Rache lenha ou derrube uma árvore.'); p.carry = !p.carry; $('woodBox').classList.toggle('on', p.carry); };
+$('woodBox').onclick = () => openPanel('bag');
+$('craftBtn').onclick = () => { sndStart(); openPanel('craft'); };
+$('carryBtn').onclick = () => { const p = players.get(myId); if (!p) return; if (!p.carry && wood < 1) return sys('Você ainda não tem lenha.'); p.carry = !p.carry; renderBag(); };
+$('bagClose').onclick = closePanels; $('craftClose').onclick = closePanels; $('buildClose').onclick = () => { $('buildPanel').hidden = true; };
 function onLunch(m) {
   lunch = { username: m.username, until: Date.now() + (m.left || 120000) };
   sfx.bell(); sys(`🔔 @${m.username} chamou todo mundo para o almoço na cozinha!`);
@@ -475,3 +521,29 @@ function onLunch(m) {
 }
 $('toastGo').onclick = () => { $('toast').hidden = true; const p = players.get(myId); if (!p || !B.cozinha) return; if (p.room) exitRoom(p); target = { x: B.cozinha.x - 6, y: B.cozinha.y + 14 }; follow(); };
 $('toastNo').onclick = () => { $('toast').hidden = true; };
+
+// ---------------------------------------------------------------- mapa explorado
+$('foundBtn').onclick = () => { closePanels(); $('mapPanel').hidden = false; drawMap(); };
+$('mapClose').onclick = () => { $('mapPanel').hidden = true; };
+function drawMap() {
+  const c = $('mapCv'), x = c.getContext('2d'), k = c.width / WW; x.imageSmoothingEnabled = false;
+  x.drawImage(villageLayer, 0, 0, c.width, c.height); x.globalAlpha = .55; for (const o of OBJ) if (o.tree !== undefined && !CUT.has(o.tree)) { x.fillStyle = '#1c3831'; x.fillRect(o.x * k - 1, o.y * k - 2, 3, 3); } x.globalAlpha = 1;
+  x.drawImage(fogC, 0, 0, c.width, c.height);
+  x.font = '700 11px Pix, monospace'; x.textAlign = 'center';
+  for (const l of LANDMARKS) if (FOUND.has(l.id)) { x.fillStyle = '#140e06'; x.fillRect(l.x * k - 3, l.y * k - 3, 7, 7); x.fillStyle = '#ffd84a'; x.fillRect(l.x * k - 2, l.y * k - 2, 5, 5); x.lineWidth = 3; x.strokeStyle = '#140e06'; x.strokeText(l.name, l.x * k, l.y * k - 6); x.fillStyle = '#fff3b0'; x.fillText(l.name, l.x * k, l.y * k - 6); }
+  const p = players.get(myId); if (p && !p.room) { x.fillStyle = '#9ff3ff'; x.fillRect(p.x * k - 2, p.y * k - 2, 5, 5); }
+  $('mapList').innerHTML = LANDMARKS.map(l => `<li class="${FOUND.has(l.id) ? 'f' : ''}">${FOUND.has(l.id) ? l.name : '???'}</li>`).join('');
+}
+
+// ---------------------------------------------------------------- ocultar o histórico do chat (os balões continuam)
+// tela cheia: esconde botões e histórico; ficam o mapa, os balões e o campo de mensagem
+let chatHidden = false; try { chatHidden = localStorage.getItem('eryon_clean') === '1'; } catch { }
+const FS_ON = '<svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M0 0h4v1H1v3H0zM7 0h4v4h-1V1H7zM0 7h1v3h3v1H0zM10 7h1v4H7v-1h3z"/></svg>';
+const FS_OFF = '<svg width="22" height="22" viewBox="0 0 11 11" shape-rendering="crispEdges" aria-hidden="true"><path fill="#fff3b0" d="M3 0h1v4H0V3h3zM7 0h1v3h3v1H7zM0 7h4v4H3V8H0zM7 7h4v1H8v3H7z"/></svg>';
+function applyChat() { document.body.classList.toggle('clean', chatHidden); $('chatToggle').innerHTML = chatHidden ? FS_OFF : FS_ON; $('chatToggle').setAttribute('aria-pressed', chatHidden ? 'true' : 'false'); $('chatToggle').title = chatHidden ? 'Sair da tela cheia' : 'Tela cheia: deixa só o campo de mensagem'; }
+$('chatToggle').onclick = () => { chatHidden = !chatHidden; try { localStorage.setItem('eryon_clean', chatHidden ? '1' : '0'); } catch { }
+  try { if (chatHidden && !document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); else if (!chatHidden && document.fullscreenElement) document.exitFullscreen().catch(() => {}); } catch { }
+  applyChat(); };
+applyChat();
+// iPhone/iPad: o som só liga dentro de um toque completo (touchend/click)
+for (const ev of ['touchend', 'click', 'keydown']) addEventListener(ev, () => sndStart(), { passive: true });
