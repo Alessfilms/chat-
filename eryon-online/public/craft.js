@@ -96,7 +96,7 @@ function decorSprite(k) {
   return DECOR_SPR[k] = { c, ax: Math.floor(W / 2), ay: H - 1 };
 }
 const DECOR_BLOCK = { muralha_rei: 15, torre_rei: 12, portao_rei: 0, posto_guarda: 6, catapulta: 11, muro: 8, barraca: 13, pomar: 3, portao: 0, banco: 7, barril: 4, boneco: 3, alvo: 3, runa: 4, cristal: 3, palco: 11, tabuas: 7, cerca: 7, fogueira: 6, lanterna: 2, estandarte: 1, canteiro: 7 };
-function decorBlocked(x, y) { for (const d of DECOR) { if (d.kind === 'portao' || d.kind === 'portao_rei') continue; if (ROT_KINDS.has(d.kind) && d.rot) { const hw = d.kind === 'muralha_rei' ? 5 : 3, hh = d.kind === 'muralha_rei' ? 30 : 15; if (x > d.x - hw && x < d.x + hw && y > d.y - hh && y < d.y + 1) return true; continue; }
+function decorBlocked(x, y) { for (const d of DECOR) { if (typeof placing !== 'undefined' && placing && placing.id === d.id) continue; if (d.kind === 'portao' || d.kind === 'portao_rei') continue; if (ROT_KINDS.has(d.kind) && d.rot) { const hw = d.kind === 'muralha_rei' ? 5 : 3, hh = d.kind === 'muralha_rei' ? 30 : 15; if (x > d.x - hw && x < d.x + hw && y > d.y - hh && y < d.y + 1) return true; continue; }
   const w = DECOR_BLOCK[d.kind] || 3; if (x > d.x - w && x < d.x + w && y > d.y - 4 && y < d.y + 1) return true; } return false; }
 const sprKey = d => ROT_KINDS.has(d.kind) && d.rot ? d.kind + '_v' : d.kind;
 function drawDecor(x, d, t) {
@@ -225,7 +225,7 @@ function confirmPlacing() {
   const p = players.get(myId); if (!placing || !p) return; const { X, Y, ok } = placeSpot(p);
   if (!ok) return sys('Não dá para colocar aí. Ande um pouco e tente de novo.');
   if (placing.animal) send(placing.id ? { t: 'moveAnimal', id: placing.id, x: X, y: Y } : { t: 'placeAnimal', kind: placing.kind, x: X, y: Y });
-  else if (placing.id) send({ t: 'move', id: placing.id, x: X, y: Y, rot: placing.rot }); else send({ t: 'place', id: placing.kind, x: X, y: Y, rot: placing.rot });
+  else if (placing.id) send({ t: 'moveDecor', id: placing.id, x: X, y: Y, rot: placing.rot }); else send({ t: 'place', id: placing.kind, x: X, y: Y, rot: placing.rot });
   play('plank', .6);
   // cercas: continua no modo para emendar a próxima (se ainda tiver na mochila)
   if (!placing.id && ROT_KINDS.has(placing.kind) && (INV[placing.kind] || 0) > 1) { INV[placing.kind]--; return; }

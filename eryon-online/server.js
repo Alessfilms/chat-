@@ -693,7 +693,7 @@ wss.on('connection', (ws, req) => {
       if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
       { const lim = c.user === db.king ? 800 : 60; if (db.decor.filter(d => d.owner === c.user).length >= lim) return note(c, `Você já colocou ${lim} objetos. Recolha algum antes.`); }
       track(c, 'place'); invOf(r)[rc.id]--; db.decor.push({ id: db.nextDecor++, kind: rc.id, x: X, y: Y, owner: c.user, ...(m.rot ? { rot: 1 } : {}), ...(rc.id === 'pomar' ? { lastH: Date.now() } : {}) }); save(); sendInv(c); all({ t: 'decor', list: db.decor });
-    } else if (m.t === 'move') {      // mudar um objeto seu de lugar (ex.: cercas)
+    } else if (m.t === 'moveDecor') {      // mudar um objeto seu de lugar (ex.: cercas, macieira)
       const d = db.decor.find(d => d.id === Number(m.id)), X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!d || d.owner !== c.user || c.room) return;
       if (!Number.isFinite(X) || !Number.isFinite(Y) || X < 8 || X > WORLD.w - 8 || Y < 20 || Y > WORLD.h - 6 || Math.hypot(X - c.x, Y - c.y) > 40) return;
       d.x = X; d.y = Y; if (m.rot) d.rot = 1; else delete d.rot; save(); all({ t: 'decor', list: db.decor });
