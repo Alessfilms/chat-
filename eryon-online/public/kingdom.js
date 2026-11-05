@@ -34,6 +34,7 @@ function toggleHorse() { const p = players.get(myId); if (!p || !canHorse(p)) re
   p.horse = !p.horse; if (p.horse) { fxToast('A cavalo!', 'Você anda bem mais rápido. Proteja a cidade!', '#9fc4ff', '🐎'); play('whoosh', .4, .7); } updHorseBtn(); }
 addEventListener('DOMContentLoaded', () => { const b = $('horseBtn'); if (b) b.onclick = () => { sndStart(); toggleHorse(); }; addEventListener('keydown', e => { if ((e.key === 'h' || e.key === 'H') && document.activeElement && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') toggleHorse(); }); });
 var onKingdomMsg = function (m) {
+  if (m.t === 'cutMine') { MYCUTS.add(m.i); return true; }
   if (m.t === 'rg') { const q = players.get(m.id); if (q) { if (m.rg) RGS.add(q.username); else { RGS.delete(q.username); q.horse = false; } q.ch = charFor(q.username, q.look); } return true; }
   if (m.t === 'rgMe') { const p = players.get(myId); if (p) { if (m.rg) RGS.add(p.username); else { RGS.delete(p.username); p.horse = false; } p.ch = charFor(p.username, p.look); }
     if (m.rg) { fxToast('VOCÊ É GUARDA REAL!', 'Toque em 🐎 Cavalo para montar e proteja Eryon', '#9fc4ff', '🛡'); fanfare(true); } else sys('Você não é mais Guarda Real.'); updHorseBtn(); return true; }
@@ -78,11 +79,30 @@ function logSprite(v) {
   else { log(2, 10, 18); log(7, 10, 15); log(5, 6, 16); px(x, '#47994a', 3, 14, 3, 1); }
   return LOG_SPR[v] = c;
 }
+// troncos recolhidos e mudas plantadas
+const LOGS = new Set(), MYCUTS = new Set(), FREECUTS = new Set(); let PLANTS = {};
+function setTreeState(m) { LOGS.clear(); (m.logs || []).forEach(i => LOGS.add(i)); PLANTS = m.plants || {}; }
+function drawSapling(x, o, k) {   // muda crescendo (k de 0 a 1)
+  const h = Math.round(4 + k * 14), w = Math.round(2 + k * 6);
+  px(x, P.ink, o.x - 1, o.y - h, 3, h); px(x, P.wood, o.x, o.y - h + 1, 1, h - 1);
+  for (let i = 0; i < 2 + Math.round(k * 4); i++) { const yy = o.y - h + 2 + i * 2, ww = Math.max(2, w - i); px(x, '#1f5a3a', o.x - ww, yy - 1, ww * 2 + 1, 3); px(x, i % 2 ? '#47994a' : '#66b350', o.x - ww + 1, yy, ww * 2 - 1, 1); }
+  px(x, '#84c65a', o.x, o.y - h - 1, 1, 2); px(x, '#6b4630', o.x - 3, o.y - 1, 7, 2);
+}
+function stumpContext(p) {
+  let best = 12, bt = null; for (const tr of TREE_POS) { if (!CUT.has(tr.i)) continue; const d = Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2); if (d < best) { best = d; bt = tr; } } if (!bt) return null;
+  const i = bt.i, pl = PLANTS[i], mine = MYCUTS.has(i) || FREECUTS.has(i);
+  if (pl) { const left = Math.max(0, 5 * 60000 - (Date.now() - pl.at)); return { kind: 'econ', label: `Muda de @${pl.by} crescendo · ${Math.ceil(left / 60000)} min`, fn: () => {}, id: 'pl' + i }; }
+  if (!LOGS.has(i)) return { kind: 'econ', label: 'Recolher a madeira (+2 lenha)', fn: () => { p.face = bt.x < p.x ? -1 : 1; send({ t: 'logs', tree: i }); doAct('gather'); }, id: 'lg' + i };
+  if (mine) return { kind: 'econ', label: 'Plantar árvore', fn: () => { send({ t: 'plant', tree: i }); doAct('gather'); }, id: 'pt' + i };
+  return null;
+}
 function drawCutTree(x, o) {
+  const pl = PLANTS[o.tree]; if (pl) { drawSapling(x, o, Math.min(1, (Date.now() - pl.at) / (5 * 60000))); return; }
   const v = Math.floor(h2(o.tree, 31) * 3), fl = h2(31, o.tree) > .5, s = logSprite(v);
   // toco
   px(x, P.ink, o.x - 4, o.y - 5, 9, 6); px(x, P.wood, o.x - 3, o.y - 4, 7, 4); px(x, '#e4c590', o.x - 3, o.y - 4, 7, 2); px(x, '#c9a46a', o.x - 1, o.y - 4, 3, 1); px(x, P.woodD, o.x - 3, o.y - 1, 7, 1);
-  // troncos caídos ao lado
+  // troncos caídos ao lado (somem depois que alguém recolhe a madeira)
+  if (LOGS.has(o.tree)) return;
   if (fl) { x.save(); x.translate(Math.round(o.x - 2), 0); x.scale(-1, 1); x.drawImage(s, -30, Math.round(o.y - 12)); x.restore(); } else x.drawImage(s, Math.round(o.x + 2), Math.round(o.y - 12));
 }
 

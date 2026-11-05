@@ -30,7 +30,7 @@ function initDb() {
   db.notice ||= { on: false, title: '', text: '', every: 10 };
   db.mutes ||= {}; db.reports ||= []; db.signs ||= []; db.nextSign ||= 1; db.staff ||= {};
   db.castle ||= { pedra: 0, lenha: 0, by: {} }; db.castle.by ||= {}; db.animals ||= []; db.nextAnimal ||= 1;
-  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; db.cut ||= []; if (db.king === undefined) db.king = 'emanuel01.f'; db.rguards ||= {}; db.treasury ||= { moedas: 0, taxAt: 0, log: [] }; db.giant.burned ||= []; db.giant.rebuild ||= {};
+  db.giant ||= { at: Date.UTC(2026, 10, 4, 22, 0, 0), state: Date.now() < Date.UTC(2026, 10, 4, 22, 0, 0) ? 'scheduled' : 'none', damaged: [] }; db.giant.damaged ||= []; db.cut ||= []; db.cutBy ||= {}; db.logsOk ||= []; db.plants ||= {}; if (db.king === undefined) db.king = 'emanuel01.f'; db.rguards ||= {}; db.treasury ||= { moedas: 0, taxAt: 0, log: [] }; db.giant.burned ||= []; db.giant.rebuild ||= {};
   if (db.giant.state === 'battle') db.giant.state = 'scheduled', db.giant.at = Date.now() + 60000;   // reiniciou no meio da batalha: recomeça em 1 min
   for (const r of Object.values(db.users)) if (r && typeof r === 'object') { if (r.tot && typeof r.tot !== 'object') r.tot = {}; }
 }
@@ -359,7 +359,10 @@ const riverY = x => 212 + 16 * Math.sin(x * .021) + 7 * Math.sin(x * .057 + 1);
 const note = (c, text) => out(c.ws, { t: 'note', text });
 // árvores derrubadas: id -> hora em que voltam a crescer (5 min)
 // árvores cortadas NÃO nascem de novo: ficam guardadas para sempre em db.cut
-const cutTrees = { has: i => cutSet().has(i), set: i => { if (!cutSet().has(i)) { db.cut.push(i); cutSet().add(i); save(); } } };
+const cutTrees = { has: i => cutSet().has(i), set: i => { if (!cutSet().has(i)) { db.cut.push(i); cutSet().add(i); save(); } }, del: i => { if (cutSet().has(i)) { db.cut = db.cut.filter(q => q !== i); cutSet.s = null; delete db.cutBy[i]; delete db.plants[i]; db.logsOk = db.logsOk.filter(q => q !== i); save(); } } };
+const treesMsg = () => ({ t: 'trees', cut: cutList(), logs: db.logsOk, plants: db.plants });
+const GROW_MS = Number(process.env.GROW_MS) || 5 * 60000;   // muda vira árvore em 5 minutos
+setInterval(() => { const now = Date.now(); let ch = false; for (const [i, pl] of Object.entries(db.plants || {})) if (now - pl.at >= GROW_MS) { cutTrees.del(Number(i)); ch = true; } if (ch) all(treesMsg()); }, 10000).unref();
 function cutSet() { if (!cutSet.s || cutSet.ref !== db.cut) { db.cut ||= []; cutSet.ref = db.cut; cutSet.s = new Set(db.cut); } return cutSet.s; }
 const cutList = () => db.cut || [];
 // ---- mochila: recursos e itens
@@ -618,7 +621,7 @@ wss.on('connection', (ws, req) => {
       const rec = db.users[u];
       c = { ws, id: nextId++, user: u, x: rec.x ?? SPAWN.x + (Math.random() * 30 - 15), y: rec.y ?? SPAWN.y + (Math.random() * 10), face: 1, moving: false, lastMove: Date.now(), lastChat: 0, dirty: true };
       clients.add(c); if (clients.size > DIAG.peak) { DIAG.peak = clients.size; DIAG.peakAt = Date.now(); }
-      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), giant: giantPub(), notice: db.notice, king: db.king || '', rgs: Object.keys(db.rguards), lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
+      out(ws, { t: 'welcome', id: c.id, me: pub(c), players: [...clients].filter(o => o !== c).map(pub), chat: chatLog.slice(-25), cut: cutList(), logs: db.logsOk, plants: db.plants, myCuts: Object.keys(db.cutBy).filter(k => db.cutBy[k] === u).map(Number), freeCuts: db.cut.filter(k => !db.cutBy[k]), found: rec.found || [], inv: invOf(rec), dep: [...depleted.keys()], decor: db.decor, houses: db.houses, bridges: db.bridges, signs: db.signs, castle: castleState(), animals: pubAnimals(), giant: giantPub(), notice: db.notice, king: db.king || '', rgs: Object.keys(db.rguards), lunch: lunchState && lunchState.until > Date.now() ? { username: lunchState.username, left: lunchState.until - Date.now() } : null });
       all({ t: 'join', p: pub(c) }, c); sendProg(c); out(ws, { t: 'perk', perk: perkFor(u) });
       if (db.king && u === db.king && Date.now() - (kingSeenT || 0) > 10 * 60000) { kingSeenT = Date.now(); setTimeout(() => all({ t: 'announce', from: '👑 REINO DE ERYON', text: `O Rei @${u} chegou! Todos saúdem o Rei do Castelo de Eryon!` }), 1500); }
       return;
@@ -640,10 +643,18 @@ wss.on('connection', (ws, req) => {
       all({ t: 'act', id: c.id, kind: m.kind }, c);
       if (m.kind === 'eat' && lunchState && lunchState.until > now && !c.ateLunch) { c.ateLunch = lunchState.until; track(c, 'eat'); }
       if (m.kind === 'split') { addWood(c, 1); track(c, 'split'); }
+    } else if (m.t === 'logs') {        // recolher os troncos da árvore derrubada (vira lenha e some do chão)
+      const i = Number(m.tree), now = Date.now(); if (!Number.isInteger(i) || !cutTrees.has(i) || db.logsOk.includes(i) || db.plants[i] || now - (c.lastLogs || 0) < 1200) return; c.lastLogs = now;
+      db.logsOk.push(i); addRes(c, 'lenha', 2 + (invOf(db.users[c.user] || {}).machado ? 1 : 0)); track(c, 'cut', 0); save(); all(treesMsg());
+    } else if (m.t === 'plant') {       // plantar uma árvore no lugar da derrubada: só quem derrubou (árvores antigas sem dono: qualquer um)
+      const i = Number(m.tree); if (!Number.isInteger(i) || !cutTrees.has(i) || db.plants[i]) return;
+      if (db.cutBy[i] && db.cutBy[i] !== c.user) return note(c, `Só @${db.cutBy[i]}, que derrubou esta árvore, pode plantar aqui.`);
+      if (!db.logsOk.includes(i)) return note(c, 'Recolha os troncos primeiro.');
+      db.plants[i] = { by: c.user, at: Date.now() }; save(); all(treesMsg()); addXp(c, 5); note(c, 'Você plantou uma muda! Em 5 minutos ela vira árvore.');
     } else if (m.t === 'cut') {
       const i = Number(m.tree), now = Date.now();
       if (!Number.isInteger(i) || i < 0 || i > 20000 || cutTrees.has(i) || now - (c.lastCut || 0) < 2000) return; c.lastCut = now;
-      cutTrees.set(i); all({ t: 'trees', cut: cutList() }); addWood(c, 3); track(c, 'cut');
+      cutTrees.set(i); db.cutBy[i] = c.user; all(treesMsg()); out(c.ws, { t: 'cutMine', i }); addWood(c, 3); track(c, 'cut');
     } else if (m.t === 'gather') {
       const now = Date.now(), id = String(m.id || ''), r = db.users[c.user];
       if (!r || !/^([rhf][0-9]{1,3}|[gamn][0-9])$/.test(id) || depleted.has(id) || now - (c.lastGather || 0) < 1500) return; c.lastGather = now;
@@ -801,7 +812,7 @@ wss.on('connection', (ws, req) => {
       const list = (Array.isArray(m.trees) ? m.trees : []).map(Number).filter(i => Number.isInteger(i) && i >= 0 && i <= 20000 && !cutTrees.has(i)).slice(0, 8);
       const X = Math.round(Number(m.x)), Y = Math.round(Number(m.y)); if (!Number.isFinite(X) || !Number.isFinite(Y) || Math.hypot(X - c.x, Y - c.y) > (G && Math.hypot(X - G.x, Y - G.y) < 20 ? 125 : 70)) return;
       for (const i of list) cutTrees.set(i); all({ t: 'zap', id: c.id, x: X, y: Y, pts: (Array.isArray(m.pts) ? m.pts : []).slice(0, 8).map(q => [Math.round(Number(q[0]) || X), Math.round(Number(q[1]) || Y)]) }, c);
-      if (list.length) { all({ t: 'trees', cut: cutList() }); addRes(c, 'lenha', list.length * 2); track(c, 'cut', list.length); }
+      for (const i of list) db.cutBy[i] = c.user; if (list.length) { all(treesMsg()); for (const i of list) out(c.ws, { t: 'cutMine', i }); addRes(c, 'lenha', list.length * 2); track(c, 'cut', list.length); }
       if (G && Math.hypot(X - G.x, Y - G.y) < 40) hurtGiant(c, 25, 'zap');
     } else if (m.t === 'hitGiant') {      // atacar o gigante com a arma na mão
       const now = Date.now(), r = db.users[c.user]; if (!G || !r || c.room || now - (c.lastHitG || 0) < 1400) return; c.lastHitG = now;
