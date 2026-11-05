@@ -54,7 +54,7 @@ function buildWorld(world) {
   const [v, x] = canvas(WW, WH); villageLayer = v;
   x.drawImage(ground, 0, 0); ground.width = ground.height = 1;   // libera memória: o chão já foi copiado
   x.save(); x.beginPath(); x.ellipse(C.x, C.y, VR, VR * .95, 0, 0, 6.283); x.clip(); x.drawImage(clearTex, 0, 0); x.restore();
-  paintDetails(x); paintRiver(x); paintNewLands(x); paintEast(x);
+  paintDetails(x); paintRiver(x); paintNewLands(x); paintEast(x); paintSouth(x);
   const pts = [];
   const road = p => { for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1], d = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let s = 0; s < d; s += 2) pts.push([a[0] + (b[0] - a[0]) * s / d, a[1] + (b[1] - a[1]) * s / d]); } };
   road([[360, 622], [400, 566], [440, 520], [GATE.x, GATE.y], [496, 452], [508, 425], [520, 404]]);
@@ -77,7 +77,7 @@ function buildWorld(world) {
     px(x, P.ink, 522, 383, 13, 16); px(x, P.st1, 523, 384, 11, 14); [[0, 0, 1, 3], [4, 0, 1, 3], [7, 0, 1, 1], [1, 5, 3, 1], [6, 5, 2, 2], [2, 9, 3, 1]].forEach(([a, b, w, h]) => px(x, P.cy2, 524 + a, 385 + b, w, h)); }
   // árvores (as da área da vila foram derrubadas e viraram casas)
   const pathNear = (X, Y) => { const L = [[474, 498], [482, 476], [492, 456], [502, 438], [508, 425], [514, 414], [522, 404]]; for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((X - ax) * dx + (Y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(X - ax - dx * k, Y - ay - dy * k) < 15) return true; } return false; };
-  trees.forEach((t, i) => { if (t.dc < VR + 4 || (t.y - riverY(t.x) >= 0 && t.y - riverY(t.x) < 34) || pathNear(t.x, t.y + 6) || nearLandmark(t.x, t.y) || (t.bi && nearRoadOld(t.x, t.y + 4, 10)) || (t.east && (nearEastThing(t.x, t.y) || nearRoad(t.x, t.y + 4, 10)))) return; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay, tree: i }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5, tree: i }); TREE_POS.push({ i, x: t.x, y: t.y }); });
+  trees.forEach((t, i) => { if (t.dc < VR + 4 || (t.y - riverY(t.x) >= 0 && t.y - riverY(t.x) < 34) || pathNear(t.x, t.y + 6) || nearLandmark(t.x, t.y) || (t.bi && nearRoadOld(t.x, t.y + 4, 10)) || (t.east && (nearEastThing(t.x, t.y) || nearRoad(t.x, t.y + 4, 10) || nearBranch(t.x, t.y, 5)))) return; const sp = treeSprites[t.s]; OBJ.push({ y: t.y, x: t.x, img: sp.c, dx: t.x - sp.ax, dy: t.y - sp.ay, tree: i }); blockers.push({ k: 'c', x: t.x, y: t.y - 1, r: 3.5, tree: i }); TREE_POS.push({ i, x: t.x, y: t.y }); });
   if (B.serraria) { const X = B.serraria.x, Y = B.serraria.y, [wc, wq] = canvas(26, 14);
     for (let k = 0; k < 6; k++) { const r = k % 3, c2 = Math.floor(k / 3); px(wq, P.ink, 2 + r * 6 + c2 * 3, 6 - c2 * 4, 7, 7); px(wq, P.wood, 3 + r * 6 + c2 * 3, 7 - c2 * 4, 5, 5); px(wq, P.woodL, 4 + r * 6 + c2 * 3, 8 - c2 * 4, 3, 3); }
     OBJ.push({ y: Y, x: X, img: wc, dx: X - 13, dy: Y - 12 }); const [bc, bq] = canvas(9, 7); px(bq, P.ink, 0, 0, 9, 7); px(bq, P.wood, 1, 2, 7, 4); px(bq, P.woodL, 1, 1, 7, 2); OBJ.push({ y: Y + 8, x: X + 18, img: bc, dx: X + 14, dy: Y + 2 });
@@ -95,7 +95,7 @@ function buildWorld(world) {
   placeScenery(x); castleWorld(x); econWorld(x);
   Object.assign(LB, { lago: [[-10, 10, -10, 0]], gigante: [-40, 40, -14, 0], acampamento: [[-36, -12, -10, 0], [12, 36, -10, 0]], cristais: [-20, 20, -10, 0], cemiterio: [[-2, 2, -1, 0]], portal: [[-27, -16, -8, 0], [16, 27, -8, 0]], ninho: [-30, 30, -10, 0] });
   for (const l of LANDMARKS) { OBJ.push({ y: l.y, x: l.x, lm: l }); const bb = LB[l.id]; if (bb) for (const b of (Array.isArray(bb[0]) ? bb : [bb])) blockers.push({ k: 'r', x0: l.x + b[0], x1: l.x + b[1], y0: l.y + b[2], y1: l.y + b[3] }); }
-  eastObjects();
+  eastObjects(); southObjects();
   OBJ.sort((a, b) => a.y - b.y);
 }
 function drawBridgeOn(x, X) { X = Math.round(X); const Y = Math.round(riverY(X)); px(x, P.ink, X - 8, Y - 17, 17, 34); for (let i = 0; i < 16; i++) px(x, i % 2 ? P.dirt3 : P.wood, X - 7, Y - 16 + i * 2, 15, 2); px(x, P.woodD, X - 8, Y - 17, 2, 34); px(x, P.woodD, X + 7, Y - 17, 2, 34); }
@@ -122,7 +122,7 @@ function paintDetails(x) {
 function paintNewLands(x) {
   const r = rng(2025);
   for (let i = 0; i < 30000; i++) {
-    const X = Math.floor(r() * OWW), Y = Math.floor(r() * WH), kind = r(), b = biomeAt(X, Y); if (b === 0 || Math.abs(Y - riverY(X)) < 15 || lakeVal(X, Y) < 1.15) continue;
+    const X = Math.floor(r() * OWW), Y = Math.floor(r() * OWH), kind = r(), b = biomeAt(X, Y); if (b === 0 || Math.abs(Y - riverY(X)) < 15 || lakeVal(X, Y) < 1.15) continue;
     if (b === 1) { if (kind < .45) px(x, ['#d8702a', '#c0442a', '#e09a2a', '#a8441c'][Math.floor(r() * 4)], X, Y, 2, 1); else if (kind < .7) { px(x, '#6e7e30', X, Y, 1, 2); px(x, '#a0a048', X + 1, Y - 1, 1, 2); } else if (kind < .76) { px(x, '#d0622a', X, Y - 1, 3, 1); px(x, '#eef0ea', X + 1, Y - 1, 1, 1); px(x, '#e4d0a0', X + 1, Y, 1, 1); } }
     else if (b === 2) { if (kind < .5) { const fc = ['#f6b6d8', '#fff3b0', '#9ff3ff', '#f4f0d8', '#e04a5a', '#d0a0ff'][Math.floor(r() * 6)]; px(x, '#3c8e42', X, Y + 1, 1, 2); px(x, fc, X - 1, Y, 3, 1); px(x, fc, X, Y - 1, 1, 3); px(x, '#ffd84a', X, Y, 1, 1); } else if (kind < .85) { px(x, '#80c85e', X, Y, 1, 2); px(x, '#a0da70', X + 1, Y - 1, 1, 3); px(x, '#4fa24a', X + 2, Y, 1, 2); } }
     else if (b === 3) { if (kind < .35) { px(x, '#3e6242', X, Y - 3, 1, 4); px(x, '#5a7a4a', X + 1, Y - 4, 1, 4); if (r() < .4) px(x, '#6b4630', X + 1, Y - 5, 1, 2); } else if (kind < .45) { px(x, '#7a4a8a', X, Y - 1, 3, 1); px(x, '#a07ab0', X + 1, Y - 2, 1, 1); px(x, '#c8b8a0', X + 1, Y, 1, 1); } else if (kind < .6) px(x, '#16281e', X, Y, 2, 1); }
@@ -218,7 +218,7 @@ function placeScenery(x) {
   const r2 = rng(4244);
   for (let k = 0, n = 0; k < 4000 && n < 110; k++) {
     const second = k >= 900 || n >= 34, rr2 = second ? r2 : rOrig;
-    const X = Math.round(rr2() * (second ? OWW : OW)), Y = Math.round(rr2() * (second ? WH : OH)); if (!free(X, Y, 28) || (second && biomeAt(X, Y) === 0)) continue; n++;
+    const X = Math.round(rr2() * (second ? OWW : OW)), Y = Math.round(rr2() * (second ? OWH : OH)); if (!free(X, Y, 28) || (second && biomeAt(X, Y) === 0)) continue; n++;
     placed.push({ x: X, y: Y, r: 28 });
     clearTrees(X, Y, 26, 22);
     const bio = biomeAt(X, Y), r = rr2, kind = bio === 4 || bio === 3 ? .6 + r() * .4 : r();
@@ -295,8 +295,8 @@ function growCity() {
   const want = Math.min(380, 212 + Math.floor(BUILT.length / 2) * 14); if (want <= PAL_R || !villageLayer) return;
   const old = PAL_R; PAL_R = want; const x = villageLayer.getContext('2d');
   x.save(); x.beginPath(); x.ellipse(C.x, C.y, PAL_R - 4, (PAL_R - 4) * .95, 0, 0, 6.283); x.ellipse(C.x, C.y, old - 4, (old - 4) * .95, 0, 0, 6.283); x.clip('evenodd');
-  const tmp = document.createElement('canvas'); tmp.width = WW; tmp.height = WH; const tx = tmp.getContext('2d'); tx.drawImage(clearTex, 0, 0);
-  tx.globalCompositeOperation = 'destination-out'; for (let X = 0; X < WW; X += 2) { const y = riverY(X); tx.fillRect(X, y - 16, 2, 32); } x.drawImage(tmp, 0, 0); x.restore();
+  const tmp = document.createElement('canvas'); tmp.width = clearTex.width; tmp.height = clearTex.height; const tx = tmp.getContext('2d'); tx.drawImage(clearTex, 0, 0);
+  tx.globalCompositeOperation = 'destination-out'; for (let X = 0; X < tmp.width; X += 2) { const y = riverY(X); tx.fillRect(X, y - 16, 2, 32); } x.drawImage(tmp, 0, 0); x.restore();
   for (const b of BRIDGES) drawBridgeOn(x, b.x); drawBridgeOn(x, BRIDGE.x);
   for (const o of OBJ) if (o.tree !== undefined) { const dc = Math.hypot(o.x - C.x, (o.y - C.y) / .95); if (dc < PAL_R - 10) URBAN.add(o.tree); }
   placePalisade();
@@ -309,6 +309,8 @@ function blocked(x, y) {
   if (x < 4 || y < 10 || x > WW - 4 || y > WH - 4) return true;
   if (Math.abs(y - riverY(x)) < 10 && Math.abs(x - BRIDGE.x) > 7 && !BRIDGES.some(b => Math.abs(x - b.x) <= 7)) return true;
   if (inLake(x, y)) return true;
+  if (inSea(x, y)) return true;
+  if (inBranch(x, y) && !BRANCH_BRIDGES.some(b => Math.abs(x - b.x) < b.hw && Math.abs(y - b.y) < 9)) return true;
   const dx = x - C.x, dy = (y - C.y) / .95, r = Math.hypot(dx, dy);
   if (r > PAL_R - 3 && r < PAL_R + 3 && Math.abs(y - riverY(x)) >= 14) { const a = Math.atan2(dy, dx); if (Math.abs(Math.atan2(Math.sin(a - GATE_A), Math.cos(a - GATE_A))) > .07 && Math.abs(Math.atan2(Math.sin(a - SOUTH_A), Math.cos(a - SOUTH_A))) > .05) return true; }
   for (const b of treeGrid.get('r') || []) if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return true;
@@ -583,7 +585,7 @@ function draw(t, p) {
   cam.L = L; cam.T = T;
   const x = vx; x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#060b0a'; x.fillRect(0, 0, cw, ch);
   if (room) { x.translate(-li, -ti); x.drawImage(room.img, 0, 0); }
-  else { x.drawImage(villageLayer, li, ti, cw, ch, 0, 0, cw, ch); x.translate(-li, -ti); }
+  else { x.drawImage(villageLayer, li, ti, cw, ch, 0, 0, cw, ch); x.translate(-li, -ti); drawWaterFlow(x, t, li, ti, cw, ch); }
   // objetos ordenados por y (cenário + jogadores da mesma sala)
   const list = [];
   if (!room) {
@@ -625,7 +627,7 @@ function draw(t, p) {
   for (const q of players.values()) if ((q.room || '') === myRoom) drawActFx(x, q, t);
   if (!room) drawGiantWorld(x, t, li, ti, cw, ch);
   if (window.CINE_DRAW) CINE_DRAW(x, t, room);
-  if (!room) { for (const q of players.values()) if (q.fly && !q.room) drawBalloon(x, q, t); drawDragons(x, li, ti, cw, ch, p); drawBossDragon(x, t); drawRain(x, li, ti, cw, ch, t); }
+  if (!room) { for (const q of players.values()) if (q.fly && !q.room) drawBalloon(x, q, t); drawDragons(x, li, ti, cw, ch, p); drawBossDragon(x, t); drawRain(x, li, ti, cw, ch, t); drawDrizzle(x, t, li, ti, cw, ch); }
   if (room && room.fire) { drawFire(x, room.fire.x, room.fire.y, t); glow(x, room.fire.x, room.fire.y - 6, 18, P.fire2, .12); }
   if (!room) { drawAmbient(x, t, li, ti, cw, ch); drawCloudShadows(x, t, li, ti, cw, ch); }
   if (!room && B.forja) { x.globalAlpha = .6 + .4 * h2(Math.floor(t * 10), 2); px(x, P.fire1, B.forja.x - 7, B.forja.y - 10, 12, 8); px(x, P.fire3, B.forja.x - 5, B.forja.y - 8, 8, 5); x.globalAlpha = 1; smoke(x, B.forja.x + 11, B.forja.y - 30, t, 6); }

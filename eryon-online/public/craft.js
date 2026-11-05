@@ -28,7 +28,7 @@ function buildNodes() {
   // terras novas: mais pedra e ervas (ids continuam a numeração)
   const r2 = rng(778); let ri = 45, hj = 50; tries = 0;
   while ((ri < 160 || hj < 190) && tries++ < 20000) {
-    const x = 20 + r2() * (OWW - 40), y = 40 + r2() * (WH - 80), herb = r2() < .55; if (biomeAt(x, y) === 0 || blocked(x, y) || blocked(x + 6, y) || Math.abs(y - riverY(x)) < 20 || inLake(x, y) || lakeVal(x, y) < 1.3) continue;
+    const x = 20 + r2() * (OWW - 40), y = 40 + r2() * (OWH - 80), herb = r2() < .55; if (biomeAt(x, y) === 0 || blocked(x, y) || blocked(x + 6, y) || Math.abs(y - riverY(x)) < 20 || inLake(x, y) || lakeVal(x, y) < 1.3) continue;
     if (NODES.some(n => Math.abs(n.x - x) < 30 && Math.abs(n.y - y) < 30)) continue;
     if (herb && hj < 190) NODES.push({ id: 'h' + hj++, kind: 'herb', x: Math.round(x), y: Math.round(y), s: Math.floor(r2() * 3) });
     else if (!herb && ri < 160) NODES.push({ id: 'r' + ri++, kind: 'rock', x: Math.round(x), y: Math.round(y), s: Math.floor(r2() * 3) });

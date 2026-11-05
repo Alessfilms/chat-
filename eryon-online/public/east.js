@@ -99,7 +99,7 @@ function mountainSprite(W, H, seed) {   // montanha com 1-3 picos, face sombread
 // ---------- onde fica cada coisa (calculado ao carregar, antes das árvores entrarem no mapa)
 const EAST = { objs: [], foot: [] };
 {
-  const okSpot = (X, Y, pad) => !nearRoad(X, Y, pad) && Math.abs(Y - riverY(X)) > pad + 12 && !EAST_LM.some(l => Math.hypot(X - l.x, Y - l.y) < l.clear + pad + 30) && !EAST.foot.some(f => Math.abs(f.x - X) < (f.w + pad) * .55 && Math.abs(f.y - Y) < f.h * .5 + pad * .4);
+  const okSpot = (X, Y, pad) => !nearRoad(X, Y, pad) && !nearBranch(X, Y, pad + 30) && Math.abs(Y - riverY(X)) > pad + 12 && !EAST_LM.some(l => Math.hypot(X - l.x, Y - l.y) < l.clear + pad + 30) && !EAST.foot.some(f => Math.abs(f.x - X) < (f.w + pad) * .55 && Math.abs(f.y - Y) < f.h * .5 + pad * .4);
   // montanhas (norte)
   for (let gy = 90, row = 0; gy < 800; gy += 100, row++) for (let gx = 1500 + (row % 2) * 50; gx < 2250; gx += 115) { const j = h2(gx, gy), X = Math.round(gx + (j - .5) * 40), Y = Math.round(gy + (h2(gy, gx) - .5) * 30);
     if (biomeAt(X, Y) !== 5 || j < .18) continue; const W = 90 + Math.round(h2(X, 3) * 70), H = 64 + Math.round(h2(3, X) * 56); if (!okSpot(X, Y, 26)) continue; EAST.objs.push({ kind: 'mtn', x: X, y: Y, W, H, seed: X + Y }); EAST.foot.push({ x: X, y: Y, w: W, h: H * .5 }); }
@@ -148,15 +148,15 @@ function eastObjects() {
 // recursos do leste: entram DEPOIS das pedras/ervas/frutas antigas (para a numeração delas não mudar)
 function eastNodes() {
   const r = rng(6061); let ri = 300, hi = 400;
-  for (let k = 0; k < 4000 && (ri < 360 || hi < 430); k++) { const X = Math.round(OWW + 40 + r() * (WW - OWW - 60)), Y = Math.round(40 + r() * (WH - 80)), b = biomeAt(X, Y), herb = r() < .4; if (b < 5) continue;
-    if (nearEastThing(X, Y) || nearRoad(X, Y, 14) || Math.abs(Y - riverY(X)) < 24 || NODES.some(n => Math.abs(n.x - X) < 30 && Math.abs(n.y - Y) < 30)) continue;
+  for (let k = 0; k < 4000 && (ri < 360 || hi < 430); k++) { const X = Math.round(OWW + 40 + r() * (WW - OWW - 60)), Y = Math.round(40 + r() * (OWH - 80)), b = biomeAt(X, Y), herb = r() < .4; if (b < 5) continue;
+    if (nearEastThing(X, Y) || nearRoad(X, Y, 14) || nearBranch(X, Y, 10) || Math.abs(Y - riverY(X)) < 24 || NODES.some(n => Math.abs(n.x - X) < 30 && Math.abs(n.y - Y) < 30)) continue;
     if (b === 6 && Math.abs(NG.lv(X, Y) - .5) < .05) continue; if (b === 7 && Math.abs(NG.cn(X, Y) - .5) < .05) continue;
     if (herb && b === 5 && hi < 430) NODES.push({ id: 'h' + hi++, kind: 'herb', x: X, y: Y, s: Math.floor(r() * 3) }); else if (!herb && ri < 360) NODES.push({ id: 'r' + ri++, kind: 'rock', x: X, y: Y, s: Math.floor(r() * 3) }); }
 }
 // detalhes do chão do leste e as estradas novas
 function paintEast(x) {
   const r = rng(5150);
-  for (let i = 0; i < 26000; i++) { const X = Math.floor(OWW + r() * (WW - OWW)), Y = Math.floor(r() * WH), kind = r(), b = biomeAt(X, Y); if (b < 5 || Math.abs(Y - riverY(X)) < 15) continue;
+  for (let i = 0; i < 26000; i++) { const X = Math.floor(OWW + r() * (WW - OWW)), Y = Math.floor(r() * OWH), kind = r(), b = biomeAt(X, Y); if (b < 5 || Math.abs(Y - riverY(X)) < 15) continue;
     if (b === 5) { if (kind < .35) { px(x, '#2a2630', X - 1, Y, 4, 2); px(x, '#8a8494', X, Y, 2, 1); } else if (kind < .5) { px(x, '#9fb4c8', X, Y, 1, 1); } else if (kind < .58) { px(x, '#4a584a', X, Y - 1, 1, 2); px(x, '#d0a0ff', X, Y - 2, 1, 1); } }
     else if (b === 6) { if (Math.abs(NG.lv(X, Y) - .5) < .035) continue; if (kind < .4) px(x, '#141012', X, Y, 2, 1); else if (kind < .5) px(x, '#5a4844', X, Y, 1, 1); else if (kind < .54) { px(x, '#ff7a1a', X, Y, 1, 1); } else if (kind < .6) { px(x, '#0c0808', X - 1, Y - 1, 3, 2); px(x, '#3a2e2c', X, Y - 1, 1, 1); } }
     else { if (Math.abs(NG.cn(X, Y) - .5) < .036) continue; if (kind < .35) px(x, '#8a3a1c', X, Y, 2, 1); else if (kind < .5) px(x, '#f0c08a', X, Y, 1, 1); else if (kind < .58) { px(x, '#8a7a3a', X, Y - 2, 1, 3); px(x, '#a89a4a', X + 1, Y - 1, 1, 2); } else if (kind < .6) { px(x, '#efe2bf', X, Y, 3, 1); px(x, '#efe2bf', X + 1, Y - 1, 1, 1); } } }

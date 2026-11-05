@@ -33,7 +33,7 @@ const P = { ink: '#1a120c', f0: '#0f3328', f1: '#174433', f2: '#1f5638', f3: '#2
 
 // ---------- mundo (idêntico ao Episódio 1)
 // mundo: a parte original (720×1280) fica idêntica; as terras novas ficam a leste e ao sul
-const OW = 720, OH = 1280, WW = 2280, WH = 2400, OWW = 1440, C = { x: 360, y: 640 };   // OWW: largura antiga (o que já existia não muda)
+const OW = 720, OH = 1280, WW = 2280, WH = 3120, OWW = 1440, OWH = 2400, C = { x: 360, y: 640 };   // OWW: largura antiga (o que já existia não muda)
 const VW = 360, VH = 640, OUT = 3;
 const riverY = x => 212 + 16 * Math.sin(x * .021) + 7 * Math.sin(x * .057 + 1);
 const pathS = y => 362 + 6 * Math.sin(y * .03);
@@ -49,10 +49,34 @@ function noiseGrid(f, ox = 0, oy = 0, M = 12) {
     return lerp(lerp(g[o], g[o + 1], u), lerp(g[o + w], g[o + w + 1], u), v); };
 }
 // regiões: 0 vila/floresta original · 1 Floresta de Outono · 2 Vale das Flores · 3 Brejo Sombrio · 4 Picos Gelados
-const BIOME_NAMES = ['Floresta de Eryon', 'Floresta de Outono', 'Vale das Flores', 'Brejo Sombrio', 'Picos Gelados', 'Montanhas de Ferro', 'Terras do Vulcão', 'Cânions Vermelhos'];
+const BIOME_NAMES = ['Floresta de Eryon', 'Floresta de Outono', 'Vale das Flores', 'Brejo Sombrio', 'Picos Gelados', 'Montanhas de Ferro', 'Terras do Vulcão', 'Cânions Vermelhos', 'Selva Esmeralda', 'Dunas Douradas', 'Costa do Sol'];
+// terras do sul (abaixo da altura antiga): selva a oeste, dunas a leste, praia e mar no fim do mapa
+const southY = x => 2442 + (vn(x * .02, 71) - .5) * 36, southX = y => 1250 + (vn(y * .02, 75) - .5) * 60;
+const seaY = x => 2968 + 22 * Math.sin(x * .005) + (vn(x * .01, 73) - .5) * 36;
+// BRAÇOS DO RIO: riachos que descem das montanhas e rios que correm até o mar (só nas terras novas)
+const BRANCH_PTS = [
+  { name: 'Riacho da Montanha', w: 7, pts: [[2150, 830], [2110, 700], [2135, 560], [2090, 420], [2072, 300], [2056, 222]] },
+  { name: 'Rio Vermelho', w: 8, pts: [[2010, 1690], [2040, 1840], [1995, 1990], [2030, 2150], [1990, 2300], [2040, 2460], [2010, 2650], [2060, 2820], [2045, 3060]] },
+  { name: 'Rio da Selva', w: 8, pts: [[830, 2456], [872, 2580], [820, 2700], [870, 2830], [835, 3060]] },
+];
+const BRANCHES = BRANCH_PTS.map(b => { const P0 = b.pts, out = []; let s = 0;   // curva suave (Catmull-Rom) com pontos a cada ~3 px
+  for (let i = 0; i < P0.length - 1; i++) { const p0 = P0[Math.max(0, i - 1)], p1 = P0[i], p2 = P0[i + 1], p3 = P0[Math.min(P0.length - 1, i + 2)], L = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]), n = Math.ceil(L / 3);
+    for (let k = 0; k < n; k++) { const t = k / n, t2 = t * t, t3 = t2 * t, f = (a, b2, c, d) => .5 * (2 * b2 + (-a + c) * t + (2 * a - 5 * b2 + 4 * c - d) * t2 + (-a + 3 * b2 - 3 * c + d) * t3);
+      const X = f(p0[0], p1[0], p2[0], p3[0]), Y = f(p0[1], p1[1], p2[1], p3[1]); if (out.length) s += Math.hypot(X - out[out.length - 1][0], Y - out[out.length - 1][1]); out.push([X, Y, s]); } }
+  const l = P0[P0.length - 1]; out.push([l[0], l[1], s + 3]); return { ...b, line: out, x0: Math.min(...out.map(p => p[0])) - 20, x1: Math.max(...out.map(p => p[0])) + 20, y0: Math.min(...out.map(p => p[1])) - 20, y1: Math.max(...out.map(p => p[1])) + 20 }; });
+function branchDist(x, y) { let best = 1e9, bw = 0; for (const b of BRANCHES) { if (x < b.x0 || x > b.x1 || y < b.y0 || y > b.y1) continue; for (let i = 0; i < b.line.length - 1; i += 1) { const [ax, ay] = b.line[i]; if (Math.abs(y - ay) > 30 || Math.abs(x - ax) > 30) continue; const [bx, by] = b.line[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)), d = Math.hypot(x - ax - dx * k, y - ay - dy * k); if (d < best) { best = d; bw = b.w; } } } return [best, bw]; }
+const nearBranch = (x, y, pad = 0) => { const [d, w] = branchDist(x, y); return d < w + pad; };
+// pontes dos braços (onde as estradas novas cruzam a água)
+const BRANCH_BRIDGES = [];
+// grade rápida: onde tem água dos braços (cada célula = 2 px)
+const BMASK_C = 2, BMW = Math.ceil(WW / BMASK_C), BMASK = new Uint8Array(BMW * Math.ceil(WH / BMASK_C));
+for (const b of BRANCHES) for (let Y = Math.max(0, Math.floor(b.y0)); Y < Math.min(WH, b.y1); Y += BMASK_C) for (let X = Math.max(0, Math.floor(b.x0)); X < Math.min(WW, b.x1); X += BMASK_C) { const [d, w] = branchDist(X, Y); if (d < w + 6) BMASK[(Y / BMASK_C | 0) * BMW + (X / BMASK_C | 0)] = d < w - 2 ? 2 : 1; }
+const inBranch = (x, y) => x >= 0 && y >= 0 && x < WW && y < WH && BMASK[(y / BMASK_C | 0) * BMW + (x / BMASK_C | 0)] === 2;
+const inSea = (x, y) => y > OWH && y > seaY(x) - 2;
 // terras do leste (além da largura antiga): montanhas ao norte, vulcões no meio, cânions ao sul
 const eastX = y => 1472 + (vn(y * .02, 61) - .5) * 50, eastB1 = x => 820 + (vn(x * .02, 63) - .5) * 60, eastB2 = x => 1640 + (vn(x * .02, 67) - .5) * 70;
 function biomeAt(x, y) {
+  if (y > OWH && y > southY(x)) return y > seaY(x) - 52 ? 10 : x < southX(y) ? 8 : 9;
   if (x > OWW && x > eastX(y)) return y < eastB1(x) ? 5 : y < eastB2(x) ? 6 : 7;
   const ex = OW + 25 + (vn(y * .02, 31) - .5) * 50, ey = OH + 25 + (vn(x * .02, 37) - .5) * 50;
   if (x < ex && y < ey) return 0;
@@ -95,8 +119,11 @@ const BG = [GRASS,
   ['#9fb4c8', '#b4c8da', '#c8d8e8', '#dce8f2', '#eef4fa', '#ffffff'].map(hex),        // neve
   ['#3e4a3e', '#4a584a', '#566656', '#647464', '#768676', '#8a988a'].map(hex),        // montanhas (grama de altitude)
   ['#241c1e', '#2c2224', '#352a2a', '#3f3230', '#4a3a36', '#56443e'].map(hex),        // vulcão (cinzas)
-  ['#9a4a28', '#ac5830', '#be6838', '#cc7a44', '#da8e54', '#e6a468'].map(hex)];       // cânion (areia vermelha)
-const BDIRT = [DIRT, DIRT, DIRT, ['#3a2e1e', '#4a3a24', '#5a4a30', '#6a5838'].map(hex), ['#6e7688', '#8a92a2', '#a2aab8', '#bcc4d0'].map(hex), ['#4d5566', '#6e7789', '#939cae', '#c3cad6'].map(hex), ['#141012', '#1e1618', '#2a2022', '#382a2a'].map(hex), ['#7a3418', '#8e4020', '#e8b47a', '#f4cc94'].map(hex)];
+  ['#9a4a28', '#ac5830', '#be6838', '#cc7a44', '#da8e54', '#e6a468'].map(hex),        // cânion (areia vermelha)
+  ['#123a26', '#18462c', '#1e5232', '#265e38', '#2e6c3e', '#387a46'].map(hex),        // selva
+  ['#c08a38', '#cc9842', '#d6a64e', '#e0b45c', '#e8c26c', '#f0d080'].map(hex),        // dunas
+  ['#dcc086', '#e4ca92', '#eAd29c', '#efdaa8', '#f4e2b6', '#f8eac4'].map(hex)];       // praia
+const BDIRT = [DIRT, DIRT, DIRT, ['#3a2e1e', '#4a3a24', '#5a4a30', '#6a5838'].map(hex), ['#6e7688', '#8a92a2', '#a2aab8', '#bcc4d0'].map(hex), ['#4d5566', '#6e7789', '#939cae', '#c3cad6'].map(hex), ['#141012', '#1e1618', '#2a2022', '#382a2a'].map(hex), ['#7a3418', '#8e4020', '#e8b47a', '#f4cc94'].map(hex), ['#3a2a18', '#4a3620', '#5a4428', '#6a5230'].map(hex), ['#a87430', '#b8823a', '#f4dc9a', '#fae8b4'].map(hex), ['#c8aa70', '#d4b880', '#fff4d8', '#ffffff'].map(hex)];
 const NG = { lv: noiseGrid(.011, 300, 100), cn: noiseGrid(.0075, 500, 300), g1: noiseGrid(.03), g2: noiseGrid(.09, 9), g3: noiseGrid(.08), d1: noiseGrid(.045, 50, 20), d2: noiseGrid(.2), sw: noiseGrid(.06, 90, 40) };
 function grassAt(x, y, base, pal = GRASS) {
   const n = NG.g1(x, y) * .7 + NG.g2(x, y) * .3, dith = ((x + y) & 1) ? .045 : -.045;
@@ -109,11 +136,13 @@ const [ground, gx] = canvas(WW, WH);
   const exA = new Float32Array(WH), eyA = new Float32Array(WW), b1 = new Float32Array(WW), b2 = new Float32Array(WW), rY = new Float32Array(WW), wobA = new Float32Array(WW);
   for (let y = 0; y < WH; y++) exA[y] = OW + 25 + (vn(y * .02, 31) - .5) * 50;
   const pS = new Float32Array(WH); for (let y = 0; y < WH; y++) pS[y] = pathS(y);
+  const sYA = new Float32Array(WW), seaA = new Float32Array(WW); for (let x = 0; x < WW; x++) { sYA[x] = southY(x); seaA[x] = seaY(x); }
+  const SEA = ['#123a78', '#1a4e98', '#2a64b8', '#3f7ad0', '#7fb0f5', '#e8f4ff'].map(hex), WET = hex('#c8b07a');
   const exB = new Float32Array(WH), e1 = new Float32Array(WW), e2 = new Float32Array(WW); for (let y = 0; y < WH; y++) exB[y] = eastX(y); for (let x = 0; x < WW; x++) { e1[x] = eastB1(x); e2[x] = eastB2(x); }
   const LAVA = ['#8a1a0c', '#d0401a', '#ff7a1a', '#ffd84a'].map(hex), CRUST = hex('#120c0e'), RAV = ['#3a160e', '#7a2e18', '#a8481f', '#c8652e', '#f0b07a'].map(hex);
   for (let x = 0; x < WW; x++) { eyA[x] = OH + 25 + (vn(x * .02, 37) - .5) * 50; b1[x] = 1250 + (vn(x * .02, 41) - .5) * 70; b2[x] = 1800 + (vn(x * .02, 43) - .5) * 80; rY[x] = riverY(x); wobA[x] = vn(x * .15, 7) * 2; }
   for (let y = 0; y < WH; y++) for (let x = 0; x < WW; x++) {
-    const bi = (x > OWW && x > exB[y]) ? (y < e1[x] ? 5 : y < e2[x] ? 6 : 7) : (x < exA[y] && y < eyA[x]) ? 0 : x < exA[y] ? 2 : y < b1[x] ? 1 : y < b2[x] ? 3 : 4, pal = BG[bi], dirt = BDIRT[bi];
+    const bi = (y > OWH && y > sYA[x]) ? (y > seaA[x] - 52 ? 10 : x < southX(y) ? 8 : 9) : (x > OWW && x > exB[y]) ? (y < e1[x] ? 5 : y < e2[x] ? 6 : 7) : (x < exA[y] && y < eyA[x]) ? 0 : x < exA[y] ? 2 : y < b1[x] ? 1 : y < b2[x] ? 3 : 4, pal = BG[bi], dirt = BDIRT[bi];
     const raw = Math.hypot(x - C.x, (y - C.y) * 1.05), dc = raw < 90 ? raw + (NG.g3(x, y) - .5) * 14 : raw, r = (bi === 2 || bi === 3 || dc < 64) ? h2(x, y) : 0;
     let c = grassAt(x, y, bi === 4 ? 2 : dc < 64 ? 2 : 1, pal);
     // manchas de terra (lama no brejo, pedra na neve)
@@ -122,6 +151,8 @@ const [ground, gx] = canvas(WW, WH);
     if (bi === 3) { const sw = NG.sw(x, y); if (sw > .7) c = MUD[sw > .76 ? (r > .97 ? 2 : 1) : 0]; }
     if (bi === 2 && r > .992) c = r > .996 ? hex('#f6b6d8') : cream;
     if (bi === 6) { const lv = Math.abs(NG.lv(x, y) - .5); if (lv < .03) c = lv < .012 ? LAVA[lv < .004 ? 3 : lv < .008 ? 2 : 1] : lv < .018 ? LAVA[0] : CRUST; }   // rios de lava
+    if (bi === 9 && Math.sin(x * .06 + y * .3 + NG.g1(x, y) * 9) > .86) c = pal[Math.max(0, pal.indexOf(c) - 1)] || c;   // ondinhas das dunas
+    if (bi === 10) { const ds = seaA[x] - y; if (ds < 0) { const dd = -ds, w = vn(x * .05, y * .12); c = dd < 3 ? SEA[5] : dd < 8 ? SEA[4] : dd < 26 ? SEA[3] : dd < 60 ? SEA[w > .7 ? 3 : 2] : dd < 110 ? SEA[w > .75 ? 2 : 1] : SEA[w > .8 ? 1 : 0]; } else if (ds < 7) c = WET; }
     if (bi === 7) { const cn = Math.abs(NG.cn(x, y) - .5); if (cn < .032) { const dp = 1 - cn / .032; c = dp > .62 ? RAV[0] : dp < .14 ? RAV[4] : RAV[1 + ((y >> 2) + (x >> 4)) % 3]; } }   // cânions (fendas fundas com paredes listradas)
     if (dc < 64 && r > .994) c = cream;
     if (dc < 18) c = DIRT[1 + Math.floor(r * 2.2)];
@@ -136,6 +167,12 @@ const [ground, gx] = canvas(WW, WH);
       if (lv < 1) { const w = vn(x * .06, y * .2); c = lv > .9 ? Wt[3] : lv > .8 ? Wt[1] : lv < .35 ? Wt[2] : Wt[w > .72 ? 1 : 0]; if (lv < .8 && w > .8 && ((x + y) % 3 === 0)) c = Wt[3]; } }
     const i = (y * WW + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
   }
+  // braços do rio: margem de pedras + água com a mesma cor do rio grande
+  for (const b of BRANCHES) for (let Y = Math.max(0, Math.floor(b.y0)); Y < Math.min(WH, b.y1); Y++) for (let X = Math.max(0, Math.floor(b.x0)); X < Math.min(WW, b.x1); X++) {
+    if (!BMASK[(Y / BMASK_C | 0) * BMW + (X / BMASK_C | 0)]) continue; const [dd, w] = branchDist(X, Y); if (dd > w + 3) continue; let c; const wob = wobA[X] * .6;
+    if (dd > w - 1 + wob) c = BANK[vn(X * .4, Y * .4) > .6 ? 2 : vn(X * .4, Y * .4) > .3 ? 1 : 0];
+    else { const e = w - 1 + wob - dd, wv = vn(X * .08 + Y * .02, Y * .2); c = e < 1.4 ? Wt[3] : e < 2.8 ? Wt[1] : Wt[wv > .7 ? 1 : 0]; if (e >= 2.8 && wv < .2 && ((X + Y) & 1)) c = Wt[2]; }
+    const i = (Y * WW + X) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; }
   gx.putImageData(img, 0, 0);
 }
 const [clearTex, ctx2] = canvas(OW + 40, OH);
@@ -157,6 +194,25 @@ function roundTree(r, pal, seed) {
     px(x, edge ? P.ink : l > .5 ? pal[3] : l > .05 ? pal[2] : l > -.45 ? pal[1] : pal[0], X, Y);
   }
   return { c, ax: cx, ay: h - 4 };
+}
+function jungleTree(v) {   // árvore da selva: copa larga e escura, raízes e cipós pendurados
+  const W = 34, H = 40 + v * 2, [c, x] = canvas(W, H), O = '#0a1a10', pt = painter(x), LF = [['#0e3a22', '#185a30', '#2a7a3c', '#4a9a48'], ['#0c3420', '#14502c', '#23703a', '#3e8e44']][v % 2], TR = ['#3a2416', '#5a3a26', '#7a5236', '#9a6a46'];
+  x.fillStyle = 'rgba(4,16,8,.4)'; x.beginPath(); x.ellipse(17, H - 3, 15, 4, 0, 0, 6.283); x.fill();
+  pt.tube([[17, H - 2, 3.2], [16 + (v % 2), H - 18, 2.6]], 3, TR, O).tube([[17, H - 3], [11, H - 1]], 1.2, TR, O).tube([[17, H - 3], [23, H - 1]], 1.2, TR, O).done();
+  const blobs = [[17, 14, 13, 9], [8, 19, 8, 6], [26, 18, 8, 6], [17, 7, 9, 6], [11, 11, 7, 5], [24, 11, 7, 5]]; for (const [X, Y, rx, ry] of blobs) pt.ell(X, Y, rx, ry, LF, O); pt.done();
+  for (let i = 0; i < 26; i++) { const X = 4 + Math.floor(h2(i, v + 40) * 26), Y = 4 + Math.floor(h2(v + 40, i) * 20); if (x.getImageData(X, Y, 1, 1).data[3]) px(x, h2(i, 3) > .5 ? LF[3] : LF[0], X, Y, 2, 1); }
+  for (const [X, L] of [[7, 10], [14, 14], [24, 12], [29, 8]]) for (let k = 0; k < L; k++) { px(x, '#2a5a2a', X + Math.round(Math.sin(k * .6 + v) * .8), 22 + k, 1, 1); if (k % 4 === 2) px(x, '#5aa04a', X + 1, 22 + k, 1, 1); }
+  if (v === 2) { px(x, '#e04a5a', 9, 18, 2, 2); px(x, '#ffd84a', 22, 15, 2, 2); }
+  return { c, ax: 17, ay: H - 2 };
+}
+function palmTree(v) {   // coqueiro inclinado com cocos
+  const W = 30, H = 40 + v * 3, [c, x] = canvas(W, H), O = '#1a1208', pt = painter(x), TR = ['#6a4a2a', '#8a6a3a', '#a8844a', '#c8a464'], LF = ['#1e5a2a', '#2e7a34', '#4a9a3e', '#7ac05a'];
+  x.fillStyle = 'rgba(40,30,10,.3)'; x.beginPath(); x.ellipse(15, H - 3, 11, 3, 0, 0, 6.283); x.fill();
+  const lean = v === 1 ? -4 : 4, tx = 15 + lean, ty = 10; pt.tube([[15, H - 2, 2.4], [15 + lean * .4, H - 18, 2.1], [tx, ty, 1.8]], 2, TR, O).done();
+  for (let Y = ty + 3; Y < H - 3; Y += 3) { const k = (Y - ty) / (H - ty), X = Math.round(tx + (15 - tx) * k); px(x, TR[0], X - 2, Y, 4, 1); }
+  for (const [ex, ey] of [[-13, 4], [-9, -6], [0, -9], [9, -6], [13, 4], [6, 8], [-6, 8]]) { const pts = []; for (let k = 0; k <= 1.001; k += .25) pts.push([tx + ex * k, ty + ey * k + Math.sin(k * 3.1) * -3 + k * k * 4, 1.6 - k]); pt.tube(pts, 1.4, LF, O); } pt.done();
+  for (const [a, b] of [[-2, 2], [1, 3], [2, 1]]) { px(x, O, tx + a - 1, ty + b - 1, 3, 3); px(x, '#6b4630', tx + a, ty + b, 1, 1); }
+  return { c, ax: 15, ay: H - 2 };
 }
 function deadTree(v) {   // árvore queimada: tronco preto com galhos secos e brasas
   const W = 22, H = 30, [c, x] = canvas(W, H), O = '#0c0808', pt = painter(x), BK = ['#140e0c', '#22181a', '#342626', '#4a3a36'];
@@ -221,7 +277,7 @@ for (let i = 0; i < 6; i++) treeSprites.push(roundTree(6 + (i % 3) * 2, [['#1a2a
   const R2 = rng(4343), grid = new Map(), cell = 12, add = [];
   for (const t of trees) { const k = Math.floor(t.x / cell) + ',' + Math.floor(t.y / cell); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(t); }
   for (let k = 0; k < 60000 && add.length < 3600; k++) {
-    const x = R2() * OWW, y = R2() * WH, bi = biomeAt(x, y), roll = R2(), pick = R2(); if (bi === 0) continue;
+    const x = R2() * OWW, y = R2() * OWH, bi = biomeAt(x, y), roll = R2(), pick = R2(); if (bi === 0) continue;
     if (roll > [0, .95, .3, .6, .75][bi]) continue;
     if (Math.abs(y - riverY(x)) < 18 || (y > 690 && Math.abs(x - pathS(y)) < 10) || lakeVal(x, y) < 1.3 || nearRoadOld(x, y, 11)) continue;
     const gxk = Math.floor(x / cell), gyk = Math.floor(y / cell); let ok = true;
@@ -240,7 +296,7 @@ for (let i = 0; i < 3; i++) treeSprites.push(cactus(i));      // 51..53 cactos
 {
   const R3 = rng(9191), add = [], cell = 12, grid = new Map();
   for (let k = 0; k < 40000 && add.length < 1500; k++) {
-    const x = OWW + 20 + R3() * (WW - OWW - 30), y = 20 + R3() * (WH - 30), bi = biomeAt(x, y), roll = R3(), pick = R3(); if (bi < 5) continue;
+    const x = OWW + 20 + R3() * (WW - OWW - 30), y = 20 + R3() * (OWH - 30), bi = biomeAt(x, y), roll = R3(), pick = R3(); if (bi < 5) continue;
     if (roll > [0, 0, 0, 0, 0, .5, .14, .07][bi]) continue;
     if (Math.abs(y - riverY(x)) < 18) continue;
     if (bi === 6 && Math.abs(NG.lv(x, y) - .5) < .045) continue; if (bi === 7 && Math.abs(NG.cn(x, y) - .5) < .045) continue;
@@ -249,6 +305,23 @@ for (let i = 0; i < 3; i++) treeSprites.push(cactus(i));      // 51..53 cactos
     if (!ok) continue;
     const s = bi === 5 ? 44 + Math.floor(pick * 4) : bi === 6 ? 48 + Math.floor(pick * 3) : 51 + Math.floor(pick * 3);
     const t = { x: Math.round(x), y: Math.round(y), s, dc: 9999, dyn: false, bi, east: true }; add.push(t); const key = gxk + ',' + gyk; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(t);
+  }
+  add.sort((a, b) => a.y - b.y); trees.push(...add);
+}
+// árvores das TERRAS DO SUL (entram depois de todas as outras): selva fechada, coqueiros nas dunas e na praia
+for (let i = 0; i < 4; i++) treeSprites.push(jungleTree(i));   // 54..57 selva
+for (let i = 0; i < 3; i++) treeSprites.push(palmTree(i));     // 58..60 coqueiros
+{
+  const R4 = rng(3131), add = [], cell = 12, grid = new Map();
+  for (let k = 0; k < 50000 && add.length < 2200; k++) {
+    const x = 20 + R4() * (WW - 40), y = OWH + 30 + R4() * (WH - OWH - 40), bi = biomeAt(x, y), roll = R4(), pick = R4(); if (bi < 8) continue;
+    if (roll > [0, 0, 0, 0, 0, 0, 0, 0, .9, .05, .1][bi]) continue;
+    if (inSea(x, y + 6) || y > seaY(x) - 14 || nearBranch(x, y, 10)) continue;
+    const gxk = Math.floor(x / cell), gyk = Math.floor(y / cell); let ok = true;
+    for (let a = -1; a <= 1 && ok; a++) for (let b = -1; b <= 1 && ok; b++) for (const o of grid.get((gxk + a) + ',' + (gyk + b)) || []) if (Math.hypot(o.x - x, o.y - y) < (bi === 8 ? 13 : 16)) { ok = false; break; }
+    if (!ok) continue;
+    const s2 = bi === 8 ? 54 + Math.floor(pick * 4) : 58 + Math.floor(pick * 3);
+    const t = { x: Math.round(x), y: Math.round(y), s: s2, dc: 9999, dyn: false, bi, east: true, south: true }; add.push(t); const key = gxk + ',' + gyk; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(t);
   }
   add.sort((a, b) => a.y - b.y); trees.push(...add);
 }

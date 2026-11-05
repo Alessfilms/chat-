@@ -338,7 +338,7 @@ const server = http.createServer(async (req, res) => {
 function listUsers() { const online = new Set([...clients].map(c => c.user)); return Object.entries(db.users).filter(([, r]) => !r.removed).map(([u, r]) => ({ username: u, code: codeFor(u, r.v || 0), online: online.has(u), lastLogin: r.lastLogin || null })).sort((a, b) => a.username.localeCompare(b.username)); }
 
 // ---------------------------------------------------------------- tempo real
-const WORLD = { w: 2280, h: 2400 }, SPAWN = { x: 360, y: 668 };
+const WORLD = { w: 2280, h: 3120 }, SPAWN = { x: 360, y: 668 };
 const clients = new Set();
 const chatLog = [];
 // histórico de mensagens guardado (últimas 300), para o botão "Mensagens"
@@ -353,7 +353,7 @@ const BT = { casa: { name: 'Casa', cost: { lenha: 10 } }, bar: { name: 'Bar', co
   escola: { name: 'Escola', cost: { lenha: 14, pedra: 6 } }, banco: { name: 'Banco', cost: { lenha: 10, pedra: 14 } }, prefeitura: { name: 'Prefeitura', cost: { lenha: 20, pedra: 16 }, limit: 1 },
   cabana: { name: 'Cabana', cost: { lenha: 8 } }, casarao: { name: 'Casarão', cost: { lenha: 18, pedra: 8 } }, celeiro: { name: 'Celeiro', cost: { lenha: 14, pedra: 2 } }, torre_vigia: { name: 'Torre de vigia', cost: { lenha: 6, pedra: 14 } }, moinho: { name: 'Moinho', cost: { lenha: 12, pedra: 10 } } };
 const ROOM_OK = /^(|taverna|gruta|abismo|castelo|castelo_torre|casa_[1-9](_up)?|h_[0-9]{1,6}(_up)?)$/;
-const LANDMARK_NAMES = { mao: 'a Mão do Gigante', vulcao: 'o Vulcão de Eryon', arco: 'o Arco do Cânion', costela: 'a Costela de Dragão', ruinas: 'as Ruínas da Inscrição', torre: 'a Torre Antiga', caverna: 'a Caverna Escondida', buraco: 'o Buraco Misterioso', circulo: 'o Círculo de Pedras', arvore: 'a Árvore Ancestral', poco: 'o Poço da Lua', lago: 'o Lago Espelhado', gigante: 'a Estátua do Gigante', acampamento: 'o Acampamento Abandonado', cristais: 'o Jardim de Cristais', cemiterio: 'o Cemitério Antigo', portal: 'o Portal Esquecido', ninho: 'o Ninho do Dragão' };
+const LANDMARK_NAMES = { templo: 'o Templo da Selva', navio: 'o Navio Naufragado', mao: 'a Mão do Gigante', vulcao: 'o Vulcão de Eryon', arco: 'o Arco do Cânion', costela: 'a Costela de Dragão', ruinas: 'as Ruínas da Inscrição', torre: 'a Torre Antiga', caverna: 'a Caverna Escondida', buraco: 'o Buraco Misterioso', circulo: 'o Círculo de Pedras', arvore: 'a Árvore Ancestral', poco: 'o Poço da Lua', lago: 'o Lago Espelhado', gigante: 'a Estátua do Gigante', acampamento: 'o Acampamento Abandonado', cristais: 'o Jardim de Cristais', cemiterio: 'o Cemitério Antigo', portal: 'o Portal Esquecido', ninho: 'o Ninho do Dragão' };
 const ACTS = new Set(['zap', 'mine', 'gather', 'eat', 'chop', 'split', 'drink', 'magic', 'sword', 'arrow', 'hammer', 'build', 'cook', 'heal', 'lute', 'serve']);
 db.houses ||= []; db.nextHouse ||= 1; db.bridges ||= []; db.nextBridge ||= 1;
 let lunchState = null;
@@ -466,7 +466,7 @@ function track(c, kind, n = 1) {
   r.ach ||= []; for (const [id, a] of Object.entries(ACH)) if (!r.ach.includes(id) && a.test(r)) { r.ach.push(id); const coins = a.coins || 20, iv = invOf(r); iv.moedas = (iv.moedas || 0) + coins; sendInv(c); out(c.ws, { t: 'ach', id, name: a.name, desc: a.desc, coins }); all({ t: 'chat', id: c.id, username: c.user, text: `ganhou a conquista "${a.name}"!`, ts: Date.now() }, c); }
   save(); sendProg(c);
 }
-const LM_POS = { mao: [1604, 672], vulcao: [1900, 1300], arco: [1880, 2030], costela: [170, 1060], ruinas: [520, 400], torre: [290, 118], caverna: [92, 812], buraco: [575, 1110], circulo: [610, 880], arvore: [110, 340], poco: [630, 120], lago: [1090, 668], gigante: [1260, 372], acampamento: [232, 1560], cristais: [468, 1930], cemiterio: [636, 2232], portal: [1220, 1522], ninho: [1124, 2080] };
+const LM_POS = { templo: [470, 2700], navio: [1520, 2981], mao: [1604, 672], vulcao: [1900, 1300], arco: [1880, 2030], costela: [170, 1060], ruinas: [520, 400], torre: [290, 118], caverna: [92, 812], buraco: [575, 1110], circulo: [610, 880], arvore: [110, 340], poco: [630, 120], lago: [1090, 668], gigante: [1260, 372], acampamento: [232, 1560], cristais: [468, 1930], cemiterio: [636, 2232], portal: [1220, 1522], ninho: [1124, 2080] };
 
 // =====================================================================
 // CASTELO DE ERYON: obra da comunidade inteira, em 7 etapas
