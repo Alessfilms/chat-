@@ -158,3 +158,23 @@ onKingdomMsg = function (m) {
 };
 addEventListener('DOMContentLoaded', () => { const b = $('kingBtn'); if (b) b.onclick = () => { sndStart(); openKing(); }; const c = $('kingClose'); if (c) c.onclick = () => { $('kingPanel').hidden = true; }; });
 setInterval(updKingBtn, 1500);
+
+// ---------- MENSAGENS ANTERIORES (botão de balão no topo)
+let HIST = [];
+function openHist() { closePanels(); $('histPanel').hidden = false; $('histBody').innerHTML = '<p class="hint">Carregando…</p>'; send({ t: 'history' }); }
+function renderHist() {
+  const b = $('histBody'); if (!b || $('histPanel').hidden) return; const q = (($('histQ') || {}).value || '').trim().toLowerCase().replace(/^@/, ''); b.innerHTML = '';
+  const list = HIST.filter(m => !q || (m.username || '').toLowerCase().includes(q) || (m.text || '').toLowerCase().includes(q));
+  if (!list.length) { b.innerHTML = '<p class="hint">Nenhuma mensagem.</p>'; return; }
+  let lastDay = '';
+  for (const m of list) { const d = new Date(m.ts), day = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }), el = document.createElement('div');
+    if (day !== lastDay) { lastDay = day; const h = document.createElement('p'); h.className = 'hint'; h.style.textAlign = 'center'; h.textContent = day; b.appendChild(h); }
+    if (m.username === me) el.className = 'me'; else if (me && (m.text || '').toLowerCase().includes('@' + me.toLowerCase())) el.className = 'at';
+    const tm = document.createElement('time'); tm.textContent = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+    const nm = document.createElement('b'); nm.textContent = (m.king ? '👑 ' : m.badge === 'criador' ? '♛ ' : m.badge === 'apoiador' ? '★ ' : '') + (m.id === 0 ? m.username : '@' + m.username) + ': ';
+    el.append(tm, nm, document.createTextNode(m.text || '')); b.appendChild(el); }
+  b.scrollTop = b.scrollHeight;
+}
+const _okm2 = onKingdomMsg;
+onKingdomMsg = function (m) { if (m.t === 'history') { HIST = m.list || []; renderHist(); return true; } return _okm2(m); };
+addEventListener('DOMContentLoaded', () => { const b = $('histBtn'); if (b) b.onclick = () => { sndStart(); openHist(); }; const c = $('histClose'); if (c) c.onclick = () => { $('histPanel').hidden = true; }; const q = $('histQ'); if (q) q.oninput = renderHist; });

@@ -341,6 +341,8 @@ function listUsers() { const online = new Set([...clients].map(c => c.user)); re
 const WORLD = { w: 2280, h: 2400 }, SPAWN = { x: 360, y: 668 };
 const clients = new Set();
 const chatLog = [];
+// histórico de mensagens guardado (últimas 300), para o botão "Mensagens"
+chatLog.push = function (...a) { db.chatHist ||= []; for (const m of a) if (m && m.t === 'chat') db.chatHist.push({ id: m.id, username: m.username, text: m.text, ts: m.ts || Date.now(), badge: m.badge || '', king: !!m.king }); if (db.chatHist.length > 300) db.chatHist.splice(0, db.chatHist.length - 300); save(); return Array.prototype.push.apply(this, a); };
 let nextId = 1;
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 const out = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
@@ -643,6 +645,8 @@ wss.on('connection', (ws, req) => {
       all({ t: 'act', id: c.id, kind: m.kind }, c);
       if (m.kind === 'eat' && lunchState && lunchState.until > now && !c.ateLunch) { c.ateLunch = lunchState.until; track(c, 'eat'); }
       if (m.kind === 'split') { addWood(c, 1); track(c, 'split'); }
+    } else if (m.t === 'history') {     // mensagens anteriores
+      const now = Date.now(); if (now - (c.lastHist || 0) < 1500) return; c.lastHist = now; out(c.ws, { t: 'history', list: (db.chatHist || []).slice(-300) });
     } else if (m.t === 'logs') {        // recolher os troncos da árvore derrubada (vira lenha e some do chão)
       const i = Number(m.tree), now = Date.now(); if (!Number.isInteger(i) || !cutTrees.has(i) || db.logsOk.includes(i) || db.plants[i] || now - (c.lastLogs || 0) < 1200) return; c.lastLogs = now;
       db.logsOk.push(i); addRes(c, 'lenha', 2 + (invOf(db.users[c.user] || {}).machado ? 1 : 0)); track(c, 'cut', 0); save(); all(treesMsg());
