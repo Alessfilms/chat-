@@ -49,7 +49,7 @@ button.sec{background:#3c5d4a;color:var(--txt)}
 #disc small{font:400 14px P2P,monospace;color:#9ff3ff;letter-spacing:3px;text-shadow:2px 2px 0 #140e06}
 #disc b{font:400 clamp(20px,6vw,34px)/1.2 P2P,monospace;color:var(--gold);text-shadow:3px 3px 0 #140e06,-2px -2px 0 #140e06}
 #disc.anim{animation:discIn 4.2s steps(12) forwards}@keyframes discIn{0%{opacity:0;transform:translate(-50%,-30%)}12%{opacity:1;transform:translate(-50%,-50%)}80%{opacity:1}100%{opacity:0}}
-#mapCv{width:min(100%,270px);align-self:center;image-rendering:pixelated;border:3px solid #3c5d4a}
+#mapCv{max-width:100%;align-self:center;border:3px solid #3c5d4a}#mapPanel .pbox{width:auto;max-width:100%}
 #mapList{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:15px;color:#6e7a84}#mapList li.f{color:var(--gold)}
 .brow{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}.brow button{grid-column:1/-1}.bimg{height:56px;image-rendering:pixelated}
 .panel{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(6,11,10,.75)}
@@ -300,6 +300,6 @@ body.clean #giantHud{display:none!important}body.cine #giantHud{display:none!imp
 <script src="giant.js?v=72"></script>
 <script src="east.js?v=83"></script>
 <script src="kingdom.js?v=75"></script>
-<script src="game.js?v=81"></script>
+<script src="game.js?v=84"></script>
 </body>
 </html>
