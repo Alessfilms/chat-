@@ -42,7 +42,7 @@ function drawEconDecor(x, d, t) {
 function econNodes() {
   for (let i = NODES.length - 1; i >= 0; i--) { const n = NODES[i]; if (Math.hypot(n.x - FAIR.x, (n.y - FAIR.y) * 1.2) < FAIR.r + 14) NODES.splice(i, 1); }   // praça livre
   const r = rng(779); let fi = 0, tries = 0;
-  while (fi < 110 && tries++ < 12000) { const x = 20 + r() * (WW - 40), y = 40 + r() * (WH - 80), b = biomeAt(x, y); if (b === 4 || b === 3 && r() < .7) continue;
+  while (fi < 110 && tries++ < 12000) { const x = 20 + r() * (OWW - 40), y = 40 + r() * (WH - 80), b = biomeAt(x, y); if (b === 4 || b === 3 && r() < .7) continue;
     if (Math.hypot(x - C.x, (y - C.y) * 1.05) < 110 || Math.hypot(x - FAIR.x, (y - FAIR.y) * 1.2) < FAIR.r + 20 || blocked(x, y) || blocked(x + 5, y) || Math.abs(y - riverY(x)) < 20 || lakeVal(x, y) < 1.3 || NODES.some(n => Math.abs(n.x - x) < 24 && Math.abs(n.y - y) < 24)) continue;
     NODES.push({ id: 'f' + fi++, kind: 'fruit', x: Math.round(x), y: Math.round(y), s: Math.floor(r() * 3) }); }
 }

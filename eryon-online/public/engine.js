@@ -33,7 +33,7 @@ const P = { ink: '#1a120c', f0: '#0f3328', f1: '#174433', f2: '#1f5638', f3: '#2
 
 // ---------- mundo (idêntico ao Episódio 1)
 // mundo: a parte original (720×1280) fica idêntica; as terras novas ficam a leste e ao sul
-const OW = 720, OH = 1280, WW = 1440, WH = 2400, C = { x: 360, y: 640 };
+const OW = 720, OH = 1280, WW = 2280, WH = 2400, OWW = 1440, C = { x: 360, y: 640 };   // OWW: largura antiga (o que já existia não muda)
 const VW = 360, VH = 640, OUT = 3;
 const riverY = x => 212 + 16 * Math.sin(x * .021) + 7 * Math.sin(x * .057 + 1);
 const pathS = y => 362 + 6 * Math.sin(y * .03);
@@ -49,8 +49,11 @@ function noiseGrid(f, ox = 0, oy = 0, M = 12) {
     return lerp(lerp(g[o], g[o + 1], u), lerp(g[o + w], g[o + w + 1], u), v); };
 }
 // regiões: 0 vila/floresta original · 1 Floresta de Outono · 2 Vale das Flores · 3 Brejo Sombrio · 4 Picos Gelados
-const BIOME_NAMES = ['Floresta de Eryon', 'Floresta de Outono', 'Vale das Flores', 'Brejo Sombrio', 'Picos Gelados'];
+const BIOME_NAMES = ['Floresta de Eryon', 'Floresta de Outono', 'Vale das Flores', 'Brejo Sombrio', 'Picos Gelados', 'Montanhas de Ferro', 'Terras do Vulcão', 'Cânions Vermelhos'];
+// terras do leste (além da largura antiga): montanhas ao norte, vulcões no meio, cânions ao sul
+const eastX = y => 1472 + (vn(y * .02, 61) - .5) * 50, eastB1 = x => 820 + (vn(x * .02, 63) - .5) * 60, eastB2 = x => 1640 + (vn(x * .02, 67) - .5) * 70;
 function biomeAt(x, y) {
+  if (x > OWW && x > eastX(y)) return y < eastB1(x) ? 5 : y < eastB2(x) ? 6 : 7;
   const ex = OW + 25 + (vn(y * .02, 31) - .5) * 50, ey = OH + 25 + (vn(x * .02, 37) - .5) * 50;
   if (x < ex && y < ey) return 0;
   if (x < ex) return 2;
@@ -72,7 +75,15 @@ const EXT_ROADS = [
   [[362, 1900], [420, 1918], [452, 1930]],
   [[362, 2200], [500, 2218], [608, 2232]],
 ];
-function nearRoad(x, y, d = 10) { for (const L of EXT_ROADS) for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(x - ax - dx * k, y - ay - dy * k) < d) return true; } return false; }
+// estradas para as terras do leste (não entram na geração antiga, para nada antigo mudar de lugar)
+const EXT_ROADS2 = [
+  [[1258, 378], [1350, 432], [1470, 520], [1560, 590], [1604, 640]],                       // até a Mão do Gigante
+  [[1252, 1000], [1400, 1060], [1560, 1140], [1700, 1210], [1800, 1262]],                  // até o Vulcão
+  [[1230, 1400], [1380, 1540], [1540, 1720], [1700, 1880], [1828, 1990]],                  // até o Arco do Cânion
+];
+function nearRoadOld(x, y, d = 10) { for (const L of EXT_ROADS) for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(x - ax - dx * k, y - ay - dy * k) < d) return true; } return false; }
+function nearRoad(x, y, d = 10) { for (const L of EXT_ROADS2) for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(x - ax - dx * k, y - ay - dy * k) < d) return true; } return nearRoadOld(x, y, d); }
+function nearRoadX(x, y, d = 10) { for (const L of EXT_ROADS) for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)); if (Math.hypot(x - ax - dx * k, y - ay - dy * k) < d) return true; } return false; }
 
 // chão no estilo pixel art: manchas de grama em tons chapados (com borda pontilhada), clareiras de terra e rio com margem de pedras
 const GRASS = ['#2a6a3c', '#357c40', '#3f8f45', '#4f9f4a', '#66b350', '#84c65a'].map(hex);
@@ -81,9 +92,12 @@ const BG = [GRASS,
   ['#4a5a24', '#5c6c2a', '#6e7e30', '#86903a', '#a0a048', '#bcb45a'].map(hex),        // outono
   ['#2f7a3c', '#3c8e42', '#4fa24a', '#64b652', '#80c85e', '#a0da70'].map(hex),        // vale
   ['#1a3428', '#223e2e', '#2a4a34', '#34563a', '#3e6242', '#4a6e4a'].map(hex),        // brejo
-  ['#9fb4c8', '#b4c8da', '#c8d8e8', '#dce8f2', '#eef4fa', '#ffffff'].map(hex)];       // neve
-const BDIRT = [DIRT, DIRT, DIRT, ['#3a2e1e', '#4a3a24', '#5a4a30', '#6a5838'].map(hex), ['#6e7688', '#8a92a2', '#a2aab8', '#bcc4d0'].map(hex)];
-const NG = { g1: noiseGrid(.03), g2: noiseGrid(.09, 9), g3: noiseGrid(.08), d1: noiseGrid(.045, 50, 20), d2: noiseGrid(.2), sw: noiseGrid(.06, 90, 40) };
+  ['#9fb4c8', '#b4c8da', '#c8d8e8', '#dce8f2', '#eef4fa', '#ffffff'].map(hex),        // neve
+  ['#3e4a3e', '#4a584a', '#566656', '#647464', '#768676', '#8a988a'].map(hex),        // montanhas (grama de altitude)
+  ['#241c1e', '#2c2224', '#352a2a', '#3f3230', '#4a3a36', '#56443e'].map(hex),        // vulcão (cinzas)
+  ['#9a4a28', '#ac5830', '#be6838', '#cc7a44', '#da8e54', '#e6a468'].map(hex)];       // cânion (areia vermelha)
+const BDIRT = [DIRT, DIRT, DIRT, ['#3a2e1e', '#4a3a24', '#5a4a30', '#6a5838'].map(hex), ['#6e7688', '#8a92a2', '#a2aab8', '#bcc4d0'].map(hex), ['#4d5566', '#6e7789', '#939cae', '#c3cad6'].map(hex), ['#141012', '#1e1618', '#2a2022', '#382a2a'].map(hex), ['#7a3418', '#8e4020', '#e8b47a', '#f4cc94'].map(hex)];
+const NG = { lv: noiseGrid(.011, 300, 100), cn: noiseGrid(.0075, 500, 300), g1: noiseGrid(.03), g2: noiseGrid(.09, 9), g3: noiseGrid(.08), d1: noiseGrid(.045, 50, 20), d2: noiseGrid(.2), sw: noiseGrid(.06, 90, 40) };
 function grassAt(x, y, base, pal = GRASS) {
   const n = NG.g1(x, y) * .7 + NG.g2(x, y) * .3, dith = ((x + y) & 1) ? .045 : -.045;
   let k = base + Math.floor(n * 3 + dith); k = Math.max(0, Math.min(5, k));
@@ -95,9 +109,11 @@ const [ground, gx] = canvas(WW, WH);
   const exA = new Float32Array(WH), eyA = new Float32Array(WW), b1 = new Float32Array(WW), b2 = new Float32Array(WW), rY = new Float32Array(WW), wobA = new Float32Array(WW);
   for (let y = 0; y < WH; y++) exA[y] = OW + 25 + (vn(y * .02, 31) - .5) * 50;
   const pS = new Float32Array(WH); for (let y = 0; y < WH; y++) pS[y] = pathS(y);
+  const exB = new Float32Array(WH), e1 = new Float32Array(WW), e2 = new Float32Array(WW); for (let y = 0; y < WH; y++) exB[y] = eastX(y); for (let x = 0; x < WW; x++) { e1[x] = eastB1(x); e2[x] = eastB2(x); }
+  const LAVA = ['#8a1a0c', '#d0401a', '#ff7a1a', '#ffd84a'].map(hex), CRUST = hex('#120c0e'), RAV = ['#3a160e', '#7a2e18', '#a8481f', '#c8652e', '#f0b07a'].map(hex);
   for (let x = 0; x < WW; x++) { eyA[x] = OH + 25 + (vn(x * .02, 37) - .5) * 50; b1[x] = 1250 + (vn(x * .02, 41) - .5) * 70; b2[x] = 1800 + (vn(x * .02, 43) - .5) * 80; rY[x] = riverY(x); wobA[x] = vn(x * .15, 7) * 2; }
   for (let y = 0; y < WH; y++) for (let x = 0; x < WW; x++) {
-    const bi = (x < exA[y] && y < eyA[x]) ? 0 : x < exA[y] ? 2 : y < b1[x] ? 1 : y < b2[x] ? 3 : 4, pal = BG[bi], dirt = BDIRT[bi];
+    const bi = (x > OWW && x > exB[y]) ? (y < e1[x] ? 5 : y < e2[x] ? 6 : 7) : (x < exA[y] && y < eyA[x]) ? 0 : x < exA[y] ? 2 : y < b1[x] ? 1 : y < b2[x] ? 3 : 4, pal = BG[bi], dirt = BDIRT[bi];
     const raw = Math.hypot(x - C.x, (y - C.y) * 1.05), dc = raw < 90 ? raw + (NG.g3(x, y) - .5) * 14 : raw, r = (bi === 2 || bi === 3 || dc < 64) ? h2(x, y) : 0;
     let c = grassAt(x, y, bi === 4 ? 2 : dc < 64 ? 2 : 1, pal);
     // manchas de terra (lama no brejo, pedra na neve)
@@ -105,6 +121,8 @@ const [ground, gx] = canvas(WW, WH);
     if (dp > .8) c = dirt[dp > .86 ? (dp > .9 ? 3 : 2) : 1]; else if (dp > .78 && ((x + y) & 1)) c = dirt[0];
     if (bi === 3) { const sw = NG.sw(x, y); if (sw > .7) c = MUD[sw > .76 ? (r > .97 ? 2 : 1) : 0]; }
     if (bi === 2 && r > .992) c = r > .996 ? hex('#f6b6d8') : cream;
+    if (bi === 6) { const lv = Math.abs(NG.lv(x, y) - .5); if (lv < .03) c = lv < .012 ? LAVA[lv < .004 ? 3 : lv < .008 ? 2 : 1] : lv < .018 ? LAVA[0] : CRUST; }   // rios de lava
+    if (bi === 7) { const cn = Math.abs(NG.cn(x, y) - .5); if (cn < .032) { const dp = 1 - cn / .032; c = dp > .62 ? RAV[0] : dp < .14 ? RAV[4] : RAV[1 + ((y >> 2) + (x >> 4)) % 3]; } }   // cânions (fendas fundas com paredes listradas)
     if (dc < 64 && r > .994) c = cream;
     if (dc < 18) c = DIRT[1 + Math.floor(r * 2.2)];
     if (y > 690 && Math.abs(x - pS[y]) < 8 && Math.abs(x - pS[y]) < 4 + vn(y * .1, 3) * 3) c = (bi === 4 ? BDIRT[4] : DIRT)[1 + Math.floor(vn(x * .3, y * .3) * 2.4)];
@@ -139,6 +157,21 @@ function roundTree(r, pal, seed) {
     px(x, edge ? P.ink : l > .5 ? pal[3] : l > .05 ? pal[2] : l > -.45 ? pal[1] : pal[0], X, Y);
   }
   return { c, ax: cx, ay: h - 4 };
+}
+function deadTree(v) {   // árvore queimada: tronco preto com galhos secos e brasas
+  const W = 22, H = 30, [c, x] = canvas(W, H), O = '#0c0808', pt = painter(x), BK = ['#140e0c', '#22181a', '#342626', '#4a3a36'];
+  x.fillStyle = 'rgba(10,6,4,.35)'; x.fillRect(5, H - 3, 12, 3);
+  pt.tube([[11, H - 2, 2.6], [11 + v - 1, H - 14, 1.8], [10 + v, 6, 1]], 2, BK, O);
+  pt.tube([[11, H - 13], [5, H - 19], [3, H - 24]], 1, BK, O).tube([[11 + v - 1, H - 16], [17, H - 21], [19, H - 26]], 1, BK, O); if (v !== 1) pt.tube([[10, H - 9], [16, H - 12]], .8, BK, O); pt.done();
+  px(x, '#ff7a1a', 10, H - 8 - v * 3, 1, 1); px(x, '#ffd84a', 12, H - 18, 1, 1); if (v === 2) px(x, '#ff7a1a', 4, H - 22, 1, 1);
+  return { c, ax: 11, ay: H - 2 };
+}
+function cactus(v) {   // cacto de cânion com braços
+  const W = 18, H = 26 + v * 3, [c, x] = canvas(W, H), O = '#142012', pt = painter(x), G = ['#1e4a24', '#2e6a30', '#4a8a3a', '#7ab04e'];
+  x.fillStyle = 'rgba(40,10,4,.3)'; x.fillRect(4, H - 3, 11, 3);
+  pt.tube([[9, H - 2, 3], [9, 4, 3]], 3, G, O); if (v !== 1) pt.tube([[9, H - 12], [4, H - 12], [4, H - 19]], 1.8, G, O); pt.tube([[9, H - 16 + v], [14, H - 16 + v], [14, H - 22 + v]], 1.8, G, O); pt.done();
+  for (let Y = 6; Y < H - 3; Y += 3) px(x, '#cfe8a0', 8, Y, 1, 1); if (v === 2) { px(x, '#f6b6d8', 8, 2, 3, 2); px(x, '#ffd84a', 9, 2, 1, 1); }
+  return { c, ax: 9, ay: H - 2 };
 }
 function pineTree(r, pal, seed) {
   const w = r * 2 + 6, h = Math.round(r * 3.3) + 6, [c, x] = canvas(w, h), cx = r + 2;
@@ -188,15 +221,34 @@ for (let i = 0; i < 6; i++) treeSprites.push(roundTree(6 + (i % 3) * 2, [['#1a2a
   const R2 = rng(4343), grid = new Map(), cell = 12, add = [];
   for (const t of trees) { const k = Math.floor(t.x / cell) + ',' + Math.floor(t.y / cell); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(t); }
   for (let k = 0; k < 60000 && add.length < 3600; k++) {
-    const x = R2() * WW, y = R2() * WH, bi = biomeAt(x, y), roll = R2(), pick = R2(); if (bi === 0) continue;
+    const x = R2() * OWW, y = R2() * WH, bi = biomeAt(x, y), roll = R2(), pick = R2(); if (bi === 0) continue;
     if (roll > [0, .95, .3, .6, .75][bi]) continue;
-    if (Math.abs(y - riverY(x)) < 18 || (y > 690 && Math.abs(x - pathS(y)) < 10) || lakeVal(x, y) < 1.3 || nearRoad(x, y, 11)) continue;
+    if (Math.abs(y - riverY(x)) < 18 || (y > 690 && Math.abs(x - pathS(y)) < 10) || lakeVal(x, y) < 1.3 || nearRoadOld(x, y, 11)) continue;
     const gxk = Math.floor(x / cell), gyk = Math.floor(y / cell); let ok = true;
     for (let a = -1; a <= 1 && ok; a++) for (let b = -1; b <= 1 && ok; b++) for (const o of grid.get((gxk + a) + ',' + (gyk + b)) || []) if (Math.hypot(o.x - x, o.y - y) < 11) { ok = false; break; }
     if (!ok) continue;
     const s = bi === 1 ? (pick < .2 ? 14 + Math.floor(pick * 50) : 24 + Math.floor(pick * 8)) : bi === 2 ? Math.floor(pick * 14) : bi === 3 ? 38 + Math.floor(pick * 6) : 32 + Math.floor(pick * 6);
     const t = { x: Math.round(x), y: Math.round(y), s, dc: Math.hypot(x - C.x, (y - C.y) * 1.05), dyn: false, bi };
     add.push(t); const key = gxk + ',' + gyk; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(t);
+  }
+  add.sort((a, b) => a.y - b.y); trees.push(...add);
+}
+// árvores das TERRAS DO LESTE: pinheiros nas montanhas, árvores queimadas no vulcão, cactos nos cânions
+for (let i = 0; i < 4; i++) treeSprites.push(pineTree(6 + (i % 2) * 2, i % 2 ? ['#1e3a2c', '#2c5038', '#46684e', '#6a8a6a'] : ['#18342a', '#264a34', '#3e6048', '#5e7e60'], i + 120));   // 44..47 pinheiro de altitude
+for (let i = 0; i < 3; i++) treeSprites.push(deadTree(i));    // 48..50 queimadas
+for (let i = 0; i < 3; i++) treeSprites.push(cactus(i));      // 51..53 cactos
+{
+  const R3 = rng(9191), add = [], cell = 12, grid = new Map();
+  for (let k = 0; k < 40000 && add.length < 1500; k++) {
+    const x = OWW + 20 + R3() * (WW - OWW - 30), y = 20 + R3() * (WH - 30), bi = biomeAt(x, y), roll = R3(), pick = R3(); if (bi < 5) continue;
+    if (roll > [0, 0, 0, 0, 0, .5, .14, .07][bi]) continue;
+    if (Math.abs(y - riverY(x)) < 18) continue;
+    if (bi === 6 && Math.abs(NG.lv(x, y) - .5) < .045) continue; if (bi === 7 && Math.abs(NG.cn(x, y) - .5) < .045) continue;
+    const gxk = Math.floor(x / cell), gyk = Math.floor(y / cell); let ok = true;
+    for (let a = -1; a <= 1 && ok; a++) for (let b = -1; b <= 1 && ok; b++) for (const o of grid.get((gxk + a) + ',' + (gyk + b)) || []) if (Math.hypot(o.x - x, o.y - y) < 12) { ok = false; break; }
+    if (!ok) continue;
+    const s = bi === 5 ? 44 + Math.floor(pick * 4) : bi === 6 ? 48 + Math.floor(pick * 3) : 51 + Math.floor(pick * 3);
+    const t = { x: Math.round(x), y: Math.round(y), s, dc: 9999, dyn: false, bi, east: true }; add.push(t); const key = gxk + ',' + gyk; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(t);
   }
   add.sort((a, b) => a.y - b.y); trees.push(...add);
 }
