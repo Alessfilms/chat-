@@ -1,0 +1,28 @@
+{
+  "episodio": 4,
+  "titulo": "A Batalha dos Três Monstros",
+  "audio": "narration.mp3 (83,0 s, sem cortes nem mudança de velocidade)",
+  "saida": "eryon_ep4.mp4 · 1080x1920 · 30 fps · H.264 · narração + efeitos (sem música)",
+  "cenario": "mapa atual do jogo Eryon (eryon-online/public), filmado no modo ?cine=1",
+  "rei": "@emanuel01.f",
+  "cenas": [
+    { "inicio": 0.0, "fim": 9.97, "fala": "Essa página tinha apenas 800 moradores, mas hoje já somos 900 habitantes e nossa próxima missão é chegar aos mil.", "visual": "sobrevoo da vila; contador 800 (1,5 s) → 900 (5,1–6,2 s); META: 1.000 MORADORES (8,1 s)" },
+    { "inicio": 10.1, "fim": 11.7, "fala": "Eryon cresceu.", "visual": "plano aberto: vila, castelo e terras novas; título ERYON CRESCEU" },
+    { "inicio": 11.78, "fim": 19.39, "fala": "Hoje temos um castelo, casas, tavernas, comércios e novos moradores, cada um com sua própria história.", "visual": "castelo (12,3) · casas (13,3) · Taverna do Valis por dentro (13,9) · feira e mercador (14,8) · novos moradores com @: frederico_neumann, juju_feh3, allicegomes_, rake092008 (15,7) · nickenj_ chegando e paladini.jr (17,4)" },
+    { "inicio": 19.44, "fim": 24.02, "fala": "Mas, quando tudo parecia tranquilo, nossa cidade foi atacada.", "visual": "céu escurece e fica avermelhado; moradores correm para casa; título ERYON FOI ATACADA!" },
+    { "inicio": 24.02, "fim": 27.12, "fala": "Um gigante de pedras surgiu das montanhas,", "visual": "Gigante de Pedra sai das Montanhas de Ferro; passos com tremor e poeira" },
+    { "inicio": 27.12, "fim": 29.86, "fala": "um monstro de fogo invadiu a floresta", "visual": "Monstro de Fogo atravessa a floresta a oeste deixando árvores em chamas" },
+    { "inicio": 29.86, "fim": 33.16, "fala": "e um terrível dragão flamejante apareceu nos céus.", "visual": "Dragão de Fogo sobrevoa o castelo e cospe fogo (31,4 s)" },
+    { "inicio": 33.16, "fim": 40.01, "fala": "Foi então que @emanuel01.f, o rei de Eryon, reuniu os guerreiros para defender a cidade.", "visual": "o rei com coroa diante do castelo, ergue a espada; título @emanuel01.f · REI DE ERYON; guerreiros se juntam (37 s): 'Guerreiros, comigo!'" },
+    { "inicio": 40.14, "fim": 45.89, "fala": "O mesmo rei que construiu o nosso castelo agora liderava a maior batalha da nossa história.", "visual": "o rei no cavalo branco lidera a cavalgada do castelo até a vila; título A BATALHA DOS TRÊS MONSTROS" },
+    { "inicio": 45.9, "fim": 49.78, "fala": "Paladinos, magos, arqueiros e guerreiros lutaram lado a lado.", "visual": "@higorasc com escudo protege moradores (45,9) · @rodrigues_gabo (raios) e @mano.icee contra o Monstro de Fogo (46,8) · arqueiros contra o dragão (47,4) · @levi.fvarias e o ronin @leo_maad1.8 contra o gigante (48,0) · plano geral (49,0)" },
+    { "inicio": 49.78, "fim": 54.52, "fala": "E depois de uma batalha intensa, Eryon venceu.", "visual": "@lucasp_braga (médico da peste) atende feridos na enfermaria · @kennidymessias1 defende o castelo · gigante desmorona (52,4), monstro de fogo se apaga (53,0), dragão cai (53,4); título VITÓRIA!" },
+    { "inicio": 54.52, "fim": 57.08, "fala": "Os três monstros foram derrotados.", "visual": "destroços e fumaça, heróis comemoram; título OS TRÊS MONSTROS FORAM DERROTADOS" },
+    { "inicio": 57.08, "fim": 65.8, "fala": "Agora nossa cidade está em festa, as tavernas estão lotadas, o castelo está iluminado e todos comemoram essa grande vitória.", "visual": "praça em festa com lanternas, fogueiras e fogos; @paladini.jr tocando; taverna lotada (59,5); castelo com janelas acesas (61,3); o rei diante do povo: 'Viva Eryon!' (62,7)" },
+    { "inicio": 65.8, "fim": 69.01, "fala": "Mas novos mistérios ainda estão por vir.", "visual": "Portal Esquecido brilha e @geo_miriely, criatura misteriosa, aparece (sem intenção maligna); título NOVOS MISTÉRIOS..." },
+    { "inicio": 69.04, "fim": 72.41, "fala": "Faltam apenas 100 moradores para chegarmos aos mil.", "visual": "plano aberto da cidade e terras novas; ERYON · 900 / 1.000 MORADORES · FALTAM APENAS 100!" },
+    { "inicio": 72.42, "fim": 77.26, "fala": "Siga a página, comente quem você quer ser em Eryon e participe da nossa história.", "visual": "o rei e os novos moradores na praça acenando; título COMENTE QUEM VOCÊ QUER SER EM ERYON" },
+    { "inicio": 77.26, "fim": 81.62, "fala": "E o melhor, você já pode explorar Eryon no nosso jogo online.", "visual": "interface real do jogo: personagem 'você' anda e derruba árvore" },
+    { "inicio": 81.62, "fim": 83.0, "fala": "O link está na bio.", "visual": "cartela: ERYON · CADA SEGUIDOR, UMA HISTÓRIA. · JOGUE ONLINE · LINK NA BIO" }
+  ]
+}
