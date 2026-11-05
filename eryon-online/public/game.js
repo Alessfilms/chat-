@@ -309,7 +309,7 @@ function blocked(x, y) {
   if (x < 4 || y < 10 || x > WW - 4 || y > WH - 4) return true;
   if (Math.abs(y - riverY(x)) < 10 && Math.abs(x - BRIDGE.x) > 7 && !BRIDGES.some(b => Math.abs(x - b.x) <= 7)) return true;
   if (inLake(x, y)) return true;
-  if (inSea(x, y)) return true;
+  if (inSea(x, y) || inPond(x, y)) return true;
   if (inBranch(x, y) && !BRANCH_BRIDGES.some(b => Math.abs(x - b.x) < b.hw && Math.abs(y - b.y) < 9)) return true;
   const dx = x - C.x, dy = (y - C.y) / .95, r = Math.hypot(dx, dy);
   if (r > PAL_R - 3 && r < PAL_R + 3 && Math.abs(y - riverY(x)) >= 14) { const a = Math.atan2(dy, dx); if (Math.abs(Math.atan2(Math.sin(a - GATE_A), Math.cos(a - GATE_A))) > .07 && Math.abs(Math.atan2(Math.sin(a - SOUTH_A), Math.cos(a - SOUTH_A))) > .05) return true; }
@@ -498,6 +498,8 @@ addEventListener('keydown', e => { sndStart(); if (['INPUT', 'TEXTAREA'].include
   keys.add(k); target = null; if (cam.mode !== 'follow') follow(); });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 const cam = { L: 0, T: 0, mode: 'follow', x: C.x, y: C.y, watch: null };
+// posição do toque em pixels do canvas (usa o tamanho real na tela; no celular a barra do navegador muda a altura)
+function scrPx() { const r = cv.getBoundingClientRect(); return { k: cv.width / (r.width || 1), kx: cv.height / (r.height || 1), l: r.left, t: r.top }; }
 const ptrs = new Map(); let drag = null, pinch0 = 0, zoom0 = 1, pinchW = null, pinchMapT = 0;
 const midOf = () => { const [a, b] = [...ptrs.values()]; return { x: (a.x + b.x) / 2 * DPR, y: (a.y + b.y) / 2 * DPR, d: Math.hypot(a.x - b.x, a.y - b.y) }; };
 cv.addEventListener('pointerdown', e => { sndStart(); if (!me) return; $('msg').blur(); try { cv.setPointerCapture(e.pointerId); } catch { } ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); cam.vx = cam.vy = 0;
@@ -508,11 +510,11 @@ cv.addEventListener('pointermove', e => { if (!ptrs.has(e.pointerId)) return; pt
       if (cam.mode === 'free' && pinchW) { cam.x = pinchW.x - m.x / S + cv.width / S / 2; cam.y = pinchW.y - m.y / S + cv.height / S / 2; } } return; }
   if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (!drag.moved && Math.hypot(dx, dy) > 8) drag.moved = true;
-  if (drag.moved) { cam.mode = 'free'; cam.watch = null; cam.x = drag.cx - dx * DPR / S; cam.y = drag.cy - dy * DPR / S; showRecenter();
+  if (drag.moved) { const r = scrPx(); cam.mode = 'free'; cam.watch = null; cam.x = drag.cx - dx * r.k / S; cam.y = drag.cy - dy * r.kx / S; showRecenter();
     const now = performance.now(), dtm = Math.max(1, now - drag.lt), k = .35; drag.vx = drag.vx * (1 - k) + (-(e.clientX - drag.lx) * DPR / S / dtm) * k; drag.vy = drag.vy * (1 - k) + (-(e.clientY - drag.ly) * DPR / S / dtm) * k; drag.lt = now; drag.lx = e.clientX; drag.ly = e.clientY; } });
 const endPtr = e => { const was = drag; ptrs.delete(e.pointerId);
   if (ptrs.size < 2 && pinching) { pinching = false; zoomSnapT = performance.now() + 120; pinchW = null; if (ptrs.size === 1) { const [q] = [...ptrs.values()]; drag = { x: q.x, y: q.y, moved: true, cx: cam.L + cv.width / S / 2, cy: cam.T + cv.height / S / 2, lt: performance.now(), lx: q.x, ly: q.y, vx: 0, vy: 0 }; } }
-  if (ptrs.size === 0) { if (was && !was.moved) { target = { x: cam.L + (e.clientX * DPR) / S, y: cam.T + (e.clientY * DPR) / S }; follow(); }
+  if (ptrs.size === 0) { if (was && !was.moved) { const r = scrPx(); target = { x: cam.L + ((e.clientX - r.l) * r.k) / S, y: cam.T + ((e.clientY - r.t) * r.kx) / S }; follow(); }
     else if (was && was.moved && performance.now() - was.lt < 80) { cam.vx = clamp(was.vx, -2, 2); cam.vy = clamp(was.vy, -2, 2); }   // inércia ao soltar
     drag = null; pinch0 = 0; } };
 cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); drag = null; pinching = false; pinch0 = 0; });
@@ -578,7 +580,7 @@ function draw(t, p) {
   const dtc = Math.min(.05, Math.max(0, t - (cam.lt || t))); cam.lt = t;
   if (!room && cam.mode !== 'free') { if (cam.sx === undefined || Math.hypot(cx - cam.sx, cy - cam.sy) > 260 || cam.room) { cam.sx = cx; cam.sy = cy; } else { const k = 1 - Math.exp(-dtc * 9); cam.sx += (cx - cam.sx) * k; cam.sy += (cy - cam.sy) * k; } cx = cam.sx; cy = cam.sy; }
   else if (!room) { cam.sx = cx; cam.sy = cy; }
-  if (p && cam.mode !== 'free' && !(cam.mode === 'watch' && !room)) { const px0 = Math.round(p.x), py0 = Math.round(p.y - 8); cx = px0 - Math.round(p.x - cx); cy = py0 - Math.round(p.y - 8 - cy); }
+  if (p && cam.mode !== 'free' && !(cam.mode === 'watch' && !room)) { cx = Math.round(p.x); cy = Math.round(p.y - 8); if (!room) { cam.sx = cx; cam.sy = cy; } }   // câmera presa ao boneco: ele fica parado na tela e o mapa anda junto
   cam.room = room ? 1 : 0;
   cx = fit(cx, vw, MW); cy = fit(cy, vh, MH); if (!room) { cam.x = cx; cam.y = cy; }
   const L = cx - vw / 2, T = cy - vh / 2, li = Math.floor(L), ti = Math.floor(T), cw = Math.ceil(vw) + 2, ch = Math.ceil(vh) + 2;
@@ -684,6 +686,7 @@ function updateContext(p, t) {
     if (!c) { const gc = giantContext(p); if (gc) c = gc; }
     if (!c) { const ec = econContext(p); if (ec) c = ec; }
     if (!c) { const cc = castleContext(p); if (cc) c = cc; }
+    if (!c) c = stumpContext(p);   // troncos no chão: recolher (vale também para os que já estavam caídos)
     { const pl = LM.portal; if (!c && pl && Math.abs(p.x - pl.x) < 13 && p.y > pl.y - 22 && p.y < pl.y + 10) c = { kind: 'portal', label: 'Atravessar o portal' }; }
     if (!c && B.serraria && Math.hypot(p.x - (B.serraria.x + 18), p.y - (B.serraria.y + 8)) < 18) c = { kind: 'split', label: 'Rachar lenha' };
     const kit = B.cozinha, nearKit = kit && Math.hypot(p.x - kit.x, p.y - (kit.y + 8)) < 24, lunchOn = lunch && Date.now() < lunch.until;
@@ -692,7 +695,6 @@ function updateContext(p, t) {
     if (!c) { let best = 14, bn = null; for (const n of NODES) { if (DEPL.has(n.id)) continue; const d = Math.hypot(p.x - n.x, (p.y - n.y) * 1.2); if (d < best) { best = d; bn = n; } } if (bn) c = bn.kind === 'fruit' ? { kind: 'herb', label: 'Colher frutas', node: bn.id, tx: bn.x } : bn.kind === 'rock' ? { kind: 'mine', label: isQuarry(bn.id) && !castleDone() ? 'Quebrar pedra para o castelo' : 'Quebrar pedra', node: bn.id, tx: bn.x } : { kind: 'herb', label: 'Colher ervas', node: bn.id, tx: bn.x }; }
     if (!c) { const d = DECOR.find(d => d.owner === me && Math.hypot(p.x - d.x, p.y - d.y) < 14); if (d) c = { kind: 'movedecor', label: 'Mover ' + ((RBY[d.kind] || {}).name || 'objeto').toLowerCase(), id: d.id, d }; }
     if (!c && canBuildAt(p)) c = { kind: 'buildmenu', label: 'Construir aqui…' };
-    if (!c) c = stumpContext(p);
     if (!c) { let best = 13, bt = null; for (const tr of TREE_POS) { if (CUT.has(tr.i)) continue; const d = Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2); if (d < best) { best = d; bt = tr; } } if (bt) c = { kind: 'chop', label: 'Derrubar árvore', tree: bt.i, tx: bt.x }; }
   }
   const key = c ? c.kind + c.label + (c.tree ?? '') + (c.node ?? '') + (c.id ?? '') : '';

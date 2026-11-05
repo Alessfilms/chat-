@@ -55,9 +55,10 @@ const southY = x => 2442 + (vn(x * .02, 71) - .5) * 36, southX = y => 1250 + (vn
 const seaY = x => 2968 + 22 * Math.sin(x * .005) + (vn(x * .01, 73) - .5) * 36;
 // BRAÇOS DO RIO: riachos que descem das montanhas e rios que correm até o mar (só nas terras novas)
 const BRANCH_PTS = [
-  { name: 'Riacho da Montanha', w: 7, pts: [[2150, 830], [2110, 700], [2135, 560], [2090, 420], [2072, 300], [2056, 222]] },
-  { name: 'Rio Vermelho', w: 8, pts: [[2010, 1690], [2040, 1840], [1995, 1990], [2030, 2150], [1990, 2300], [2040, 2460], [2010, 2650], [2060, 2820], [2045, 3060]] },
-  { name: 'Rio da Selva', w: 8, pts: [[830, 2456], [872, 2580], [820, 2700], [870, 2830], [835, 3060]] },
+  // sai do rio grande, desce entre as montanhas e os vulcões, atravessa os cânions e as dunas até o mar
+  { name: 'Rio do Leste', w: 8, pts: [[2062, 214], [2074, 330], [2056, 470], [2078, 640], [2054, 820], [2060, 1000], [2052, 1180], [2058, 1360], [2046, 1540], [2040, 1720], [2040, 1840], [1995, 1990], [2030, 2150], [1990, 2300], [2040, 2460], [2010, 2650], [2060, 2820], [2045, 3070]] },
+  // nasce na cachoeira das montanhas geladas, enche a Lagoa da Nascente e corre pela selva até o mar
+  { name: 'Rio da Selva', w: 8, pond: true, pts: [[846, 2442], [872, 2580], [820, 2700], [870, 2830], [835, 3070]] },
 ];
 const BRANCHES = BRANCH_PTS.map(b => { const P0 = b.pts, out = []; let s = 0;   // curva suave (Catmull-Rom) com pontos a cada ~3 px
   for (let i = 0; i < P0.length - 1; i++) { const p0 = P0[Math.max(0, i - 1)], p1 = P0[i], p2 = P0[i + 1], p3 = P0[Math.min(P0.length - 1, i + 2)], L = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]), n = Math.ceil(L / 3);
@@ -65,7 +66,9 @@ const BRANCHES = BRANCH_PTS.map(b => { const P0 = b.pts, out = []; let s = 0;   
       const X = f(p0[0], p1[0], p2[0], p3[0]), Y = f(p0[1], p1[1], p2[1], p3[1]); if (out.length) s += Math.hypot(X - out[out.length - 1][0], Y - out[out.length - 1][1]); out.push([X, Y, s]); } }
   const l = P0[P0.length - 1]; out.push([l[0], l[1], s + 3]); return { ...b, line: out, x0: Math.min(...out.map(p => p[0])) - 20, x1: Math.max(...out.map(p => p[0])) + 20, y0: Math.min(...out.map(p => p[1])) - 20, y1: Math.max(...out.map(p => p[1])) + 20 }; });
 function branchDist(x, y) { let best = 1e9, bw = 0; for (const b of BRANCHES) { if (x < b.x0 || x > b.x1 || y < b.y0 || y > b.y1) continue; for (let i = 0; i < b.line.length - 1; i += 1) { const [ax, ay] = b.line[i]; if (Math.abs(y - ay) > 30 || Math.abs(x - ax) > 30) continue; const [bx, by] = b.line[i + 1], dx = bx - ax, dy = by - ay, k = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)), d = Math.hypot(x - ax - dx * k, y - ay - dy * k); if (d < best) { best = d; bw = b.w; } } } return [best, bw]; }
-const nearBranch = (x, y, pad = 0) => { const [d, w] = branchDist(x, y); return d < w + pad; };
+const POND = { x: 846, y: 2424, rx: 32, ry: 18 };   // Lagoa da Nascente (embaixo da cachoeira)
+const pondVal = (x, y) => ((x - POND.x) / POND.rx) ** 2 + ((y - POND.y) / POND.ry) ** 2 + (vn(x * .08 + 40, y * .08) - .5) * .25;
+const nearBranch = (x, y, pad = 0) => { if (pondVal(x, y) < 1 + pad / 12) return true; const [d, w] = branchDist(x, y); return d < w + pad; };
 // pontes dos braços (onde as estradas novas cruzam a água)
 const BRANCH_BRIDGES = [];
 // grade rápida: onde tem água dos braços (cada célula = 2 px)
@@ -73,6 +76,7 @@ const BMASK_C = 2, BMW = Math.ceil(WW / BMASK_C), BMASK = new Uint8Array(BMW * M
 for (const b of BRANCHES) for (let Y = Math.max(0, Math.floor(b.y0)); Y < Math.min(WH, b.y1); Y += BMASK_C) for (let X = Math.max(0, Math.floor(b.x0)); X < Math.min(WW, b.x1); X += BMASK_C) { const [d, w] = branchDist(X, Y); if (d < w + 6) BMASK[(Y / BMASK_C | 0) * BMW + (X / BMASK_C | 0)] = d < w - 2 ? 2 : 1; }
 const inBranch = (x, y) => x >= 0 && y >= 0 && x < WW && y < WH && BMASK[(y / BMASK_C | 0) * BMW + (x / BMASK_C | 0)] === 2;
 const inSea = (x, y) => y > OWH && y > seaY(x) - 2;
+const inPond = (x, y) => Math.abs(x - POND.x) < POND.rx + 6 && Math.abs(y - POND.y) < POND.ry + 6 && pondVal(x, y) < .92;
 // terras do leste (além da largura antiga): montanhas ao norte, vulcões no meio, cânions ao sul
 const eastX = y => 1472 + (vn(y * .02, 61) - .5) * 50, eastB1 = x => 820 + (vn(x * .02, 63) - .5) * 60, eastB2 = x => 1640 + (vn(x * .02, 67) - .5) * 70;
 function biomeAt(x, y) {
@@ -167,6 +171,10 @@ const [ground, gx] = canvas(WW, WH);
       if (lv < 1) { const w = vn(x * .06, y * .2); c = lv > .9 ? Wt[3] : lv > .8 ? Wt[1] : lv < .35 ? Wt[2] : Wt[w > .72 ? 1 : 0]; if (lv < .8 && w > .8 && ((x + y) % 3 === 0)) c = Wt[3]; } }
     const i = (y * WW + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
   }
+  // Lagoa da Nascente
+  for (let Y = POND.y - POND.ry - 8; Y < POND.y + POND.ry + 8; Y++) for (let X = POND.x - POND.rx - 8; X < POND.x + POND.rx + 8; X++) { const lv = pondVal(X, Y); if (lv > 1.2) continue; let c;
+    if (lv > 1) c = BANK[vn(X * .4, Y * .4) > .6 ? 2 : 1]; else { const w = vn(X * .06, Y * .2); c = lv > .86 ? Wt[3] : lv > .72 ? Wt[1] : lv < .3 ? Wt[2] : Wt[w > .72 ? 1 : 0]; }
+    const i = (Y * WW + X) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; }
   // braços do rio: margem de pedras + água com a mesma cor do rio grande
   for (const b of BRANCHES) for (let Y = Math.max(0, Math.floor(b.y0)); Y < Math.min(WH, b.y1); Y++) for (let X = Math.max(0, Math.floor(b.x0)); X < Math.min(WW, b.x1); X++) {
     if (!BMASK[(Y / BMASK_C | 0) * BMW + (X / BMASK_C | 0)]) continue; const [dd, w] = branchDist(X, Y); if (dd > w + 3) continue; let c; const wob = wobA[X] * .6;

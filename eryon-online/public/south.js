@@ -71,8 +71,9 @@ function paintSouth(x) {
     else { if (kind < .08) { px(x, '#f4e8d8', X, Y, 2, 1); px(x, '#e8a0a0', X, Y - 1, 1, 1); } else if (kind < .14) px(x, '#c8a870', X, Y, 1, 1); } }
   for (const L of EXT_ROADS2.slice(-2)) for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], dd = Math.hypot(bx - ax, by - ay);
     for (let s = 0; s < dd; s += 2) { const X = Math.round(ax + (bx - ax) * s / dd), Y = Math.round(ay + (by - ay) * s / dd), b = biomeAt(X, Y); if (nearBranch(X, Y, 2)) continue; px(x, b === 10 || b === 9 ? '#c8a060' : b === 4 ? '#a2aab8' : '#7a5a34', X - 3, Y - 2, 7, 5); } }
-  // fontes dos rios: pedras e espuma onde a água nasce
-  for (const b of BRANCHES) { const [X, Y] = b.line[0]; for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283, R = b.w + 3; px(x, '#2a2e3a', Math.round(X + Math.cos(a) * R) - 2, Math.round(Y + Math.sin(a) * R * .7) - 2, 5, 4); px(x, P.st3, Math.round(X + Math.cos(a) * R) - 1, Math.round(Y + Math.sin(a) * R * .7) - 1, 3, 1); } }
+  // cachoeira: paredão de pedra e gelo ao norte da lagoa, de onde a água cai
+  { const X0 = POND.x - 22, Y0 = POND.y - POND.ry - 30; for (let Y = 0; Y < 30; Y++) for (let X = 0; X < 44; X++) { const edge = Math.abs(X - 22) > 20 - Y * .25; if (edge && Y < 26) continue; const k = h2(X, Y + 3); px(x, Y < 5 ? (k > .5 ? '#eef4fa' : '#c8d8e8') : k > .7 ? '#8a92a2' : k > .35 ? '#6e7688' : '#4d5566', X0 + X, Y0 + Y); }
+    px(x, '#2a2e3a', X0, Y0 + 29, 44, 2); for (let Y = 6; Y < 31; Y++) { px(x, '#3f86e6', POND.x - 5, Y0 + Y, 10, 1); px(x, '#9fd8ff', POND.x - 3, Y0 + Y, 2, 1); px(x, '#e8f4ff', POND.x + 1, Y0 + Y, 1, 1); } }
   // pontes de madeira sobre os braços
   for (const br of BRANCH_BRIDGES) { const X0 = br.x - br.hw, w = br.hw * 2; px(x, P.ink, X0 - 1, br.y - 6, w + 2, 12); for (let X = 0; X < w; X += 3) { px(x, X % 6 ? P.wood : P.woodL, X0 + X, br.y - 5, 2, 10); } px(x, P.woodD, X0, br.y - 5, w, 1); px(x, P.woodD, X0, br.y + 4, w, 1); for (const X of [X0, X0 + w - 2]) { px(x, P.ink, X - 1, br.y - 9, 4, 16); px(x, P.woodL, X, br.y - 8, 2, 14); } }
 }
@@ -88,6 +89,9 @@ function drawWaterFlow(x, t, li, ti, cw, ch) {
       const [px0, py0] = b.line[i - 1], dx = X - px0, dy = Y - py0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
       for (const lane of [-3.5, 0, 3]) { const ph = ((s - t * 16 + lane * 23) % 22 + 22) % 22; if (ph < 5) { x.globalAlpha = ph < 1.5 ? .85 : .45; px(x, ph < 1.5 ? '#e8f4ff' : '#9fc8ff', Math.round(X + nx * lane), Math.round(Y + ny * lane), 1, 1); } } }
     x.globalAlpha = 1; }
+  if (POND.x > li - 40 && POND.x < li + cw + 40 && POND.y > ti - 60 && POND.y < ti + ch + 40) { const top = POND.y - POND.ry - 24;
+    for (let k = 0; k < 10; k++) { const yy = top + ((k * 7 + t * 40) % 26), xx = POND.x - 4 + (k * 3) % 9; x.globalAlpha = .8; px(x, '#ffffff', xx, Math.round(yy), 1, 3); }
+    for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283 + t, r = 5 + (t * 6 + k * 2) % 7; x.globalAlpha = .55; px(x, '#ffffff', Math.round(POND.x + Math.cos(a) * r), Math.round(POND.y - POND.ry + 6 + Math.sin(a) * r * .4), 1, 1); } x.globalAlpha = 1; }
   if (ti + ch > 2900) { for (let X = x0; X < x1; X++) { const sy = seaY(X), w1 = Math.sin(t * 1.3 + X * .035) * 2.5, w2 = Math.sin(t * 1.1 + X * .05 + 2);
       x.globalAlpha = .8; px(x, '#ffffff', X, Math.round(sy - 1 + w1), 1, 1); x.globalAlpha = .45; px(x, '#e8f4ff', X, Math.round(sy + 9 + w2 * 2), 1, 1); px(x, '#cfe4ff', X, Math.round(sy + 24 + w2 * 3), 1, 1);
       if (h2(X, Math.floor(t * 3)) > .985) { x.globalAlpha = .9; px(x, '#ffffff', X, Math.round(sy + 30 + h2(Math.floor(t * 3), X) * 90), 1, 1); } } x.globalAlpha = 1; }

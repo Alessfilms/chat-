@@ -89,7 +89,8 @@ function drawSapling(x, o, k) {   // muda crescendo (k de 0 a 1)
   px(x, '#84c65a', o.x, o.y - h - 1, 1, 2); px(x, '#6b4630', o.x - 3, o.y - 1, 7, 2);
 }
 function stumpContext(p) {
-  let best = 12, bt = null; for (const tr of TREE_POS) { if (!CUT.has(tr.i)) continue; const d = Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2); if (d < best) { best = d; bt = tr; } } if (!bt) return null;
+  // perto do toco OU dos troncos caídos ao lado dele
+  let best = 16, bt = null; for (const tr of TREE_POS) { if (!CUT.has(tr.i)) continue; const lx = tr.x + (h2(31, tr.i) > .5 ? -17 : 17), d = Math.min(Math.hypot(p.x - tr.x, (p.y - tr.y) * 1.2), LOGS.has(tr.i) ? 99 : Math.hypot(p.x - lx, (p.y - tr.y + 4) * 1.2)); if (d < best) { best = d; bt = tr; } } if (!bt) return null;
   const i = bt.i, pl = PLANTS[i], mine = MYCUTS.has(i) || FREECUTS.has(i);
   if (pl) { const left = Math.max(0, 5 * 60000 - (Date.now() - pl.at)); return { kind: 'econ', label: `Muda de @${pl.by} crescendo · ${Math.ceil(left / 60000)} min`, fn: () => {}, id: 'pl' + i }; }
   if (!LOGS.has(i)) return { kind: 'econ', label: 'Recolher a madeira (+2 lenha)', fn: () => { p.face = bt.x < p.x ? -1 : 1; send({ t: 'logs', tree: i }); doAct('gather'); }, id: 'lg' + i };
