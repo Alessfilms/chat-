@@ -278,7 +278,7 @@ function noticeContent() {
   if (c && c.on && c.text) return { key: 'adm:' + c.title + c.text, ico: '📢', title: c.title || 'AVISO DE ERYON', text: c.text, every: c.every || 10 };
   if (typeof GIANT !== 'undefined' && !GIANT.live && GIANT.state === 'scheduled' && GIANT.at > Date.now() && GIANT.at - Date.now() < 36 * 3600e3) {
     const hh = new Date(GIANT.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }), hoje = new Date(GIANT.at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) === new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-    return { key: 'giant:' + GIANT.at, ico: '⚠', title: `O GIGANTE ATACA ${hoje ? 'HOJE' : 'AMANHÃ'} ÀS ${hh}!`, text: `Faltam ${fmtLeft(GIANT.at - Date.now())}.\nCrie lanças e catapultas, vire Guarda do Reino e defenda Eryon!\nSe ninguém lutar, ele destrói a cidade e vai embora.`, every: 10, go: 'Preparar armas', fn: () => { closePanels(); openPanel('craft'); } };
+    return { key: 'giant:' + GIANT.at, ico: '⚠', title: `${GIANT.kind === 'dragao2' ? 'O DRAGÃO DE DUAS CABEÇAS' : GIANT.kind === 'dragao' ? 'O DRAGÃO NEGRO' : GIANT.kind === 'fogo' ? 'A FERA DE FOGO' : 'O GIGANTE'} ATACA ${hoje ? 'HOJE' : 'AMANHÃ'} ÀS ${hh}!`, text: GIANT.kind === 'dragao2' ? `Faltam ${fmtLeft(GIANT.at - Date.now())}.\nUma cabeça cospe fogo, a outra fogo azul: ele queima duas casas de cada vez!\nTraga arcos, catapultas e o raio do Mago. Espadas só quando ele descer.` : `Faltam ${fmtLeft(GIANT.at - Date.now())}.\nCrie lanças e catapultas, vire Guarda do Reino e defenda Eryon!\nSe ninguém lutar, ele destrói a cidade e vai embora.`, every: 10, go: 'Preparar armas', fn: () => { closePanels(); openPanel('craft'); } };
   }
   return null;
 }

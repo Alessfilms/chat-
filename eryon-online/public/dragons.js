@@ -8,6 +8,7 @@ const DRAGON_PALS = [
   { body: ['#2a1640', '#46286a', '#6e4a9a', '#9a7ad0'], memb: ['#1e0f30', '#33205a', '#4e3480', '#7058a8'], horn: '#e8e0ff', eye: '#9ff3ff' },   // roxo
   { body: ['#2a2e36', '#454b58', '#6a7282', '#9aa2b2'], memb: ['#1c1f26', '#30343e', '#4a505e', '#646c7c'], horn: '#fff3d6', eye: '#ffd84a' },   // cinza
   { body: ['#0e0c10', '#1e1a22', '#34303c', '#524c5c'], memb: ['#3a0a08', '#6a1410', '#a8261a', '#d8442a'], horn: '#e8d8b0', eye: '#ff6a1a' },   // NEGRO (chefe)
+  { body: ['#1e0a12', '#3a1220', '#621c30', '#8e2c42'], memb: ['#140a24', '#2a1448', '#46207a', '#6a34a8'], horn: '#efe2bf', eye: '#ff7a1a' },   // DUAS CABEÇAS (chefe)
 ];
 const DSPR = {}, DIRS = 16;
 // desenha o dragão (cabeça para cima no desenho) girado no ângulo da direção, ponto a ponto: fica nítido em qualquer direção
@@ -35,6 +36,35 @@ function dragonTop(pi, f, di) {
   // espinhos nas costas e olhos
   for (let k = -12; k <= 18; k += 3) { const [X, Y] = R([0, k]); px(x, k < 6 ? D.body[3] : D.body[2], Math.round(X), Math.round(Y), 1, 1); }
   for (const s of [-1.6, 1.6]) { const [X, Y] = R([s, -19]); px(x, D.eye, Math.round(X), Math.round(Y), 1, 1); }
+  // sombra = mesma silhueta escura
+  const [sc, sx] = canvas(N, N); sx.drawImage(c, 0, 0); sx.globalCompositeOperation = 'source-in'; sx.fillStyle = 'rgba(8,18,14,1)'; sx.fillRect(0, 0, N, N);
+  return DSPR[key] = { c, s: sc };
+}
+function dragon2Top(pi, f, di) {   // DRAGÃO DE DUAS CABEÇAS: mesmo corpo, dois pescoços e duas cabeças
+  const key = 'two' + pi + '_' + f + '_' + di; if (DSPR[key]) return DSPR[key];
+  const D = DRAGON_PALS[pi], N = 80, [c, x] = canvas(N, N), O = '#140a08', pt = painter(x), a = di / DIRS * 6.283, ca = Math.cos(a), sa = Math.sin(a);
+  const R = ([px0, py0, r]) => [N / 2 + px0 * ca - py0 * sa, N / 2 + px0 * sa + py0 * ca, r];   // gira (direção 0 = para cima)
+  const sp = [1, .72, .42][f], fw = [0, -3, 2][f];      // abertura das asas em cada quadro do bater
+  const wing = s => {   // s = -1 esquerda, 1 direita
+    const sh = [s * 4, -3], wr = [s * 15 * sp + s * 2, -10 + fw], t1 = [s * 31 * sp + s * 3, -6 + fw * .5], t2 = [s * 29 * sp + s * 3, 4], t3 = [s * 21 * sp + s * 2, 11], back = [s * 5, 8];
+    const mem = [sh, wr, t1, [s * 25 * sp + s * 2, 1], t2, [s * 22 * sp + s * 2, 7], t3, [s * 12 * sp + s, 9], back].map(p => R(p));
+    pt.poly(mem, D.memb, O, s > 0 ? -.05 : .1);
+    pt.tube([R([...sh, 2]), R([...wr, 1.5]), R([...t1, .6])], 1.4, D.body, O);
+    for (const tp of [t2, t3]) pt.tube([R([...wr, 1.2]), R([...tp, .5])], 1, D.body, O);
+  };
+  wing(-1); wing(1); pt.done();
+  // cauda balançando um pouco, com ponta de flecha
+  const tw = [0, 2, -2][f];
+  pt.tube([R([0, 7, 3.4]), R([tw * .5, 15, 2.4]), R([tw, 22, 1.6]), R([tw * .3, 29, .9])], 2, D.body, O).poly([R([tw * .3 - 3, 29]), R([tw * .3, 34]), R([tw * .3 + 3, 29]), R([tw * .3, 27])], D.body, O).done();
+  // corpo, pescoço e cabeça
+  pt.tube([R([0, -5, 5]), R([0, 1, 5.5]), R([0, 7, 3.6])], 5, D.body, O).done();
+  for (const sd of [-1, 1]) { const hx = sd * 8;
+    pt.tube([R([sd * 1.5, -6, 3.2]), R([sd * 5, -11, 2.6]), R([hx, -15, 2.4])], 2.5, D.body, O).done();
+    pt.tube([R([hx - 2, -16, 1.2]), R([hx - 4 - sd, -11, .5])], 1, [D.horn, D.horn, D.horn, '#ffffff'], O).tube([R([hx + 2, -16, 1.2]), R([hx + 4 - sd, -11, .5])], 1, [D.horn, D.horn, D.horn, '#ffffff'], O);
+    pt.tube([R([hx, -15, 3.4]), R([hx + sd * .6, -19, 2.9]), R([hx + sd * 1.2, -23, 1.5])], 3, D.body, O).done(); }
+  // espinhos nas costas e olhos
+  for (let k = -12; k <= 18; k += 3) { const [X, Y] = R([0, k]); px(x, k < 6 ? D.body[3] : D.body[2], Math.round(X), Math.round(Y), 1, 1); }
+  for (const sd of [-1, 1]) for (const s of [-1.4, 1.4]) { const [X, Y] = R([sd * 8.6 + s, -19]); px(x, sd < 0 ? D.eye : '#9ff3ff', Math.round(X), Math.round(Y), 1, 1); }
   // sombra = mesma silhueta escura
   const [sc, sx] = canvas(N, N); sx.drawImage(c, 0, 0); sx.globalCompositeOperation = 'source-in'; sx.fillStyle = 'rgba(8,18,14,1)'; sx.fillRect(0, 0, N, N);
   return DSPR[key] = { c, s: sc };

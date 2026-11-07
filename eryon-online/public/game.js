@@ -597,7 +597,7 @@ function draw(t, p) {
   for (const q of players.values()) if ((q.room || '') === myRoom) list.push({ y: q.y, pl: q });
   if (!room) { for (const n of NODES) if (n.x > li - 20 && n.x < li + cw + 20 && n.y > ti - 10 && n.y < ti + ch + 20) list.push({ y: n.y, node: n }); for (const d of DECOR) if (d.x > li - 30 && d.x < li + cw + 30 && d.y > ti - 10 && d.y < ti + ch + 30) list.push({ y: d.y, decor: d }); }
   if (!room) for (const h of BUILT) if (h.x > li - 40 && h.x < li + cw + 40 && h.y > ti - 10 && h.y < ti + ch + 40) list.push({ y: h.y, built: h });
-  if (!room && GIANT.live && GIANT.live.kind !== 'dragao') list.push({ y: GIANT.live.y, giant: true });
+  if (!room && GIANT.live && GIANT.live.kind !== 'dragao' && GIANT.live.kind !== 'dragao2') list.push({ y: GIANT.live.y, giant: true });
   if (!room) kingdomObjs(list, li, ti, cw, ch, t);
   if (!room) for (const a of ANIMALS_L) { const q = animalPos(a, t); if (q.X > li - 20 && q.X < li + cw + 20 && q.Y > ti - 10 && q.Y < ti + ch + 20) list.push({ y: q.Y, animal: a }); }
   if (!room) for (const sg of allSigns()) if (sg.x > li - 30 && sg.x < li + cw + 30 && sg.y > ti - 10 && sg.y < ti + ch + 30) list.push({ y: sg.y, sign: sg });

@@ -82,7 +82,7 @@ code{background:#060b0a;padding:2px 6px;color:var(--gold);font-size:16px;letter-
     <p id="gstat" style="margin:0">Entre com a chave para ver.</p>
     <div class="row"><input id="gAt" type="datetime-local" style="flex:1;min-width:200px"><button class="sm" id="gSched">Agendar</button></div>
     <div class="row"><button class="sm dan" id="gStart">Começar agora</button><button class="sm" id="gCancel">Cancelar</button><button class="sm" id="gRepair">Consertar a cidade</button></div>
-    <div class="row"><button class="sm dan" id="gFire">🔥 Lançar a Fera de Fogo agora</button><button class="sm dan" id="gDragon">🐉 Lançar o Dragão Negro agora</button><button class="sm" id="gRebuildAll">Reconstruir todas as casas queimadas</button></div>
+    <div class="row"><button class="sm dan" id="gFire">🔥 Lançar a Fera de Fogo agora</button><button class="sm dan" id="gDragon">🐉 Lançar o Dragão Negro agora</button><button class="sm dan" id="gDragon2">🐲 Lançar o Dragão de Duas Cabeças agora</button><button class="sm" id="gRebuildAll">Reconstruir todas as casas queimadas</button></div>
     <p class="hint" style="margin:0;color:#98a4ac;font-size:14px">O gigante só danifica as construções (fogo e rachaduras). Nada é apagado: se Eryon vencer, conserta na hora; se perder, a galera conserta com lenha ou volta ao normal em 12 h.</p>
   </section>
   <section>
@@ -147,7 +147,7 @@ async function loadMod() {
   if (d.notice && !$('nText').value) { $('nTitle').value = d.notice.title || ''; $('nText').value = d.notice.text || ''; $('nEvery').value = d.notice.every || 10; }
   $('supPix').value = d.supportCfg.pix || ''; $('supUrl').value = d.supportCfg.url || '';
   const sl = $('sgL'); sl.innerHTML = ''; for (const sg of d.signs) { const r = el('div', undefined, 'row'); r.append(el('span', `"${sg.text}" em (${sg.x}, ${sg.y})`), btn('Remover', () => call('/api/admin/signdel', { id: sg.id }), 'sm dan')); sl.appendChild(r); }
-  const gg = d.giant; if (gg) { $('gstat').textContent = gg.live ? `BATALHA! ${gg.live.kind === 'dragao' ? 'Dragão Negro' : gg.live.kind === 'fogo' ? 'Fera de Fogo' : 'Gigante'} ${gg.live.hp}/${gg.live.max} · Cidade ${gg.live.city}%` : gg.state === 'scheduled' ? `Agendado para ${new Date(gg.at).toLocaleString()}` : gg.state === 'done' ? (gg.result === 'won' ? 'Último ataque: Eryon venceu!' : 'Último ataque: a cidade foi danificada') + ` · ${gg.damaged.length} construções danificadas` : 'Nenhum ataque agendado'; if (!$('gAt').value) { const t0 = gg.at && gg.at > Date.now() ? new Date(gg.at) : new Date(Date.now() + 3600e3); const z = new Date(t0 - t0.getTimezoneOffset() * 60000); $('gAt').value = z.toISOString().slice(0, 16); } }
+  const gg = d.giant; if (gg) { $('gstat').textContent = gg.live ? `BATALHA! ${gg.live.kind === 'dragao2' ? 'Dragão de Duas Cabeças' : gg.live.kind === 'dragao' ? 'Dragão Negro' : gg.live.kind === 'fogo' ? 'Fera de Fogo' : 'Gigante'} ${gg.live.hp}/${gg.live.max} · Cidade ${gg.live.city}%` : gg.state === 'scheduled' ? `Agendado (${gg.kind === 'dragao2' ? 'Dragão de Duas Cabeças' : gg.kind === 'dragao' ? 'Dragão Negro' : gg.kind === 'fogo' ? 'Fera de Fogo' : 'Gigante'}) para ${new Date(gg.at).toLocaleString()}` : gg.state === 'done' ? (gg.result === 'won' ? 'Último ataque: Eryon venceu!' : 'Último ataque: a cidade foi danificada') + ` · ${gg.damaged.length} construções danificadas` : 'Nenhum ataque agendado'; if (!$('gAt').value) { const t0 = gg.at && gg.at > Date.now() ? new Date(gg.at) : new Date(Date.now() + 3600e3); const z = new Date(t0 - t0.getTimezoneOffset() * 60000); $('gAt').value = z.toISOString().slice(0, 16); } }
   const cs = d.castle; $('cstat').textContent = cs.stage >= cs.stages ? 'Castelo PRONTO! 🏰' : `Etapa ${cs.stage + 1}/${cs.stages}: ${cs.name} · ${cs.pedra} pedras e ${cs.lenha} lenhas já colocadas` + (cs.top.length ? ' · Mestres de obra: ' + cs.top.map(([u, n]) => '@' + u + ' (' + n + ')').join(', ') : '');
   if (d.staff.length) $('staffUser').placeholder = 'Criador: ' + d.staff.map(u => '@' + u).join(', ');
 }
@@ -170,6 +170,7 @@ $('cGive').onclick = act(() => call('/api/admin/castle', { pedra: $('cP').value,
 $('cReset').onclick = act(() => call('/api/admin/castle', { reset: true, confirm: $('cConf').value.trim().toUpperCase() }), 'Obra recomeçada.');
 $('gSched').onclick = act(() => call('/api/admin/giant', { action: 'schedule', at: new Date($('gAt').value).getTime() }), 'Ataque agendado!');
 $('gStart').onclick = act(() => call('/api/admin/giant', { action: 'start' }), 'O gigante acordou!');
+$('gDragon2').onclick = act(() => call('/api/admin/giant', { action: 'start', kind: 'dragao2' }), 'O Dragão de Duas Cabeças apareceu!');
 $('gDragon').onclick = act(() => call('/api/admin/giant', { action: 'start', kind: 'dragao' }), 'O Dragão Negro apareceu!');
 $('gRebuildAll').onclick = act(() => call('/api/admin/giant', { action: 'repair', all: true }), 'Todas as casas foram reconstruídas.');
 $('gFire').onclick = act(() => call('/api/admin/giant', { action: 'start', kind: 'fogo' }), 'A Fera de Fogo apareceu!');
